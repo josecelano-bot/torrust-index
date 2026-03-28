@@ -56,7 +56,7 @@ a name eliminates the surprise.
 
 ### P4.1 — Annotate `decompose_basis` case structure
 
-**Status:** `[ ]` not started
+**Status:** `[x]` done
 
 **What to do:**
 
@@ -72,7 +72,7 @@ a name eliminates the surprise.
 
 ### P4.2 — Extract case predicates and leaf pushes
 
-**Status:** `[ ]` not started
+**Status:** `[x]` done
 
 **Depends on:** P4.1
 
@@ -99,7 +99,7 @@ helper.
 
 ### P4.3 — Clarify `range_sum_inner` boundary handling
 
-**Status:** `[ ]` not started
+**Status:** `[x]` done
 
 **Depends on:** P4.2
 
