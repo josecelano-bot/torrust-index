@@ -74,8 +74,8 @@ gaps** identified from a fresh complexity analysis run on 2026-03-28.
 
 - [x] Phase 1 (Encapsulation) started
 - [x] Phase 1 complete — complexity baseline updated
-- [ ] Phase 2 (Plateau Tracker) started
-- [ ] Phase 2 complete — complexity baseline updated
+- [x] Phase 2 (Plateau Tracker) started
+- [x] Phase 2 complete — complexity baseline updated
 - [ ] Phase 3 (Rebalance) started
 - [ ] Phase 3 complete — complexity baseline updated
 - [ ] Phase 4 (Query) started

@@ -54,7 +54,50 @@ into helper functions.
 
 ### P2.1 — Read and annotate `on_evict`
 
-**Status:** `[ ]` not started
+**Status:** `[x]` done (phase-banner comments were already present)
+
+---
+
+### P2.2 — Extract `on_evict` phase helpers (one per commit)
+
+**Status:** `[x]` done
+
+Extracted:
+- `evict_ancestor_key` — Phase 1 else-branch (ancestor walk + sibling displacement)
+- `evacuate_adjacent_plateaus` — Phases 4+5 (right and left adjacency evacuation)
+
+`on_evict` reduced from ~228 lines to ~80 lines.
+
+---
+
+### P2.3 — Extract `normalize` phase helpers
+
+**Status:** `[x]` done
+
+Extracted `collect_normalize_elements` — Phase 1 DFS collection loop.
+`normalize` Phase 1 reduced from ~80 lines to 1 call.
+
+---
+
+### P2.4 — Extract `place_basis_element` helpers
+
+**Status:** `[x]` done
+
+Extracted:
+- `find_adjacent_left_key` — left adjacency predicate
+- `find_adjacent_right_key` — right adjacency predicate
+- `place_merge_both` — (Some(lk), Some(rk)) arm
+- `place_extend_left` — (Some(lk), None) arm
+- `place_rekey_right` — (None, Some(rk)) arm
+- `place_new_plateau` — (None, None) arm
+
+`place_basis_element` reduced from 128 lines to 25 lines.
+
+---
+
+### P2.5 — Extract `on_catalytic_split` helpers
+
+**Status:** `[ ]` not started — deferred; function complexity acceptable after P2.2–P2.4.
 
 **What to do:**
 

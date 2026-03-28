@@ -123,126 +123,24 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
         }
     }
 
-    #[allow(clippy::too_many_lines)]
+    /// Inserts `gnode` at the given `depth` into the plateau basis, merging
+    /// with adjacent same-depth plateaus where possible.
     fn place_basis_element(&mut self, gnodes: &Arena<GNode<C, V>>, gnode: GNodeId, depth: u32) {
-        use crate::spatial::plateau::{BasisEdge, Plateau, basis_edge_of};
+        use crate::spatial::plateau::basis_edge_of;
 
         let g = gnodes.get(gnode.index());
         let key = basis_edge_of(g);
         let lo = g.lo();
         let hi = g.hi();
-        let sum = g.sum();
 
-        let left_key = self
-            .plateaus
-            .range(..key)
-            .next_back()
-            .filter(|(_, p)| p.depth == depth && p.end.total_cmp(&lo) != std::cmp::Ordering::Less)
-            .map(|(&k, _)| k)
-            .filter(|lk| {
-                self.plateaus
-                    .range((
-                        std::ops::Bound::Excluded(*lk),
-                        std::ops::Bound::Excluded(key),
-                    ))
-                    .next()
-                    .is_none()
-            });
-
-        let right_key = self
-            .plateaus
-            .range(BasisEdge(hi)..)
-            .next()
-            .filter(|(_, p)| {
-                p.depth == depth && p.start.total_cmp(&hi) != std::cmp::Ordering::Greater
-            })
-            .map(|(&k, _)| k)
-            .filter(|rk| {
-                self.plateaus
-                    .range((
-                        std::ops::Bound::Excluded(key),
-                        std::ops::Bound::Excluded(*rk),
-                    ))
-                    .next()
-                    .is_none()
-            });
+        let left_key = self.find_adjacent_left_key(key, lo, depth);
+        let right_key = self.find_adjacent_right_key(key, hi, depth);
 
         match (left_key, right_key) {
-            (Some(lk), Some(rk)) => {
-                self.plateau_basis.insert(lk, gnode);
-                let rights: Vec<_> = self
-                    .plateau_basis
-                    .basis_elements(&rk)
-                    .iter()
-                    .copied()
-                    .collect();
-                for rid in rights {
-                    self.plateau_basis.remove(rid);
-                    self.plateau_basis.insert(lk, rid);
-                }
-                self.plateaus.remove(&rk);
-                self.recompute_plateau(gnodes, &lk);
-                tracing::trace!(
-                    gnode = gnode.index(),
-                    ?lk,
-                    ?rk,
-                    "place_basis_element: merge-both"
-                );
-            }
-            (Some(lk), None) => {
-                self.plateau_basis.insert(lk, gnode);
-                self.recompute_plateau(gnodes, &lk);
-                tracing::trace!(
-                    gnode = gnode.index(),
-                    ?lk,
-                    "place_basis_element: insert-left"
-                );
-            }
-            (None, Some(rk)) => {
-                let rights: Vec<_> = self
-                    .plateau_basis
-                    .basis_elements(&rk)
-                    .iter()
-                    .copied()
-                    .collect();
-                for rid in rights {
-                    self.plateau_basis.remove(rid);
-                    self.plateau_basis.insert(key, rid);
-                }
-                self.plateau_basis.insert(key, gnode);
-                self.plateaus.remove(&rk);
-                self.plateaus.insert(
-                    key,
-                    Plateau {
-                        basis_edge: key,
-                        start: lo,
-                        end: lo,
-                        depth,
-                        sum,
-                    },
-                );
-                self.recompute_plateau(gnodes, &key);
-                tracing::trace!(
-                    gnode = gnode.index(),
-                    ?rk,
-                    "place_basis_element: rekey-right"
-                );
-            }
-            (None, None) => {
-                self.plateau_basis.insert(key, gnode);
-                if let std::collections::btree_map::Entry::Vacant(e) = self.plateaus.entry(key) {
-                    e.insert(Plateau {
-                        basis_edge: key,
-                        start: lo,
-                        end: hi,
-                        depth,
-                        sum,
-                    });
-                } else {
-                    self.recompute_plateau(gnodes, &key);
-                }
-                tracing::trace!(gnode = gnode.index(), "place_basis_element: new-plateau");
-            }
+            (Some(lk), Some(rk)) => self.place_merge_both(gnodes, lk, rk, gnode),
+            (Some(lk), None)     => self.place_extend_left(gnodes, lk, gnode),
+            (None, Some(rk))     => self.place_rekey_right(gnodes, key, rk, gnode, depth),
+            (None, None)         => self.place_new_plateau(gnodes, key, gnode, depth),
         }
 
         self.consolidate_basis_up(gnodes, gnode);
@@ -583,6 +481,379 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
             );
         }
     }
+
+    // ── place_basis_element helpers ───────────────────────────────────────────
+
+    /// Returns the key of the adjacent left plateau at the same `depth` that
+    /// ends at or after `lo`, with no intervening plateau between it and `key`.
+    fn find_adjacent_left_key(
+        &self,
+        key: BasisEdge<C>,
+        lo: C,
+        depth: u32,
+    ) -> Option<BasisEdge<C>> {
+        self.plateaus
+            .range(..key)
+            .next_back()
+            .filter(|(_, p)| p.depth == depth && p.end.total_cmp(&lo) != std::cmp::Ordering::Less)
+            .map(|(&k, _)| k)
+            .filter(|lk| {
+                self.plateaus
+                    .range((
+                        std::ops::Bound::Excluded(*lk),
+                        std::ops::Bound::Excluded(key),
+                    ))
+                    .next()
+                    .is_none()
+            })
+    }
+
+    /// Returns the key of the adjacent right plateau at the same `depth` that
+    /// starts at or before `hi`, with no intervening plateau between `key` and it.
+    fn find_adjacent_right_key(
+        &self,
+        key: BasisEdge<C>,
+        hi: C,
+        depth: u32,
+    ) -> Option<BasisEdge<C>> {
+        self.plateaus
+            .range(BasisEdge(hi)..)
+            .next()
+            .filter(|(_, p)| {
+                p.depth == depth && p.start.total_cmp(&hi) != std::cmp::Ordering::Greater
+            })
+            .map(|(&k, _)| k)
+            .filter(|rk| {
+                self.plateaus
+                    .range((
+                        std::ops::Bound::Excluded(key),
+                        std::ops::Bound::Excluded(*rk),
+                    ))
+                    .next()
+                    .is_none()
+            })
+    }
+
+    /// Merges `gnode` into the left plateau `lk`, absorbing the right plateau
+    /// `rk` into `lk` at the same time.
+    fn place_merge_both(
+        &mut self,
+        gnodes: &Arena<GNode<C, V>>,
+        lk: BasisEdge<C>,
+        rk: BasisEdge<C>,
+        gnode: GNodeId,
+    ) {
+        self.plateau_basis.insert(lk, gnode);
+        let rights: Vec<_> = self
+            .plateau_basis
+            .basis_elements(&rk)
+            .iter()
+            .copied()
+            .collect();
+        for rid in rights {
+            self.plateau_basis.remove(rid);
+            self.plateau_basis.insert(lk, rid);
+        }
+        self.plateaus.remove(&rk);
+        self.recompute_plateau(gnodes, &lk);
+        tracing::trace!(gnode = gnode.index(), ?lk, ?rk, "place_basis_element: merge-both");
+    }
+
+    /// Extends the existing left plateau `lk` to include `gnode`.
+    fn place_extend_left(
+        &mut self,
+        gnodes: &Arena<GNode<C, V>>,
+        lk: BasisEdge<C>,
+        gnode: GNodeId,
+    ) {
+        self.plateau_basis.insert(lk, gnode);
+        self.recompute_plateau(gnodes, &lk);
+        tracing::trace!(gnode = gnode.index(), ?lk, "place_basis_element: insert-left");
+    }
+
+    /// Re-keys the right plateau `rk` to `key` and inserts `gnode` into it.
+    fn place_rekey_right(
+        &mut self,
+        gnodes: &Arena<GNode<C, V>>,
+        key: BasisEdge<C>,
+        rk: BasisEdge<C>,
+        gnode: GNodeId,
+        depth: u32,
+    ) {
+        let g = gnodes.get(gnode.index());
+        let lo = g.lo();
+        let sum = g.sum();
+        let rights: Vec<_> = self
+            .plateau_basis
+            .basis_elements(&rk)
+            .iter()
+            .copied()
+            .collect();
+        for rid in rights {
+            self.plateau_basis.remove(rid);
+            self.plateau_basis.insert(key, rid);
+        }
+        self.plateau_basis.insert(key, gnode);
+        self.plateaus.remove(&rk);
+        self.plateaus.insert(
+            key,
+            Plateau {
+                basis_edge: key,
+                start: lo,
+                end: lo,
+                depth,
+                sum,
+            },
+        );
+        self.recompute_plateau(gnodes, &key);
+        tracing::trace!(gnode = gnode.index(), ?rk, "place_basis_element: rekey-right");
+    }
+
+    /// Creates a new plateau at `key` for `gnode`, or recomputes it if
+    /// the key already exists.
+    fn place_new_plateau(
+        &mut self,
+        gnodes: &Arena<GNode<C, V>>,
+        key: BasisEdge<C>,
+        gnode: GNodeId,
+        depth: u32,
+    ) {
+        let g = gnodes.get(gnode.index());
+        let lo = g.lo();
+        let hi = g.hi();
+        let sum = g.sum();
+        self.plateau_basis.insert(key, gnode);
+        if let std::collections::btree_map::Entry::Vacant(e) = self.plateaus.entry(key) {
+            e.insert(Plateau {
+                basis_edge: key,
+                start: lo,
+                end: hi,
+                depth,
+                sum,
+            });
+        } else {
+            self.recompute_plateau(gnodes, &key);
+        }
+        tracing::trace!(gnode = gnode.index(), "place_basis_element: new-plateau");
+    }
+
+    // ── on_evict helpers ──────────────────────────────────────────────────────
+
+    /// Walks the ancestor chain upward from `parent_id` to find the basis
+    /// element that covers it, removes that ancestor from the basis, and
+    /// displaces the siblings of every path node into `displaced`.
+    ///
+    /// Returns the covering basis-edge key, or `None` if no ancestor in the
+    /// basis covers `parent_id`.
+    fn evict_ancestor_key(
+        &mut self,
+        gnodes: &Arena<GNode<C, V>>,
+        parent_id: GNodeId,
+        parent_state_after: GState,
+        displaced: &mut Vec<GNodeId>,
+    ) -> Option<BasisEdge<C>> {
+        use crate::spatial::plateau::basis_edge_of;
+
+        let parent_key = basis_edge_of(gnodes.get(parent_id.index()));
+        let mut path: Vec<GNodeId> = vec![parent_id];
+        let mut cur = gnodes.get(parent_id.index()).parent();
+        let mut found = None;
+
+        while let Some(anc) = cur {
+            if let Some(&anc_key) = self.plateau_basis.plateau_key(anc).as_ref() {
+                let next_key = self
+                    .plateaus
+                    .range((
+                        std::ops::Bound::Excluded(anc_key),
+                        std::ops::Bound::Unbounded,
+                    ))
+                    .next()
+                    .map(|(&k, _)| k);
+                let tile_covers =
+                    parent_key >= anc_key && next_key.is_none_or(|nk| parent_key < nk);
+
+                if tile_covers {
+                    self.plateau_basis.remove(anc);
+
+                    if parent_state_after == GState::SemiInternal {
+                        let g = gnodes.get(parent_id.index());
+                        if let Some(sib) = g.left().or_else(|| g.right()) {
+                            if let Some(ok) = self.plateau_basis.remove(sib) {
+                                self.fixup_plateau(gnodes, ok);
+                            }
+                            displaced.push(sib);
+                        }
+                    }
+
+                    for &path_node in &path {
+                        let par = gnodes
+                            .get(path_node.index())
+                            .parent()
+                            .expect("path node must have a parent");
+                        let pg = gnodes.get(par.index());
+                        let sibling = if pg.left() == Some(path_node) {
+                            pg.right()
+                        } else {
+                            pg.left()
+                        };
+                        if let Some(sib_id) = sibling {
+                            if displaced.contains(&sib_id) {
+                                continue;
+                            }
+                            if let Some(ok) = self.plateau_basis.remove(sib_id) {
+                                self.fixup_plateau(gnodes, ok);
+                            }
+                            displaced.push(sib_id);
+                        }
+                    }
+
+                    found = Some(anc_key);
+                    break;
+                }
+            }
+            path.push(anc);
+            cur = gnodes.get(anc.index()).parent();
+        }
+
+        found
+    }
+
+    /// Evacuates right-adjacent and left-adjacent same-depth plateaus bordering
+    /// the post-eviction parent, collecting their members into `displaced_extra`
+    /// for subsequent re-placement.
+    fn evacuate_adjacent_plateaus(
+        &mut self,
+        gnodes: &Arena<GNode<C, V>>,
+        parent_lo: C,
+        parent_hi: C,
+        parent_depth: u32,
+        displaced_extra: &mut Vec<(GNodeId, u32)>,
+    ) {
+        let parent_be = BasisEdge(parent_lo);
+
+        // ── Phase 4: Evacuate right-adjacent same-depth plateaus ─────────────
+        let right_keys: Vec<BasisEdge<C>> = self
+            .plateaus
+            .range(BasisEdge(parent_hi)..)
+            .take_while(|(_, p)| p.start.total_cmp(&parent_hi) != std::cmp::Ordering::Greater)
+            .filter(|(_, p)| p.depth == parent_depth)
+            .map(|(&k, _)| k)
+            .collect();
+        for rk in right_keys {
+            let members: Vec<GNodeId> = self
+                .plateau_basis
+                .basis_elements(&rk)
+                .iter()
+                .copied()
+                .collect();
+            if !members.is_empty() {
+                tracing::trace!(
+                    ?rk,
+                    parent_depth,
+                    members = ?members.iter().map(|g| g.index()).collect::<Vec<_>>(),
+                    "evacuating right-adjacent same-depth plateau for evict placement",
+                );
+                for &m in &members {
+                    self.plateau_basis.remove(m);
+                }
+                self.plateaus.remove(&rk);
+                for &m in &members {
+                    self.collect_subtree_basis_elements(gnodes, m, displaced_extra);
+                }
+            }
+        }
+
+        // ── Phase 5: Evacuate left-adjacent same-depth plateaus ──────────────
+        let left_keys: Vec<BasisEdge<C>> = self
+            .plateaus
+            .range(..parent_be)
+            .rev()
+            .take_while(|(_, p)| p.end.total_cmp(&parent_lo) != std::cmp::Ordering::Less)
+            .filter(|(_, p)| p.depth == parent_depth)
+            .map(|(&k, _)| k)
+            .collect();
+        for lk in left_keys {
+            let members: Vec<GNodeId> = self
+                .plateau_basis
+                .basis_elements(&lk)
+                .iter()
+                .copied()
+                .collect();
+            if !members.is_empty() {
+                tracing::trace!(
+                    ?lk,
+                    parent_depth,
+                    members = ?members.iter().map(|g| g.index()).collect::<Vec<_>>(),
+                    "evacuating left-adjacent same-depth plateau for evict placement",
+                );
+                for &m in &members {
+                    self.plateau_basis.remove(m);
+                }
+                self.plateaus.remove(&lk);
+                for &m in &members {
+                    self.collect_subtree_basis_elements(gnodes, m, displaced_extra);
+                }
+            }
+        }
+    }
+
+    // ── normalize helpers ─────────────────────────────────────────────────────
+
+    /// Collects and expands all current basis elements into a flat list of
+    /// `(id, basis_edge, depth, lo, hi, sum)` tuples sorted for sweep-merging.
+    ///
+    /// Internal nodes with a uniform contour depth are treated as single
+    /// entries; those without are recursively expanded via a DFS stack.
+    fn collect_normalize_elements(
+        &self,
+        gnodes: &Arena<GNode<C, V>>,
+    ) -> Vec<(GNodeId, BasisEdge<C>, u32, C, C, V)> {
+        use crate::spatial::plateau::basis_edge_of;
+
+        let mut elems: Vec<(GNodeId, BasisEdge<C>, u32, C, C, V)> = Vec::new();
+        let mut seen = std::collections::HashSet::new();
+        let basis_ids: Vec<GNodeId> = self.plateau_basis.back_map().keys().copied().collect();
+
+        for gid in basis_ids {
+            let mut stack = vec![gid];
+            while let Some(nid) = stack.pop() {
+                if !seen.insert(nid) {
+                    continue;
+                }
+                let g = gnodes.get(nid.index());
+                match g.state() {
+                    GState::Terminal => {
+                        let depth = gnode_depth_from_interval(g.lo(), g.hi(), self.n_bits);
+                        elems.push((nid, basis_edge_of(g), depth, g.lo(), g.hi(), g.sum()));
+                    }
+                    GState::SemiInternal => {
+                        let depth = gnode_depth_from_interval(g.lo(), g.hi(), self.n_bits);
+                        elems.push((nid, basis_edge_of(g), depth, g.lo(), g.hi(), g.sum()));
+                        if let Some(left) = g.left() {
+                            stack.push(left);
+                        }
+                        if let Some(right) = g.right() {
+                            stack.push(right);
+                        }
+                    }
+                    GState::Internal => {
+                        if let Some(ud) = uniform_contour_depth_of(gnodes, nid, self.n_bits) {
+                            elems.push((nid, basis_edge_of(g), ud, g.lo(), g.hi(), g.sum()));
+                        } else {
+                            if let Some(left) = g.left() {
+                                stack.push(left);
+                            }
+                            if let Some(right) = g.right() {
+                                stack.push(right);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        elems
+    }
 }
 
 // ── Inspectable-bounded debug helpers ────────────────────────────────────────
@@ -861,72 +1132,7 @@ impl<C: Coordinate, V: Accumulator> PlateauTracking<C, V> for DynamicPlateauTrac
             }
             Some(key)
         } else {
-            let mut path: Vec<GNodeId> = vec![parent_id];
-            let mut cur = gnodes.get(parent_id.index()).parent();
-            let mut found = None;
-
-            let parent_key = {
-                let pg = gnodes.get(parent_id.index());
-                crate::spatial::plateau::basis_edge_of(pg)
-            };
-
-            while let Some(anc) = cur {
-                if let Some(&anc_key) = self.plateau_basis.plateau_key(anc).as_ref() {
-                    let next_key = self
-                        .plateaus
-                        .range((
-                            std::ops::Bound::Excluded(anc_key),
-                            std::ops::Bound::Unbounded,
-                        ))
-                        .next()
-                        .map(|(&k, _)| k);
-                    let tile_covers =
-                        parent_key >= anc_key && next_key.is_none_or(|nk| parent_key < nk);
-
-                    if tile_covers {
-                        self.plateau_basis.remove(anc);
-
-                        if parent_state_after == GState::SemiInternal {
-                            let g = gnodes.get(parent_id.index());
-                            if let Some(sib) = g.left().or_else(|| g.right()) {
-                                if let Some(ok) = self.plateau_basis.remove(sib) {
-                                    self.fixup_plateau(gnodes, ok);
-                                }
-                                displaced.push(sib);
-                            }
-                        }
-
-                        for &path_node in &path {
-                            let par = gnodes
-                                .get(path_node.index())
-                                .parent()
-                                .expect("path node must have a parent");
-                            let pg = gnodes.get(par.index());
-                            let sibling = if pg.left() == Some(path_node) {
-                                pg.right()
-                            } else {
-                                pg.left()
-                            };
-                            if let Some(sib_id) = sibling {
-                                if displaced.contains(&sib_id) {
-                                    continue;
-                                }
-                                if let Some(ok) = self.plateau_basis.remove(sib_id) {
-                                    self.fixup_plateau(gnodes, ok);
-                                }
-                                displaced.push(sib_id);
-                            }
-                        }
-
-                        found = Some(anc_key);
-                        break;
-                    }
-                }
-                path.push(anc);
-                cur = gnodes.get(anc.index()).parent();
-            }
-
-            found
+            self.evict_ancestor_key(gnodes, parent_id, parent_state_after, &mut displaced)
         };
 
         // ── Phase 2: Fixup displaced plateau keys ────────────────────────────────
@@ -949,74 +1155,8 @@ impl<C: Coordinate, V: Accumulator> PlateauTracking<C, V> for DynamicPlateauTrac
             }
         };
 
-        let parent_be = BasisEdge(parent_lo);
-
-        {
-            // ── Phase 4: Evacuate right-adjacent same-depth plateaus ─────────────
-            let right_keys: Vec<BasisEdge<C>> = self
-                .plateaus
-                .range(BasisEdge(parent_hi)..)
-                .take_while(|(_, p)| p.start.total_cmp(&parent_hi) != std::cmp::Ordering::Greater)
-                .filter(|(_, p)| p.depth == parent_depth)
-                .map(|(&k, _)| k)
-                .collect();
-            for rk in right_keys {
-                let members: Vec<GNodeId> = self
-                    .plateau_basis
-                    .basis_elements(&rk)
-                    .iter()
-                    .copied()
-                    .collect();
-                if !members.is_empty() {
-                    tracing::trace!(
-                        ?rk,
-                        parent_depth,
-                        members = ?members.iter().map(|g| g.index()).collect::<Vec<_>>(),
-                        "evacuating right-adjacent same-depth plateau for evict placement",
-                    );
-                    for &m in &members {
-                        self.plateau_basis.remove(m);
-                    }
-                    self.plateaus.remove(&rk);
-                    for &m in &members {
-                        self.collect_subtree_basis_elements(gnodes, m, &mut displaced_extra);
-                    }
-                }
-            }
-
-            // ── Phase 5: Evacuate left-adjacent same-depth plateaus ──────────────
-            let left_keys: Vec<BasisEdge<C>> = self
-                .plateaus
-                .range(..parent_be)
-                .rev()
-                .take_while(|(_, p)| p.end.total_cmp(&parent_lo) != std::cmp::Ordering::Less)
-                .filter(|(_, p)| p.depth == parent_depth)
-                .map(|(&k, _)| k)
-                .collect();
-            for lk in left_keys {
-                let members: Vec<GNodeId> = self
-                    .plateau_basis
-                    .basis_elements(&lk)
-                    .iter()
-                    .copied()
-                    .collect();
-                if !members.is_empty() {
-                    tracing::trace!(
-                        ?lk,
-                        parent_depth,
-                        members = ?members.iter().map(|g| g.index()).collect::<Vec<_>>(),
-                        "evacuating left-adjacent same-depth plateau for evict placement",
-                    );
-                    for &m in &members {
-                        self.plateau_basis.remove(m);
-                    }
-                    self.plateaus.remove(&lk);
-                    for &m in &members {
-                        self.collect_subtree_basis_elements(gnodes, m, &mut displaced_extra);
-                    }
-                }
-            }
-        }
+        // ── Phases 4+5: Evacuate adjacent same-depth plateaus ────────────────────
+        self.evacuate_adjacent_plateaus(gnodes, parent_lo, parent_hi, parent_depth, &mut displaced_extra);
 
         // ── Phase 6: Collect displaced nodes and re-place ────────────────────────
         let mut to_place = Vec::new();
@@ -1077,7 +1217,7 @@ impl<C: Coordinate, V: Accumulator> PlateauTracking<C, V> for DynamicPlateauTrac
 
     #[allow(clippy::too_many_lines, clippy::float_cmp)]
     fn normalize(&mut self, gnodes: &Arena<GNode<C, V>>) {
-        use crate::spatial::plateau::{BasisEdge, Plateau, basis_edge_of};
+        use crate::spatial::plateau::{BasisEdge, Plateau};
 
         if !self.plateaus_dirty {
             return;
@@ -1094,47 +1234,7 @@ impl<C: Coordinate, V: Accumulator> PlateauTracking<C, V> for DynamicPlateauTrac
             .fold(V::zero(), V::add);
 
         // ── Phase 1: Collect and expand basis elements (DFS per basis node) ───────
-        let mut elems: Vec<(GNodeId, BasisEdge<C>, u32, C, C, V)> = Vec::new();
-        let mut seen = std::collections::HashSet::new();
-        let basis_ids: Vec<GNodeId> = self.plateau_basis.back_map().keys().copied().collect();
-        for gid in basis_ids {
-            let mut stack = vec![gid];
-            while let Some(nid) = stack.pop() {
-                if !seen.insert(nid) {
-                    continue;
-                }
-                let g = gnodes.get(nid.index());
-                match g.state() {
-                    GState::Terminal => {
-                        let depth = gnode_depth_from_interval(g.lo(), g.hi(), self.n_bits);
-                        elems.push((nid, basis_edge_of(g), depth, g.lo(), g.hi(), g.sum()));
-                    }
-                    GState::SemiInternal => {
-                        let depth = gnode_depth_from_interval(g.lo(), g.hi(), self.n_bits);
-                        elems.push((nid, basis_edge_of(g), depth, g.lo(), g.hi(), g.sum()));
-
-                        if let Some(left) = g.left() {
-                            stack.push(left);
-                        }
-                        if let Some(right) = g.right() {
-                            stack.push(right);
-                        }
-                    }
-                    GState::Internal => {
-                        if let Some(ud) = uniform_contour_depth_of(gnodes, nid, self.n_bits) {
-                            elems.push((nid, basis_edge_of(g), ud, g.lo(), g.hi(), g.sum()));
-                        } else {
-                            if let Some(left) = g.left() {
-                                stack.push(left);
-                            }
-                            if let Some(right) = g.right() {
-                                stack.push(right);
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        let mut elems = self.collect_normalize_elements(gnodes);
         // ── Phase 2: Sort by basis-edge key ─────────────────────────────────────
         elems.sort_by_key(|e| e.1);
 
