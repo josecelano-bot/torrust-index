@@ -133,17 +133,36 @@ impl<C: Copy, V: Copy> GNode<C, V> {
         self.right = Some(r);
     }
 
-    /// Clears a specific child slot: if `child` matches `left`, clears `left`;
-    /// if it matches `right`, clears `right`; otherwise panics.
+    /// Detaches a specific child slot: if `child` matches `left`, clears
+    /// `left`; if it matches `right`, clears `right`; otherwise panics.
     #[inline]
-    pub fn clear_child(&mut self, child: GNodeId) {
+    pub fn detach_child(&mut self, child: GNodeId) {
         if self.left == Some(child) {
             self.left = None;
         } else if self.right == Some(child) {
             self.right = None;
         } else {
-            panic!("clear_child: {child:?} is not a child of this node");
+            panic!("detach_child: {child:?} is not a child of this node");
         }
+    }
+
+    /// Replaces the child id `old` with `new` in whichever slot currently
+    /// contains `old`.
+    #[inline]
+    pub fn replace_child(&mut self, old: GNodeId, new: GNodeId) {
+        if self.left == Some(old) {
+            self.left = Some(new);
+        } else if self.right == Some(old) {
+            self.right = Some(new);
+        } else {
+            panic!("replace_child: {old:?} is not a child of this node");
+        }
+    }
+
+    /// Backward-compatible alias for `detach_child`.
+    #[inline]
+    pub fn clear_child(&mut self, child: GNodeId) {
+        self.detach_child(child);
     }
 
     #[inline]
@@ -490,6 +509,27 @@ mod tests {
             assert_eq!(n.left(), Some(l));
             assert_eq!(n.right(), Some(r));
             assert_eq!(n.state(), GState::Internal);
+        }
+
+        #[test]
+        fn detach_child_clears_matching_slot() {
+            let l = GNodeId::from_index(1);
+            let r = GNodeId::from_index(2);
+            let mut n = make_node(Some(l), Some(r));
+            n.detach_child(l);
+            assert_eq!(n.left(), None);
+            assert_eq!(n.right(), Some(r));
+        }
+
+        #[test]
+        fn replace_child_swaps_left_or_right_slot() {
+            let l = GNodeId::from_index(1);
+            let r = GNodeId::from_index(2);
+            let x = GNodeId::from_index(9);
+            let mut n = make_node(Some(l), Some(r));
+            n.replace_child(r, x);
+            assert_eq!(n.left(), Some(l));
+            assert_eq!(n.right(), Some(x));
         }
     }
 

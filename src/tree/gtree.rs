@@ -166,7 +166,7 @@ impl<C: Coordinate, V: Accumulator, const N: u32> GTree<C, V, N> {
         self.nodes
             .get_mut(parent_id.index())
             .set_own(V::add(parent_own_before, child_sum));
-        self.nodes.get_mut(parent_id.index()).clear_child(child_id);
+        self.nodes.get_mut(parent_id.index()).detach_child(child_id);
 
         let new_sum = {
             let p = self.nodes.get(parent_id.index());

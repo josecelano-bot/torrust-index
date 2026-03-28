@@ -167,7 +167,7 @@ outside of `gnode.rs`; tests pass.
 
 ### P7.5 — Add `reparent` / `detach_child` helpers on `GNode`
 
-**Status:** `[ ]` not started
+**Status:** `[x]` done
 
 **Depends on:** P7.4
 
@@ -205,7 +205,7 @@ and `nodes::vnode`.
 
 ### P7.7 — Add unit tests for all new helpers
 
-**Status:** `[ ]` not started
+**Status:** `[x]` done
 
 **Depends on:** P7.6
 
