@@ -63,7 +63,7 @@ rebalance`.
 
 ### P6.1 — Annotate pipeline phases in `observe`
 
-**Status:** `[ ]` not started
+**Status:** `[x]` done (phases were already annotated)
 
 **What to do:**
 
@@ -138,7 +138,7 @@ they do rather than how:
 
 ### P6.4 — Simplify `evict_candidates` selection logic
 
-**Status:** `[ ]` not started
+**Status:** `[x]` done
 
 **Depends on:** P6.3
 

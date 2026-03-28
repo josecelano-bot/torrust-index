@@ -75,7 +75,28 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
         self.evict_candidates(Some(stop_at))
     }
 
-    #[allow(clippy::too_many_lines)]
+    /// Returns `true` when `v_id` is a live, evictable entry-node whose V-tree
+    /// depth is above the current eviction gate.  Guards the inner loop in
+    /// `evict_candidates` without nesting.
+    fn is_eviction_candidate(&self, v_id: crate::handle::VNodeId) -> bool {
+        use crate::nodes::vnode::VKind;
+        if !self.vtree.nodes.is_occupied(v_id.index()) {
+            return false;
+        }
+        match &self.vtree.nodes.get(v_id.index()).kind() {
+            VKind::Structural { .. } => false,
+            VKind::Entry {
+                gnode,
+                is_evictable,
+                ..
+            } => {
+                *is_evictable
+                    && *gnode != self.gtree.root
+                    && self.vtree.depth(v_id) > self.gtree.live_depth_evict
+            }
+        }
+    }
+
     fn evict_candidates(&mut self, stop_at: Option<usize>) -> u32 {
         let candidates = self
             .vtree
@@ -92,28 +113,8 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
                 }
             }
 
-            if !self.vtree.nodes.is_occupied(v_id.index()) {
+            if !self.is_eviction_candidate(v_id) {
                 continue;
-            }
-            match &self.vtree.nodes.get(v_id.index()).kind() {
-                crate::nodes::vnode::VKind::Entry {
-                    gnode,
-                    is_evictable,
-                    ..
-                } => {
-                    if !is_evictable {
-                        continue;
-                    }
-                    if *gnode == self.gtree.root {
-                        continue;
-                    }
-
-                    let depth = self.vtree.depth(v_id);
-                    if depth <= self.gtree.live_depth_evict {
-                        continue;
-                    }
-                }
-                crate::nodes::vnode::VKind::Structural { .. } => continue,
             }
 
             self.evict_tip(v_id);
