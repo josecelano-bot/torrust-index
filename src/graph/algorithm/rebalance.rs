@@ -120,10 +120,7 @@ pub(super) fn node_has_evictable<V: Accumulator>(vnodes: &Arena<VNode<V>>, id: V
 }
 
 fn structural_child_count<V: Accumulator>(vnodes: &Arena<VNode<V>>, id: VNodeId) -> usize {
-    match &vnodes.get(id.index()).kind() {
-        VKind::Structural { children, .. } => children.len(),
-        VKind::Entry { .. } => 0,
-    }
+    vnodes.get(id.index()).child_count()
 }
 
 fn any_child_violated<V: Accumulator>(vnodes: &Arena<VNode<V>>, node: VNodeId) -> bool {
@@ -225,11 +222,13 @@ fn escalate_after_promote<V: Accumulator>(
     violations: &mut Vec<VNodeId>,
 ) {
     // ── Phase 1: Identify heaviest child; early-return if no violation ──────
-    let heaviest = match &vnodes.get(p.index()).kind() {
-        VKind::Structural { children, .. } if children.len() == 3 => {
-            children.get(children.heaviest_child_index()).0
-        }
-        _ => return,
+    let p_node = vnodes.get(p.index());
+    if !p_node.is_structural_triple() {
+        return;
+    }
+    let heaviest = match p_node.kind() {
+        VKind::Structural { children, .. } => children.get(children.heaviest_child_index()).0,
+        VKind::Entry { .. } => return,
     };
 
     let h_direct = is_violated(vnodes, heaviest);
@@ -389,8 +388,7 @@ pub fn resolve<C: Coordinate, V: Accumulator>(
     }
 
     // ── Path A: standard promote ─────────────────────────────────────────────
-    if matches!(&vnodes.get(c.index()).kind(), VKind::Structural { children, .. } if children.len() == 2)
-    {
+    if vnodes.get(c.index()).is_structural_pair() {
         tracing::debug!("phase 2: standard promote");
         standard_promote(vnodes, c);
         push_side_effect_violations(vnodes, p, violations);

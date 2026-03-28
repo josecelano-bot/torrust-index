@@ -22,7 +22,6 @@ missing behavioural helpers that are currently inlined at call-sites.
 
 ## Complexity baseline (2026-03-28)
 
-### File summary
 
 | CC  | Cognitive | SLOC | File                |
 | --- | --------- | ---- | ------------------- |
@@ -35,7 +34,6 @@ missing behavioural helpers that are currently inlined at call-sites.
 > code reads and eliminating inline logic at call-sites.
 
 ### Function hotspots
-
 There are no functions with CC > 10 in these files.  The complexity is spread
 across many small `match` expressions.  The structural issue is:
 
@@ -55,7 +53,6 @@ across many small `match` expressions.  The structural issue is:
 | `gnode.rs` and `vnode.rs` readable as an API | Every `pub` item has a doc comment |
 
 ---
-
 ## Background
 
 `GNode` and `VNode` are the core data types of the codebase.  Their
@@ -67,13 +64,20 @@ match arms with embedded logic.
 The goal here is to complete the "smart struct" migration: every logical
 operation on a node should live on the node, not at the call-site.
 
+## P7.1 audit notes (2026-03-28)
+
+- `rebalance.rs`: inline structural-child cardinality checks (`children.len()==2/3`) and structural count helper were identified as node-owned shape logic.
+- `split.rs`: pre-split 3-child parent guard used inline `VKind::Structural` + `children.len()==3`.
+- `observe.rs`: no `children.len()` shape logic found; mostly pure accessor usage and orchestration.
+- Extraction target: move child-shape predicates to `VNode` helpers (`child_count`, `is_structural_pair`, `is_structural_triple`).
+
 ---
 
 ## Tasks
 
 ### P7.1 — Audit call-sites for node logic that lives outside the node
 
-**Status:** `[ ]` not started
+**Status:** `[x]` done
 
 **What to do:**
 
@@ -91,7 +95,7 @@ operation on a node should live on the node, not at the call-site.
 
 ### P7.2 — Extract inline child-count logic out of `rebalance.rs` and `observe.rs`
 
-**Status:** `[ ]` not started
+**Status:** `[x]` done
 
 **Depends on:** P7.1
 
@@ -118,7 +122,7 @@ tests pass.
 
 ### P7.3 — Normalise child iteration between `GNode` and `VNode`
 
-**Status:** `[ ]` not started
+**Status:** `[x]` done
 
 **Depends on:** P7.2
 
@@ -143,7 +147,7 @@ call-site manually counts children; `cargo test` passes.
 
 ### P7.4 — Add `split_into` helper on `GNode`
 
-**Status:** `[ ]` not started
+**Status:** `[x]` done
 
 **Depends on:** P7.3
 

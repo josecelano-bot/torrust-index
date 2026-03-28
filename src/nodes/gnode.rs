@@ -178,6 +178,13 @@ impl<C, V> GNode<C, V> {
         self.left.is_some() || self.right.is_some()
     }
 
+    /// Returns the number of present child slots (0, 1, or 2).
+    #[inline]
+    #[must_use]
+    pub const fn child_count(&self) -> usize {
+        self.left.is_some() as usize + self.right.is_some() as usize
+    }
+
     #[inline]
     #[must_use]
     pub const fn child_ids(&self) -> GNodeChildren {
@@ -198,6 +205,14 @@ impl<C, V> GNode<C, V> {
     #[must_use]
     pub const fn is_semi_internal(&self) -> bool {
         matches!(self.state(), GState::SemiInternal)
+    }
+
+    /// Returns a copy of this node with both child slots set.
+    #[must_use]
+    pub const fn split_into(mut self, left: GNodeId, right: GNodeId) -> Self {
+        self.left = Some(left);
+        self.right = Some(right);
+        self
     }
 
     /// Validates local structural invariants for this node.
@@ -447,6 +462,26 @@ mod tests {
             let children = make_node(Some(l), Some(r)).child_ids();
             assert_eq!(children.left, Some(l));
             assert_eq!(children.right, Some(r));
+        }
+
+        #[test]
+        fn child_count_reflects_present_slots() {
+            let l = GNodeId::from_index(1);
+            let r = GNodeId::from_index(2);
+            assert_eq!(make_node(None, None).child_count(), 0);
+            assert_eq!(make_node(Some(l), None).child_count(), 1);
+            assert_eq!(make_node(None, Some(r)).child_count(), 1);
+            assert_eq!(make_node(Some(l), Some(r)).child_count(), 2);
+        }
+
+        #[test]
+        fn split_into_sets_both_children() {
+            let l = GNodeId::from_index(10);
+            let r = GNodeId::from_index(11);
+            let n = make_node(None, None).split_into(l, r);
+            assert_eq!(n.left(), Some(l));
+            assert_eq!(n.right(), Some(r));
+            assert_eq!(n.state(), GState::Internal);
         }
     }
 

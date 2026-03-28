@@ -85,11 +85,9 @@ gaps** identified from a fresh complexity analysis run on 2026-03-28.
 - [x] Phase 6 (Observe/Evict/Budget) started
 - [x] Phase 6 complete — complexity baseline updated
 - [x] Phase 7 (Nodes) started
-- [x] Phase 7 complete — complexity baseline updated
-- [x] Phase 8 (API & Traits) started
-- [x] Phase 8 complete — complexity baseline updated
-- [x] Phase 9 (Test Coverage) started
-- [ ] Phase 9 complete — complexity baseline updated
+- [ ] Phase 7 complete — complexity baseline updated
+- [ ] Phase 8 (API & Traits) started
+- [ ] Phase 8 complete — complexity baseline updated
 - [ ] Phase 9 (Test Coverage) started
 - [ ] Phase 9 complete — coverage baseline updated
 

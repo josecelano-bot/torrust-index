@@ -120,6 +120,27 @@ impl<V: Copy> VNode<V> {
         self.children().map(Children::ids)
     }
 
+    /// Returns the number of children for structural nodes, otherwise 0.
+    #[must_use]
+    pub const fn child_count(&self) -> usize {
+        match &self.kind {
+            VKind::Structural { children, .. } => children.len(),
+            VKind::Entry { .. } => 0,
+        }
+    }
+
+    /// Returns `true` when this node is structural and has exactly 2 children.
+    #[must_use]
+    pub const fn is_structural_pair(&self) -> bool {
+        self.child_count() == 2
+    }
+
+    /// Returns `true` when this node is structural and has exactly 3 children.
+    #[must_use]
+    pub const fn is_structural_triple(&self) -> bool {
+        self.child_count() == 3
+    }
+
     /// Validates local structural invariants for this V-node.
     #[must_use]
     #[allow(dead_code)]
@@ -381,6 +402,45 @@ mod tests {
 
     fn id(i: usize) -> VNodeId {
         VNodeId::from_index(i)
+    }
+
+    // ── VNode shape helpers ─────────────────────────────────────────────
+    mod vnode_shape_helpers {
+        use super::*;
+
+        #[test]
+        fn child_count_is_zero_for_entry() {
+            let n = VNode::new_entry(5u32, None, GNodeId::from_index(0), false, true);
+            assert_eq!(n.child_count(), 0);
+            assert!(!n.is_structural_pair());
+            assert!(!n.is_structural_triple());
+        }
+
+        #[test]
+        fn structural_pair_predicate_matches_two_children() {
+            let n = VNode::new_structural(
+                30u32,
+                None,
+                Children::new_2((id(1), 10), (id(2), 20)),
+                true,
+            );
+            assert_eq!(n.child_count(), 2);
+            assert!(n.is_structural_pair());
+            assert!(!n.is_structural_triple());
+        }
+
+        #[test]
+        fn structural_triple_predicate_matches_three_children() {
+            let n = VNode::new_structural(
+                60u32,
+                None,
+                Children::new_3((id(1), 10), (id(2), 20), (id(3), 30)),
+                true,
+            );
+            assert_eq!(n.child_count(), 3);
+            assert!(!n.is_structural_pair());
+            assert!(n.is_structural_triple());
+        }
     }
 
     // ── Children::new_2 ───────────────────────────────────────────────────

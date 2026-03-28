@@ -36,18 +36,16 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
         }
 
         let p_id = self.vtree.nodes.get(entry_id.index()).parent().unwrap();
-        if let VKind::Structural { children, .. } = &self.vtree.nodes.get(p_id.index()).kind() {
-            if children.len() == 3 {
-                let _span = tracing::debug_span!(
-                    "split_preprocess",
-                    p = %Nd(&self.vtree.nodes, p_id),
-                )
-                .entered();
-                let merged = contract(&mut self.vtree.nodes, p_id);
-                push_side_effect_violations(&self.vtree.nodes, p_id, &mut self.vtree.violations);
-                push_side_effect_violations(&self.vtree.nodes, merged, &mut self.vtree.violations);
-                push_promoted_violations(&self.vtree.nodes, p_id, &mut self.vtree.violations);
-            }
+        if self.vtree.nodes.get(p_id.index()).is_structural_triple() {
+            let _span = tracing::debug_span!(
+                "split_preprocess",
+                p = %Nd(&self.vtree.nodes, p_id),
+            )
+            .entered();
+            let merged = contract(&mut self.vtree.nodes, p_id);
+            push_side_effect_violations(&self.vtree.nodes, p_id, &mut self.vtree.violations);
+            push_side_effect_violations(&self.vtree.nodes, merged, &mut self.vtree.violations);
+            push_promoted_violations(&self.vtree.nodes, p_id, &mut self.vtree.violations);
         }
 
         let entry_id = self.gtree.nodes.get(g_id.index()).entry().unwrap();
