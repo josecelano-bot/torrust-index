@@ -130,25 +130,29 @@ Config<V: Accumulator>
   alpha_relax:      f64
   bounded_eviction: bool
 
-GvGraph<C: Coordinate, V: Accumulator, const N: u32>
-  gnodes:          Arena<GNode<C, V>>
-  vnodes:          Arena<VNode<V>>
-  g_root:          GNodeId
-  v_root?:         VNodeId
-  config:          Config<V>
-  violations:      Vec<VNodeId>      ← pending rebalance work
-  node_count:      u32
-  terminal_count:  u32
-  live_depth_evict:  u32
-  live_depth_create: u32
-  depth_buffer:    u32
-  headroom:        usize
-  soft_limit?:     usize
-  ── [feature: dynamic-contour-tracking] ──
-  plateaus:        BTreeMap<BasisEdge<C>, Plateau<C, V>>
-  pending_p_i4:    Vec<(GNodeId, BasisEdge<C>)>
-  plateau_basis:   PlateauBasis<C>
-  plateaus_dirty:  bool
+GvGraph<C: Coordinate, V: Accumulator, const N: u32, T: PlateauTracking<C, V> = DefaultTracker<C, V>>
+  gtree:     GTree<C, V, N>           ← spatial partition tree (G-node arena + depth controls)
+  vtree:     VTree<V>                ← intensity aggregation tree (V-node arena + violations queue)
+  config:    Config<V>
+  tracker:   T                       ← NoopPlateauTracker or DynamicPlateauTracker depending on feature
+
+  DefaultGraph<C,V,N> = GvGraph<C,V,N,DefaultTracker<C,V>>
+
+  -- GTree (inside gtree) --
+  gtree.nodes:          Arena<GNode<C, V>>
+  gtree.root:           GNodeId
+  gtree.node_count:     u32
+  gtree.terminal_count: u32
+  gtree.live_depth_evict:  u32
+  gtree.live_depth_create: u32
+  gtree.depth_buffer:   u32
+  gtree.headroom:       usize
+  gtree.soft_limit?:    Option<usize>
+
+  -- VTree (inside vtree) --
+  vtree.nodes:          Arena<VNode<V>>
+  vtree.root?:          Option<VNodeId>
+  vtree.violations:     Vec<VNodeId>
 ```
 
 ### 3.3 Spatial view types (DTOs / read projections)
