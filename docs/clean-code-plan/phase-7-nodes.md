@@ -188,7 +188,7 @@ vectors; helpers are used universally; tests pass.
 
 ### P7.6 — Document every `pub` item in `gnode.rs` and `vnode.rs`
 
-**Status:** `[ ]` not started
+**Status:** `[x]` done
 
 **Depends on:** P7.5
 

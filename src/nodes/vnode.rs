@@ -1,5 +1,8 @@
+//! Core V-tree node representation and 2-3 structural child container.
+
 use crate::handle::{GNodeId, VNodeId};
 
+/// Node stored in the V-tree arena.
 #[derive(Debug, Clone, Copy)]
 pub struct VNode<V> {
     intensity: V,
@@ -169,6 +172,7 @@ const _: () = assert!(std::mem::size_of::<VNode<u64>>() == 64);
 
 #[derive(Debug, Clone, Copy)]
 pub enum VKind<V> {
+    /// Leaf node associated with one G-node.
     Entry {
         gnode: GNodeId,
 
@@ -177,6 +181,7 @@ pub enum VKind<V> {
         is_evictable: bool,
     },
 
+    /// Structural 2-3 node aggregating child intensities.
     Structural {
         children: Children<V>,
 

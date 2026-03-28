@@ -1,13 +1,18 @@
+//! Core G-tree node representation and local structural helpers.
+
 use crate::handle::{GNodeId, VNodeId};
 
 #[doc(hidden)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct GNodeChildren {
+    /// Left child id, if present.
     pub left: Option<GNodeId>,
 
+    /// Right child id, if present.
     pub right: Option<GNodeId>,
 }
 
+/// Node stored in the G-tree arena.
 #[derive(Debug, Clone)]
 pub struct GNode<C, V> {
     lo: C,
@@ -30,10 +35,13 @@ pub struct GNode<C, V> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum GState {
+    /// Leaf node with no children.
     Terminal,
 
+    /// Node with exactly one child.
     SemiInternal,
 
+    /// Node with both children present.
     Internal,
 }
 
