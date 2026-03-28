@@ -86,7 +86,7 @@ could benefit from splitting into sub-modules.
 
 ### P8.1 — Document all trait methods in `graph/traits.rs`
 
-**Status:** `[ ]` not started
+**Status:** `[x]` done
 
 **What to do:**
 

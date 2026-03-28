@@ -1,3 +1,6 @@
+//! Trait adapter implementations that expose `GvGraph` through the public
+//! extension traits in `crate::traits`.
+
 use crate::graph::GvGraph;
 use crate::traits::{Accumulator, Coordinate, Inspectable};
 
