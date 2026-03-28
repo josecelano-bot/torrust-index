@@ -1,3 +1,5 @@
+//! Bidirectional mapping between plateau keys and participating G-nodes.
+
 #[cfg(feature = "dynamic-contour-tracking")]
 use std::collections::{BTreeMap, HashMap, HashSet};
 #[cfg(feature = "dynamic-contour-tracking")]
@@ -12,6 +14,11 @@ use crate::traits::Coordinate;
 
 #[cfg(feature = "dynamic-contour-tracking")]
 #[derive(Debug, Clone)]
+/// Plateau basis index used by dynamic contour tracking.
+///
+/// # Invariants
+/// - `forward` and `back` represent the same assignments.
+/// - A `GNodeId` appears in at most one plateau basis set.
 pub struct PlateauBasis<C: Coordinate> {
     forward: BTreeMap<BasisEdge<C>, HashSet<GNodeId>>,
 

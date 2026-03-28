@@ -1,3 +1,5 @@
+//! Query-facing representation of a G-tree node.
+
 use crate::handle::GNodeId;
 use crate::nodes::gnode::GState;
 use crate::spatial::view::{Cell, Span};
@@ -5,6 +7,11 @@ use crate::traits::{Accumulator, Coordinate};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+/// Immutable node view returned by spatial node queries.
+///
+/// # Invariants
+/// - Represents a half-open interval `[start, end)`.
+/// - `sum` includes this node's descendants; `own` is local contribution.
 pub struct Node<C: Coordinate, V: Accumulator> {
     pub start: C,
 

@@ -1,3 +1,5 @@
+//! Types and helpers for contour-range query decomposition and energy accounting.
+
 use std::collections::BTreeMap;
 
 use crate::handle::GNodeId;
@@ -8,6 +10,11 @@ use crate::traits::{Inspectable, Proratable};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+/// One basis tile contributing to a contour-range query result.
+///
+/// # Invariants
+/// - Tile interval is half-open `[start, end)`.
+/// - `sum` is the energy contribution associated with this tile.
 pub struct BasisElement<C: Coordinate, V: Accumulator> {
     pub gnode_id: GNodeId,
 
@@ -26,6 +33,11 @@ pub struct BasisElement<C: Coordinate, V: Accumulator> {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+/// Full contour-range query result including basis decomposition and energies.
+///
+/// # Invariants
+/// - Query interval is half-open `[start, end)`.
+/// - `energy` is the sum of all `basis.sum` entries.
 pub struct ContourRange<C: Coordinate, V: Accumulator> {
     pub start: C,
 
@@ -46,6 +58,11 @@ pub struct ContourRange<C: Coordinate, V: Accumulator> {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+/// Lightweight energy-only contour-range summary.
+///
+/// # Invariants
+/// - Mirrors energy fields from [`ContourRange`].
+/// - `plateau_count` is the number of intersected plateau runs.
 pub struct ContourRangeEnergy<V: Accumulator> {
     pub energy: V,
 
@@ -58,6 +75,7 @@ pub struct ContourRangeEnergy<V: Accumulator> {
     pub plateau_count: usize,
 }
 
+/// Validates that the query endpoints are legal plateau keys.
 pub fn validate_endpoints<C: Coordinate, V: Accumulator>(
     plateaus: &BTreeMap<BasisEdge<C>, Plateau<C, V>>,
     start: BasisEdge<C>,
@@ -78,6 +96,7 @@ pub fn validate_endpoints<C: Coordinate, V: Accumulator>(
     Some(())
 }
 
+/// Computes aggregate plateau energy/count between `start` and `end` keys.
 pub fn compute_plateau_energy<C: Coordinate, V: Accumulator>(
     plateaus: &BTreeMap<BasisEdge<C>, Plateau<C, V>>,
     start: BasisEdge<C>,

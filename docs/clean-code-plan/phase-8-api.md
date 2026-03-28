@@ -183,7 +183,7 @@ accessible at the same path (`spatial::pewei::<Name>`); no CC change expected;
 
 ### P8.5 — Document `spatial/` public types
 
-**Status:** `[ ]` not started
+**Status:** `[x]` done
 
 **Depends on:** P8.4
 

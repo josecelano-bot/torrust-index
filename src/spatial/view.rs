@@ -1,7 +1,14 @@
+//! Public query view types (`Span` and `Cell`).
+
 use crate::traits::{Accumulator, Coordinate};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+/// Aggregated intensity over an interval.
+///
+/// # Invariants
+/// - Represents a half-open interval `[start, end)`.
+/// - `depth` is the tree depth for this interval in query output.
 pub struct Span<C: Coordinate, V: Accumulator> {
     pub start: C,
 
@@ -22,6 +29,11 @@ impl<C: Coordinate, V: Accumulator> Span<C, V> {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+/// Terminal-cell query result over an interval.
+///
+/// # Invariants
+/// - Represents a half-open interval `[start, end)`.
+/// - `intensity` is cell-local (terminal/own) intensity.
 pub struct Cell<C: Coordinate, V: Accumulator> {
     pub start: C,
 
