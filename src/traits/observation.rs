@@ -1,12 +1,18 @@
+//! Observation traits describing how deltas are applied and scaled.
+
 use std::fmt::Debug;
 
 use super::Accumulator;
 
+/// Applies an observation `delta` onto the current accumulator value.
 pub trait Observation<V: Accumulator>: Copy + Debug + Send + Sync {
+    /// Returns the new accumulated value after applying `delta`.
     fn accumulate(current: V, delta: Self) -> V;
 }
 
+/// Optional scaling behavior for observation types.
 pub trait ScalableObservation<V: Accumulator>: Observation<V> {
+    /// Scales `current` by `factor`.
     fn scale(current: V, factor: Self) -> V;
 }
 

@@ -1,8 +1,13 @@
+//! Trait for diagnostic conversion to/from floating-point values.
+
 use super::Accumulator;
 
+/// Accumulator values that can be inspected as approximate `f64` values.
 pub trait Inspectable: Accumulator {
+    /// Converts to an approximate `f64` representation.
     fn to_f64_approx(self) -> f64;
 
+    /// Converts from `f64` into this accumulator type.
     fn from_f64(v: f64) -> Self;
 }
 

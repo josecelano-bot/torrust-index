@@ -1,9 +1,14 @@
+//! Trait for proportional splitting and ratio-based scaling.
+
 use super::Accumulator;
 
+/// Values that support proportional partitioning operations.
 pub trait Proratable: Accumulator {
+    /// Returns the proportional share `self * portion / total`.
     #[must_use]
     fn prorate(self, portion: u64, total: u64) -> Self;
 
+    /// Returns `self` scaled by a floating-point `ratio`.
     #[must_use]
     fn scale_by(self, ratio: f64) -> Self;
 }

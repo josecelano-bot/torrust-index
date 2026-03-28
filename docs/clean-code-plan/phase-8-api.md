@@ -105,7 +105,7 @@ zero entries for `graph::traits`; `cargo test` passes.
 
 ### P8.2 — Document all trait methods in `traits/coordinate.rs`
 
-**Status:** `[ ]` not started
+**Status:** `[x]` done
 
 **Depends on:** P8.1
 
@@ -123,7 +123,7 @@ zero entries for `graph::traits`; `cargo test` passes.
 
 ### P8.3 — Document `traits/accumulator.rs`, `observation.rs`, and related files
 
-**Status:** `[ ]` not started
+**Status:** `[x]` done
 
 **Depends on:** P8.2
 

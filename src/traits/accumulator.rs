@@ -1,11 +1,17 @@
+//! Numeric accumulation trait used for stored intensities.
+
 use std::fmt::Debug;
 
+/// Minimal additive arithmetic required by the graph.
 pub trait Accumulator: Copy + PartialOrd + Debug + Default + Send + Sync + 'static {
+    /// Additive identity.
     fn zero() -> Self;
 
+    /// Adds two accumulator values.
     #[must_use]
     fn add(self, other: Self) -> Self;
 
+    /// Subtracts `other` from `self`.
     #[must_use]
     fn sub(self, other: Self) -> Self;
 }

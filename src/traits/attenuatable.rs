@@ -1,6 +1,10 @@
+//! Trait for multiplicative temporal attenuation.
+
 use super::Accumulator;
 
+/// Values that can be attenuated by a floating-point factor.
 pub trait Attenuatable: Accumulator {
+    /// Returns `self * factor` using type-specific semantics.
     #[must_use]
     fn attenuate(self, factor: f64) -> Self;
 }

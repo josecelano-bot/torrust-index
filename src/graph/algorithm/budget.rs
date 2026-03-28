@@ -165,6 +165,8 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
 #[cfg(test)]
 mod tests {
     use crate::graph::{Config, GvGraph, StructuralConfig};
+    use crate::handle::VNodeId;
+    use crate::nodes::vnode::VKind;
 
     type G = GvGraph<u8, u32, 8>;
 
@@ -264,6 +266,64 @@ mod tests {
             let mut g: G = GvGraph::new(make_config());
             g.observe(64u8, 3u32); // bootstrap split — leaves at depth 2, evict=5
             assert_eq!(g.check_evictions_bounded(1), 0);
+        }
+    }
+
+    // ── is_eviction_candidate ─────────────────────────────────────────
+    mod is_eviction_candidate_fn {
+        use super::*;
+
+        fn find_non_root_entry(g: &G) -> VNodeId {
+            let mut best: Option<(VNodeId, u32)> = None;
+            for (idx, n) in g.vnodes().iter_occupied() {
+                if let VKind::Entry { gnode, .. } = n.kind() {
+                    if *gnode != g.g_root() {
+                        let id = VNodeId::from_index(idx);
+                        let depth = g.vtree.depth(id);
+                        if best.is_none_or(|(_, d)| depth > d) {
+                            best = Some((id, depth));
+                        }
+                    }
+                }
+            }
+            best.map(|(id, _)| id)
+                .expect("expected at least one non-root entry")
+        }
+
+        fn low_evict_config() -> Config<u32> {
+            Config {
+                split_threshold: 2,
+                structural: StructuralConfig {
+                    depth_create: 1,
+                    depth_evict: 2,
+                    budget: None,
+                    alpha_relax: 0.5,
+                    bounded_eviction: false,
+                },
+            }
+        }
+
+        #[test]
+        fn returns_false_when_depth_is_not_above_gate() {
+            let mut g: G = GvGraph::new(make_config());
+            g.observe(64u8, 3u32); // depth ~2 leaves, gate=5
+            let id = find_non_root_entry(&g);
+            assert!(!g.is_eviction_candidate(id));
+        }
+
+        #[test]
+        fn returns_true_for_deep_evictable_non_root_entry() {
+            let mut g: G = GvGraph::new(low_evict_config());
+            g.observe(64u8, 3u32);
+            g.observe(32u8, 3u32);
+            g.observe(16u8, 3u32); // drive deeper than D_evict=2
+            g.gtree.live_depth_evict = 0;
+            let id = find_non_root_entry(&g);
+            if let VKind::Entry { is_evictable, .. } = g.vtree.nodes.get_mut(id.index()).kind_mut()
+            {
+                *is_evictable = true;
+            }
+            assert!(g.is_eviction_candidate(id));
         }
     }
 }

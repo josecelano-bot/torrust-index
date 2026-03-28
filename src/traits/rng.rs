@@ -1,4 +1,8 @@
+//! Lightweight RNG abstraction used by weighted sampling.
+
+/// Random number source that yields values in `[0, 1)`.
 pub trait Rng {
+    /// Returns the next pseudo-random `f64` sample in `[0, 1)`.
     fn next_f64(&mut self) -> f64;
 }
 

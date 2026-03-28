@@ -1,24 +1,37 @@
+//! Coordinate traits used by the spatial index.
+
 use std::fmt::Debug;
 
+/// Coordinate operations required by the graph and spatial layers.
 pub trait Coordinate: Copy + PartialOrd + Debug + Default + Send + Sync + 'static {
+    /// Bit width of the coordinate type.
     const BITS: u32;
 
+    /// Additive identity of the coordinate domain.
     fn zero() -> Self;
 
+    /// Exclusive upper domain bound for `n` domain bits.
     fn domain_max(n: u32) -> Self;
 
+    /// Midpoint of interval `[a, b)`.
     fn midpoint(a: Self, b: Self) -> Self;
 
+    /// Interval width `end - start`.
     fn width(start: Self, end: Self) -> Self;
 
+    /// Returns `true` when `[start, end)` is final at this depth.
     fn is_final(start: Self, end: Self, depth: u32, n: u32) -> bool;
 
+    /// Converts from `u64` into this coordinate type.
     fn from_u64(v: u64) -> Self;
 
+    /// Converts this coordinate into `f64` for diagnostics/formatting.
     fn to_f64(self) -> f64;
 
+    /// Returns whether this coordinate is NaN.
     fn is_nan(self) -> bool;
 
+    /// Total ordering comparison, including NaN-stable ordering for floats.
     fn total_cmp(&self, other: &Self) -> std::cmp::Ordering;
 }
 

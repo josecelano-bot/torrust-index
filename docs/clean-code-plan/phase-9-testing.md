@@ -16,7 +16,7 @@ Phases 1–8 each have at least one direct unit test.
 - `src/graph/algorithm/rebalance.rs` (86.26 %)
 - `src/diagnostics/diagnostic.rs` (84.32 %)
 - `src/graph/algorithm/query.rs` (83.81 %)
-- `src/graph/algorithm/budget.rs` (89.44 %)
+- `src/graph/algorithm/budget.rs` (91.83 %)
 - `src/spatial/contour_range.rs` (87.50 %)
 
 ## Complexity baseline (2026-03-28)
@@ -29,7 +29,7 @@ Phases 1–8 each have at least one direct unit test.
 | `graph/algorithm/rebalance.rs`              |     86.26% |   94.44% |
 | `diagnostics/diagnostic.rs`                 |     84.32% |   94.12% |
 | `graph/algorithm/query.rs`                  |     83.81% |   95.12% |
-| `graph/algorithm/budget.rs`                 |     89.44% |   92.86% |
+| `graph/algorithm/budget.rs`                 |     91.83% |   92.86% |
 | `spatial/contour_range.rs`                  |     87.50% |  100.00% |
 
 > All other files are at ≥ 90 % line coverage in the baseline.
@@ -245,11 +245,11 @@ query result or the error variant.
 
 ### P9.7 — Add unit tests for `budget.rs` and `contour_range.rs`
 
-**Status:** `[ ]` not started
+**Status:** `[-]` in progress
 
 **Depends on:** P9.1
 
-**Current coverage:** `budget.rs` 87.97%, `contour_range.rs` 87.50%.
+**Current coverage:** `budget.rs` 91.83%, `contour_range.rs` 87.50%.
 
 **What to do:**
 

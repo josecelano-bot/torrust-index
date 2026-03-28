@@ -1,6 +1,10 @@
+//! Trait for extracting sampling weights from accumulator values.
+
 use super::Accumulator;
 
+/// Values that can be mapped to a non-negative sampling weight.
 pub trait Weighable: Accumulator {
+    /// Converts this value to an `f64` weight.
     fn weight(self) -> f64;
 }
 
