@@ -10,27 +10,27 @@ Phases 1–8 each have at least one direct unit test.
 
 ## Files targeted (below 90 % line coverage)
 
-- `src/graph/algorithm/plateau/` (combined: 71.82 %)
-- `src/diagnostics/invariants.rs` (76.53 %)
-- `src/graph/algorithm/evict.rs` (77.09 %)
-- `src/graph/algorithm/rebalance.rs` (78.65 %)
-- `src/diagnostics/diagnostic.rs` (84.87 %)
-- `src/graph/algorithm/query.rs` (84.22 %)
-- `src/graph/algorithm/budget.rs` (87.97 %)
+- `src/graph/algorithm/plateau/` (combined: 74.23 %)
+- `src/diagnostics/invariants.rs` (68.67 %)
+- `src/graph/algorithm/evict.rs` (83.95 %)
+- `src/graph/algorithm/rebalance.rs` (86.26 %)
+- `src/diagnostics/diagnostic.rs` (84.32 %)
+- `src/graph/algorithm/query.rs` (83.81 %)
+- `src/graph/algorithm/budget.rs` (89.44 %)
 - `src/spatial/contour_range.rs` (87.50 %)
 
 ## Complexity baseline (2026-03-28)
 
 | File                                        | Line Cover | Fn Cover |
 | ------------------------------------------- | ---------: | -------: |
-| `graph/algorithm/plateau/` (combined)       |     71.82% |   80.65% |
-| `diagnostics/invariants.rs`                 |     76.53% |   95.65% |
-| `graph/algorithm/evict.rs`                  |     77.09% |   81.82% |
-| `graph/algorithm/rebalance.rs`              |     78.65% |   91.94% |
-| `diagnostics/diagnostic.rs`                 |     84.87% |   96.30% |
-| `graph/algorithm/query.rs`                  |     84.22% |   97.62% |
-| `graph/algorithm/budget.rs`                 |     87.97% |   92.31% |
-| `spatial/contour_range.rs`                  |     87.50%  |  100.00% |
+| `graph/algorithm/plateau/` (combined)       |     74.23% |   74.26% |
+| `diagnostics/invariants.rs`                 |     68.67% |   90.91% |
+| `graph/algorithm/evict.rs`                  |     83.95% |   91.67% |
+| `graph/algorithm/rebalance.rs`              |     86.26% |   94.44% |
+| `diagnostics/diagnostic.rs`                 |     84.32% |   94.12% |
+| `graph/algorithm/query.rs`                  |     83.81% |   95.12% |
+| `graph/algorithm/budget.rs`                 |     89.44% |   92.86% |
+| `spatial/contour_range.rs`                  |     87.50% |  100.00% |
 
 > All other files are at ≥ 90 % line coverage in the baseline.
 
@@ -89,7 +89,7 @@ P9 sub-task done early.
 
 ### P9.1 — Establish coverage baseline report
 
-**Status:** `[ ]` not started
+**Status:** `[x]` done
 
 **What to do:**
 

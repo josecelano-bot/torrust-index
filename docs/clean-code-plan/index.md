@@ -88,7 +88,7 @@ gaps** identified from a fresh complexity analysis run on 2026-03-28.
 - [ ] Phase 7 complete — complexity baseline updated
 - [x] Phase 8 (API & Traits) started
 - [ ] Phase 8 complete — complexity baseline updated
-- [ ] Phase 9 (Test Coverage) started
+- [x] Phase 9 (Test Coverage) started
 - [ ] Phase 9 complete — coverage baseline updated
 
 ---
