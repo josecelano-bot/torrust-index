@@ -17,7 +17,7 @@ Phases 1–8 each have at least one direct unit test.
 - `src/diagnostics/diagnostic.rs` (84.32 %)
 - `src/graph/algorithm/query.rs` (83.81 %)
 - `src/graph/algorithm/budget.rs` (91.83 %)
-- `src/spatial/contour_range.rs` (87.50 %)
+- `src/spatial/contour_range.rs` (94.04 %)
 
 ## Complexity baseline (2026-03-28)
 
@@ -30,7 +30,7 @@ Phases 1–8 each have at least one direct unit test.
 | `diagnostics/diagnostic.rs`                 |     84.32% |   94.12% |
 | `graph/algorithm/query.rs`                  |     83.81% |   95.12% |
 | `graph/algorithm/budget.rs`                 |     91.83% |   92.86% |
-| `spatial/contour_range.rs`                  |     87.50% |  100.00% |
+| `spatial/contour_range.rs`                  |     94.04% |  100.00% |
 
 > All other files are at ≥ 90 % line coverage in the baseline.
 
@@ -245,11 +245,11 @@ query result or the error variant.
 
 ### P9.7 — Add unit tests for `budget.rs` and `contour_range.rs`
 
-**Status:** `[-]` in progress
+**Status:** `[x]` done
 
 **Depends on:** P9.1
 
-**Current coverage:** `budget.rs` 91.83%, `contour_range.rs` 87.50%.
+**Current coverage:** `budget.rs` 91.83%, `contour_range.rs` 94.04%.
 
 **What to do:**
 

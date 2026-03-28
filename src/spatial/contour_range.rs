@@ -155,3 +155,124 @@ where
         );
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        BasisElement, ContourRange, compute_plateau_energy, debug_assert_contour_range_invariants,
+        validate_endpoints,
+    };
+    use crate::handle::GNodeId;
+    use crate::spatial::plateau::{BasisEdge, Plateau};
+    use std::collections::BTreeMap;
+
+    fn plateau(edge: u8, start: u8, end: u8, depth: u32, sum: u32) -> Plateau<u8, u32> {
+        Plateau {
+            basis_edge: BasisEdge(edge),
+            start,
+            end,
+            depth,
+            sum,
+        }
+    }
+
+    fn sample_plateaus() -> BTreeMap<BasisEdge<u8>, Plateau<u8, u32>> {
+        let mut p = BTreeMap::new();
+        p.insert(BasisEdge(0), plateau(0, 0, 8, 2, 10));
+        p.insert(BasisEdge(8), plateau(8, 8, 16, 2, 20));
+        p
+    }
+
+    mod validate_endpoints_fn {
+        use super::*;
+
+        #[test]
+        fn returns_none_when_start_is_missing() {
+            let p = sample_plateaus();
+            assert!(validate_endpoints(&p, BasisEdge(4), BasisEdge(8), 16).is_none());
+        }
+
+        #[test]
+        fn returns_none_when_end_is_missing_and_not_domain_end() {
+            let p = sample_plateaus();
+            assert!(validate_endpoints(&p, BasisEdge(0), BasisEdge(12), 16).is_none());
+        }
+
+        #[test]
+        fn returns_none_when_start_is_not_less_than_end() {
+            let p = sample_plateaus();
+            assert!(validate_endpoints(&p, BasisEdge(8), BasisEdge(8), 16).is_none());
+        }
+
+        #[test]
+        fn returns_some_for_valid_key_interval() {
+            let p = sample_plateaus();
+            assert!(validate_endpoints(&p, BasisEdge(0), BasisEdge(8), 16).is_some());
+        }
+
+        #[test]
+        fn accepts_domain_end_even_when_not_present_as_key() {
+            let p = sample_plateaus();
+            assert!(validate_endpoints(&p, BasisEdge(8), BasisEdge(16), 16).is_some());
+        }
+    }
+
+    mod compute_plateau_energy_fn {
+        use super::*;
+
+        #[test]
+        fn sums_plateaus_in_half_open_key_range() {
+            let p = sample_plateaus();
+            let (sum, count) = compute_plateau_energy(&p, BasisEdge(0), BasisEdge(16));
+            assert_eq!(sum, 30);
+            assert_eq!(count, 2);
+        }
+
+        #[test]
+        fn returns_zero_and_zero_count_for_empty_range() {
+            let p = sample_plateaus();
+            let (sum, count) = compute_plateau_energy(&p, BasisEdge(8), BasisEdge(8));
+            assert_eq!(sum, 0);
+            assert_eq!(count, 0);
+        }
+    }
+
+    mod debug_assert_invariants_fn {
+        use super::*;
+
+        #[test]
+        fn accepts_contiguous_non_overlapping_basis_and_energy_identity() {
+            let cr = ContourRange {
+                start: 0u8,
+                end: 16u8,
+                basis: vec![
+                    BasisElement {
+                        gnode_id: GNodeId::from_index(1),
+                        start: 0u8,
+                        end: 8u8,
+                        own: 0u32,
+                        sum: 10u32,
+                        depth: 2,
+                        is_boundary_thatch: false,
+                    },
+                    BasisElement {
+                        gnode_id: GNodeId::from_index(2),
+                        start: 8u8,
+                        end: 16u8,
+                        own: 0u32,
+                        sum: 20u32,
+                        depth: 2,
+                        is_boundary_thatch: false,
+                    },
+                ],
+                energy: 30u32,
+                exact_energy: 30u32,
+                plateau_energy: 25u32,
+                cross_plateau_energy: 5u32,
+                plateau_count: 2,
+            };
+
+            debug_assert_contour_range_invariants(&cr);
+        }
+    }
+}
