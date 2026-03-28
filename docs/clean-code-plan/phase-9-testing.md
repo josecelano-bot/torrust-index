@@ -11,7 +11,7 @@ Phases 1–8 each have at least one direct unit test.
 ## Files targeted (below 90 % line coverage)
 
 - `src/graph/algorithm/plateau/` (combined: 74.23 %)
-- `src/diagnostics/invariants.rs` (68.67 %)
+- `src/diagnostics/invariants.rs` (76.86 %)
 - `src/graph/algorithm/evict.rs` (83.95 %)
 - `src/graph/algorithm/rebalance.rs` (86.26 %)
 - `src/diagnostics/diagnostic.rs` (84.32 %)
@@ -24,7 +24,7 @@ Phases 1–8 each have at least one direct unit test.
 | File                                        | Line Cover | Fn Cover |
 | ------------------------------------------- | ---------: | -------: |
 | `graph/algorithm/plateau/` (combined)       |     74.23% |   74.26% |
-| `diagnostics/invariants.rs`                 |     68.67% |   90.91% |
+| `diagnostics/invariants.rs`                 |     76.86% |   90.91% |
 | `graph/algorithm/evict.rs`                  |     83.95% |   91.67% |
 | `graph/algorithm/rebalance.rs`              |     86.26% |   94.44% |
 | `diagnostics/diagnostic.rs`                 |     84.32% |   94.12% |
@@ -194,7 +194,7 @@ For each:
 
 ### P9.5 — Add unit tests for `diagnostics/invariants.rs` and `diagnostic.rs`
 
-**Status:** `[ ]` not started
+**Status:** `[ ]` in progress
 
 **Depends on:** P9.1, P5.x (Phase 5 diagnostic decomposition)
 

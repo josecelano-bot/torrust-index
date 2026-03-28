@@ -627,3 +627,119 @@ fn check_depth_gate_invariants<C: Coordinate, V: Accumulator + Inspectable, cons
         ));
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::graph::{Config, StructuralConfig};
+
+    type G = GvGraph<u8, u32, 8>;
+
+    fn make_config(budget: Option<usize>) -> Config<u32> {
+        Config {
+            split_threshold: 2,
+            structural: StructuralConfig {
+                depth_create: 3,
+                depth_evict: 5,
+                budget,
+                alpha_relax: 0.5,
+                bounded_eviction: false,
+            },
+        }
+    }
+
+    #[test]
+    fn check_all_invariants_is_empty_for_fresh_graph() {
+        let g: G = GvGraph::new(make_config(None));
+        let errors = check_all_invariants(&g);
+        assert!(errors.is_empty());
+    }
+
+    #[test]
+    fn check_node_count_consistency_reports_mismatch() {
+        let mut g: G = GvGraph::new(make_config(None));
+        g.gtree.node_count += 1;
+
+        let mut errors = Vec::new();
+        check_node_count_consistency(&g, &mut errors);
+
+        assert!(
+            errors.iter().any(|e| e.contains("Node count:")),
+            "expected node count mismatch error, got: {errors:?}"
+        );
+    }
+
+    #[test]
+    fn check_terminal_count_consistency_reports_mismatch() {
+        let mut g: G = GvGraph::new(make_config(None));
+        g.gtree.terminal_count += 1;
+
+        let mut errors = Vec::new();
+        check_terminal_count_consistency(&g, &mut errors);
+
+        assert!(
+            errors.iter().any(|e| e.contains("Terminal count:")),
+            "expected terminal count mismatch error, got: {errors:?}"
+        );
+    }
+
+    #[test]
+    fn check_v_root_consistency_reports_parented_root() {
+        let mut g: G = GvGraph::new(make_config(None));
+        let root = g.v_root().expect("fresh graph must have a v_root");
+        g.vtree.nodes.get_mut(root.index()).set_parent(root);
+
+        let mut errors = Vec::new();
+        check_v_root_consistency(&g, &mut errors);
+
+        assert!(
+            errors.iter().any(|e| e.contains("v_root") && e.contains("expected None")),
+            "expected v_root parent consistency error, got: {errors:?}"
+        );
+    }
+
+    #[test]
+    fn check_clean_accounting_reports_entry_sum_mismatch() {
+        let mut g: G = GvGraph::new(make_config(None));
+        let root = g.v_root().expect("fresh graph must have a v_root");
+        g.vtree.nodes.get_mut(root.index()).set_intensity(1);
+
+        let mut errors = Vec::new();
+        check_clean_accounting(&g, &mut errors);
+
+        assert!(
+            errors.iter().any(|e| e.contains("Clean accounting violated")),
+            "expected clean-accounting error, got: {errors:?}"
+        );
+    }
+
+    #[test]
+    fn check_depth_gate_invariants_reports_invalid_ordering() {
+        let mut g: G = GvGraph::new(make_config(None));
+        g.gtree.live_depth_create = g.gtree.live_depth_evict;
+
+        let mut errors = Vec::new();
+        check_depth_gate_invariants(&g, &mut errors);
+
+        assert!(
+            errors.iter().any(|e| e.contains("D-I3:")),
+            "expected D-I3 ordering error, got: {errors:?}"
+        );
+    }
+
+    #[test]
+    fn check_hard_budget_reports_exceeded_budget() {
+        let mut g: G = GvGraph::new(make_config(Some(30)));
+        g.gtree.node_count = 31;
+
+        let mut errors = Vec::new();
+        check_hard_budget(&g, &mut errors);
+
+        assert!(
+            errors
+                .iter()
+                .any(|e| e.contains("Hard budget violated") && e.contains("node_count")),
+            "expected hard-budget error, got: {errors:?}"
+        );
+    }
+}
