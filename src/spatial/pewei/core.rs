@@ -18,7 +18,7 @@
 use crate::spatial::view::Span;
 use crate::traits::{Accumulator, Coordinate, Proratable};
 
-pub use super::pewei_types::{Layer, Terminal, Transition};
+pub use crate::spatial::pewei_types::{Layer, Terminal, Transition};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]

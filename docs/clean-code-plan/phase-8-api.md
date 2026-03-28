@@ -149,7 +149,7 @@ the trait's role in the system and when a user would need to implement it.
 
 ### P8.4 — Split `spatial/pewei.rs` into focused submodules
 
-**Status:** `[ ]` not started
+**Status:** `[x]` done
 
 **What to do:**
 
@@ -208,7 +208,7 @@ For each public struct/enum/trait, add:
 
 ### P8.6 — Add `#[must_use]` to pure query methods
 
-**Status:** `[ ]` not started
+**Status:** `[x]` done
 
 **Depends on:** P8.5
 
