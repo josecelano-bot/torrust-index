@@ -632,6 +632,8 @@ fn check_depth_gate_invariants<C: Coordinate, V: Accumulator + Inspectable, cons
 mod tests {
     use super::*;
     use crate::graph::{Config, StructuralConfig};
+    use crate::handle::VNodeId;
+    use crate::nodes::vnode::VKind;
 
     type G = GvGraph<u8, u32, 8>;
 
@@ -741,5 +743,153 @@ mod tests {
                 .any(|e| e.contains("Hard budget violated") && e.contains("node_count")),
             "expected hard-budget error, got: {errors:?}"
         );
+    }
+
+    #[test]
+    fn check_all_invariants_reports_multiple_corruptions() {
+        let mut g: G = GvGraph::new(make_config(Some(30)));
+        g.observe(64u8, 3u32); // create structural V-root and multiple G-nodes
+
+        // Break accounting counters.
+        g.gtree.node_count += 2;
+        g.gtree.terminal_count += 1;
+
+        // Break depth-gate relation.
+        g.gtree.live_depth_create = g.gtree.live_depth_evict;
+
+        // Break V-root parent consistency.
+        let v_root = g.v_root().expect("v_root must exist");
+        g.vtree.nodes.get_mut(v_root.index()).set_parent(v_root);
+
+        // Break clean accounting and G-I4/V-I6b-style consistency by mutating
+        // one entry's intensity and flags away from its backing G-node state.
+        let root_entry = g
+            .gtree
+            .nodes
+            .get(g.gtree.root.index())
+            .entry()
+            .expect("root must have entry");
+        {
+            let v = g.vtree.nodes.get_mut(root_entry.index());
+            v.set_intensity(999u32);
+            if let VKind::Entry {
+                is_exposed,
+                is_evictable,
+                ..
+            } = v.kind_mut()
+            {
+                *is_exposed = false;
+                *is_evictable = true;
+            }
+        }
+
+        // Break structural evictable aggregation flag on the V-root.
+        if let VKind::Structural { has_evictable, .. } = g.vtree.nodes.get_mut(v_root.index()).kind_mut() {
+            *has_evictable = false;
+        }
+
+        let errors = check_all_invariants(&g);
+        assert!(!errors.is_empty(), "expected multiple invariant violations");
+        assert!(errors.iter().any(|e| e.contains("Node count:")));
+        assert!(errors.iter().any(|e| e.contains("Terminal count:")));
+        assert!(errors.iter().any(|e| e.contains("D-I3:")));
+        assert!(errors.iter().any(|e| e.contains("v_root") || e.contains("V-root consistency")));
+        assert!(errors.iter().any(|e| e.contains("Clean accounting violated")));
+    }
+
+    #[test]
+    fn check_g_i4_entry_consistency_reports_unoccupied_entry_id() {
+        let mut g: G = GvGraph::new(make_config(None));
+        g.gtree
+            .nodes
+            .get_mut(g.gtree.root.index())
+            .assign_entry(VNodeId::from_index(9_999));
+
+        let mut errors = Vec::new();
+        check_g_i4_entry_consistency(&g, &mut errors);
+
+        assert!(errors.iter().any(|e| e.contains("entry V-node") && e.contains("not occupied")));
+    }
+
+    #[test]
+    fn check_v_parent_links_reports_non_structural_parent() {
+        let mut g: G = GvGraph::new(make_config(None));
+        g.observe(64u8, 3u32); // ensure multiple occupied vnodes
+
+        let root_entry = g
+            .gtree
+            .nodes
+            .get(g.gtree.root.index())
+            .entry()
+            .expect("root must have entry");
+        let other_entry = g
+            .vnodes()
+            .iter_occupied()
+            .map(|(idx, _)| VNodeId::from_index(idx))
+            .find(|id| *id != root_entry)
+            .expect("expected a second vnode after split");
+
+        g.vtree
+            .nodes
+            .get_mut(other_entry.index())
+            .set_parent(root_entry);
+
+        let mut errors = Vec::new();
+        check_v_parent_links(&g, &mut errors);
+
+        assert!(errors.iter().any(|e| e.contains("parent is not structural")));
+    }
+
+    #[test]
+    fn check_v_i6b_reports_evictable_without_exposed() {
+        let mut g: G = GvGraph::new(make_config(None));
+        let root = g.v_root().expect("fresh graph must have v_root");
+        if let VKind::Entry {
+            is_evictable,
+            is_exposed,
+            ..
+        } = g.vtree.nodes.get_mut(root.index()).kind_mut()
+        {
+            *is_evictable = true;
+            *is_exposed = false;
+        }
+
+        let mut errors = Vec::new();
+        check_v_i6b_evictable_flag(&g, &mut errors);
+
+        assert!(
+            errors
+                .iter()
+                .any(|e| e.contains("is_evictable=true") && e.contains("is_exposed=false"))
+        );
+    }
+
+    #[test]
+    fn check_v_i7_reports_has_evictable_mismatch() {
+        let mut g: G = GvGraph::new(make_config(None));
+        g.observe(64u8, 3u32); // produce structural v-root
+        let v_root = g.v_root().expect("v_root must exist");
+        if let VKind::Structural { has_evictable, .. } = g.vtree.nodes.get_mut(v_root.index()).kind_mut() {
+            *has_evictable = false;
+        }
+
+        let mut errors = Vec::new();
+        check_v_i7_structural_flag(&g, &mut errors);
+
+        assert!(errors.iter().any(|e| e.contains("V-I7 violated")));
+    }
+
+    #[test]
+    fn check_depth_gate_invariants_reports_floor_and_buffer_errors() {
+        let mut g: G = GvGraph::new(make_config(None));
+        let buffer = g.gtree.depth_buffer;
+        g.gtree.live_depth_evict = buffer;
+        g.gtree.live_depth_create = 1;
+
+        let mut errors = Vec::new();
+        check_depth_gate_invariants(&g, &mut errors);
+
+        assert!(errors.iter().any(|e| e.contains("D-I3 floor")));
+        assert!(errors.iter().any(|e| e.contains("D-I3 buffer")));
     }
 }

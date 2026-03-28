@@ -11,10 +11,10 @@ Phases 1–8 each have at least one direct unit test.
 ## Files targeted (below 90 % line coverage)
 
 - `src/graph/algorithm/plateau/` (combined: 74.23 %)
-- `src/diagnostics/invariants.rs` (76.86 %)
+- `src/diagnostics/invariants.rs` (87.75 %)
 - `src/graph/algorithm/evict.rs` (90.16 %)
 - `src/graph/algorithm/rebalance.rs` (91.39 %)
-- `src/diagnostics/diagnostic.rs` (87.27 %)
+- `src/diagnostics/diagnostic.rs` (87.78 %)
 - `src/graph/algorithm/query.rs` (92.17 %)
 - `src/graph/algorithm/budget.rs` (91.83 %)
 - `src/spatial/contour_range.rs` (94.04 %)
@@ -24,10 +24,10 @@ Phases 1–8 each have at least one direct unit test.
 | File                                        | Line Cover | Fn Cover |
 | ------------------------------------------- | ---------: | -------: |
 | `graph/algorithm/plateau/` (combined)       |     74.23% |   74.26% |
-| `diagnostics/invariants.rs`                 |     76.86% |   90.91% |
+| `diagnostics/invariants.rs`                 |     87.75% |   90.91% |
 | `graph/algorithm/evict.rs`                  |     90.16% |   91.67% |
 | `graph/algorithm/rebalance.rs`              |     91.39% |   94.44% |
-| `diagnostics/diagnostic.rs`                 |     87.27% |   94.12% |
+| `diagnostics/diagnostic.rs`                 |     87.78% |   94.12% |
 | `graph/algorithm/query.rs`                  |     92.17% |   95.12% |
 | `graph/algorithm/budget.rs`                 |     91.83% |   92.86% |
 | `spatial/contour_range.rs`                  |     94.04% |  100.00% |
@@ -198,7 +198,7 @@ For each:
 
 **Depends on:** P9.1, P5.x (Phase 5 diagnostic decomposition)
 
-**Current coverage:** `invariants.rs` 76.53%, `diagnostic.rs` 84.87%.
+**Current coverage:** `invariants.rs` 87.75%, `diagnostic.rs` 87.78%.
 
 **What to do:**
 

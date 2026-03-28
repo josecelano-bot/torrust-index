@@ -426,5 +426,54 @@ mod tests {
             };
             diagnose_missed_violation(g.vnodes(), entry_id, &ctx);
         }
+
+        #[test]
+        fn depth_two_entry_with_non_ancestor_collapse_sibling() {
+            let mut g: G = GvGraph::new(make_config());
+            for coord in [32u8, 96u8, 160u8, 224u8] {
+                g.observe(coord, 3u32);
+            }
+
+            let v_root = g.v_root().expect("v_root must exist");
+            let root_children: Vec<crate::handle::VNodeId> = match &g.vnodes().get(v_root.index()).kind() {
+                VKind::Structural { children, .. } => children.iter().map(|(id, _)| id).collect(),
+                _ => return,
+            };
+            if root_children.len() < 2 {
+                return;
+            }
+
+            // Find a depth-2+ entry under the first root child.
+            let subtree_root = root_children[0];
+            let collapse_sibling = root_children[1];
+            let mut stack: Vec<(crate::handle::VNodeId, usize)> = vec![(subtree_root, 1)];
+            let mut depth2_entry = None;
+            while let Some((id, depth)) = stack.pop() {
+                let n = g.vnodes().get(id.index());
+                match &n.kind() {
+                    VKind::Entry { .. } if depth >= 2 => {
+                        depth2_entry = Some(id);
+                        break;
+                    }
+                    VKind::Structural { children, .. } => {
+                        for (cid, _) in children.iter() {
+                            stack.push((cid, depth + 1));
+                        }
+                    }
+                    _ => {}
+                }
+            }
+
+            let Some(entry_id) = depth2_entry else {
+                return;
+            };
+
+            let ctx = MissedViolationContext {
+                evicted_parent: None,
+                evicted_parent_child_count: 2,
+                collapse_sibling: Some(collapse_sibling),
+            };
+            diagnose_missed_violation(g.vnodes(), entry_id, &ctx);
+        }
     }
 }
