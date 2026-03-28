@@ -1,12 +1,26 @@
 use std::fmt;
 
+/// An arena allocator for efficient allocation and deallocation of objects.
+///
+/// # Invariants
+/// - `occupied` is a bitmap where each bit corresponds to whether the slot at that index is occupied.
+/// - `free` contains indices of deallocated slots that can be reused.
+/// - `count` equals the number of occupied slots.
+/// - All indices in `free` are marked as unoccupied in `occupied`.
+/// - No index appears in `free` more than once.
+/// - All occupied slots have valid data in `slots`.
 pub struct Arena<T: Default> {
+    /// The storage slots for allocated objects.
     slots: Vec<T>,
 
+    /// Bitmap indicating which slots are occupied (1) or free (0).
+    /// Each u64 covers 64 slots.
     occupied: Vec<u64>,
 
+    /// Stack of free slot indices available for reuse.
     free: Vec<u32>,
 
+    /// The number of currently occupied slots.
     count: u32,
 }
 
@@ -25,6 +39,34 @@ impl<T: Default> Arena<T> {
     #[inline]
     pub const fn count(&self) -> u32 {
         self.count
+    }
+
+    /// Returns the number of currently occupied slots as `usize`.
+    #[must_use]
+    #[inline]
+    pub const fn len(&self) -> usize {
+        self.count as usize
+    }
+
+    /// Returns `true` when there are no occupied slots.
+    #[must_use]
+    #[inline]
+    pub const fn is_empty(&self) -> bool {
+        self.count == 0
+    }
+
+    /// Returns the total number of allocated slots (occupied + free).
+    #[must_use]
+    #[inline]
+    pub fn capacity(&self) -> usize {
+        self.slots.len()
+    }
+
+    /// Returns the number of reusable free slots.
+    #[must_use]
+    #[inline]
+    pub fn free_slots(&self) -> usize {
+        self.free.len()
     }
 
     pub fn alloc(&mut self, value: T) -> usize {
@@ -142,6 +184,10 @@ mod tests {
         fn starts_empty() {
             let a: Arena<u32> = Arena::new();
             assert_eq!(a.count(), 0);
+            assert_eq!(a.len(), 0);
+            assert!(a.is_empty());
+            assert_eq!(a.capacity(), 0);
+            assert_eq!(a.free_slots(), 0);
         }
     }
 
@@ -154,6 +200,8 @@ mod tests {
             let mut a: Arena<u32> = Arena::new();
             a.alloc(42);
             assert_eq!(a.count(), 1);
+            assert_eq!(a.len(), 1);
+            assert!(!a.is_empty());
         }
 
         #[test]
@@ -172,6 +220,33 @@ mod tests {
             a.dealloc(i0);
             let i1 = a.alloc(20);
             assert_eq!(i0, i1);
+        }
+
+        #[test]
+        fn updates_free_slots_on_dealloc_and_realloc() {
+            let mut a: Arena<u32> = Arena::new();
+            let i = a.alloc(10);
+            assert_eq!(a.free_slots(), 0);
+            a.dealloc(i);
+            assert_eq!(a.free_slots(), 1);
+            a.alloc(20);
+            assert_eq!(a.free_slots(), 0);
+        }
+
+        #[test]
+        fn capacity_grows_only_when_no_free_slots_exist() {
+            let mut a: Arena<u32> = Arena::new();
+            let i0 = a.alloc(1);
+            let i1 = a.alloc(2);
+            assert_eq!((i0, i1), (0, 1));
+            assert_eq!(a.capacity(), 2);
+
+            a.dealloc(i1);
+            assert_eq!(a.capacity(), 2);
+
+            let reused = a.alloc(3);
+            assert_eq!(reused, i1);
+            assert_eq!(a.capacity(), 2);
         }
     }
 
@@ -217,6 +292,16 @@ mod tests {
             let i = a.alloc(1);
             a.dealloc(i);
             assert_eq!(a.count(), 0);
+            assert_eq!(a.len(), 0);
+            assert!(a.is_empty());
+        }
+
+        #[test]
+        fn dealloc_resets_slot_to_default_value() {
+            let mut a: Arena<u32> = Arena::new();
+            let i = a.alloc(123);
+            let _ = a.dealloc(i);
+            assert_eq!(a.slots[i], u32::default());
         }
     }
 

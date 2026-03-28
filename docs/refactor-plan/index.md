@@ -17,9 +17,9 @@ Track a structured refactor of `torrust-index` for readability, maintainability,
 - [ ] All tests green
 
 ## File tracking
-- [ ] `src/lib.rs` -> see `lib.md`
-- [ ] `src/handle.rs` -> see `handle.md`
-- [ ] `src/arena.rs` -> see `arena.md`
+- [x] `src/lib.rs` -> see `lib.md`
+- [x] `src/handle.rs` -> see `handle.md`
+- [x] `src/arena.rs` -> see `arena.md`
 - [ ] `src/nodes/gnode.rs` -> see `nodes_gnode.md`
 - [ ] `src/nodes/vnode.rs` -> see `nodes_vnode.md`
 - [ ] `src/tree/gtree.rs` -> see `tree_gtree.md`
