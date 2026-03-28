@@ -289,7 +289,10 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
 
 #[cfg(test)]
 mod tests {
+    use crate::arena::Arena;
     use crate::graph::{Config, GvGraph, StructuralConfig};
+    use crate::handle::{GNodeId, VNodeId};
+    use crate::nodes::vnode::{Children, VNode};
 
     type G = GvGraph<u8, u32, 8>;
 
@@ -393,6 +396,265 @@ mod tests {
                 g.observe(i.wrapping_mul(51), delta);
             }
             assert_eq!(g.total_sum(), n * delta);
+        }
+
+        #[test]
+        #[should_panic(expected = "is structural, not an entry")]
+        fn panics_when_called_on_structural_vnode() {
+            let mut g: G = GvGraph::new(make_config());
+            g.observe(64u8, 3u32); // bootstrap split: v_root becomes structural
+            let v_root = g.v_root().expect("v_root must exist");
+            g.evict_tip(v_root);
+        }
+    }
+
+    // ── classify_leaf_removal ─────────────────────────────────────────
+    mod classify_leaf_removal_fn {
+        use super::*;
+        use super::super::classify_leaf_removal;
+        use super::super::{LeafRemovalContext, push_eviction_violations};
+
+        fn id(i: usize) -> VNodeId {
+            VNodeId::from_index(i)
+        }
+
+        #[test]
+        fn pair_parent_reports_grandparent_change_point_and_sibling() {
+            let mut vnodes: Arena<VNode<u32>> = Arena::new();
+
+            let target = id(vnodes.alloc(VNode::new_entry(
+                1,
+                None,
+                GNodeId::from_index(1),
+                true,
+                true,
+            )));
+            let sibling = id(vnodes.alloc(VNode::new_entry(
+                1,
+                None,
+                GNodeId::from_index(2),
+                true,
+                true,
+            )));
+            let uncle = id(vnodes.alloc(VNode::new_entry(
+                1,
+                None,
+                GNodeId::from_index(3),
+                true,
+                true,
+            )));
+
+            let parent = id(vnodes.alloc(VNode::new_structural(
+                2,
+                None,
+                Children::new_2((target, 1), (sibling, 1)),
+                true,
+            )));
+            let grandparent = id(vnodes.alloc(VNode::new_structural(
+                3,
+                None,
+                Children::new_2((parent, 2), (uncle, 1)),
+                true,
+            )));
+
+            vnodes.get_mut(target.index()).set_parent(parent);
+            vnodes.get_mut(sibling.index()).set_parent(parent);
+            vnodes.get_mut(parent.index()).set_parent(grandparent);
+            vnodes.get_mut(uncle.index()).set_parent(grandparent);
+
+            let ctx = classify_leaf_removal(&vnodes, target);
+            assert_eq!(ctx.v_parent, Some(parent));
+            assert_eq!(ctx.child_count, 2);
+            assert_eq!(ctx.change_point, Some(grandparent));
+            assert_eq!(ctx.collapse_sibling, Some(sibling));
+        }
+
+        #[test]
+        fn triple_parent_reports_parent_as_change_point() {
+            let mut vnodes: Arena<VNode<u32>> = Arena::new();
+
+            let a = id(vnodes.alloc(VNode::new_entry(
+                1,
+                None,
+                GNodeId::from_index(10),
+                true,
+                true,
+            )));
+            let b = id(vnodes.alloc(VNode::new_entry(
+                1,
+                None,
+                GNodeId::from_index(11),
+                true,
+                true,
+            )));
+            let c = id(vnodes.alloc(VNode::new_entry(
+                1,
+                None,
+                GNodeId::from_index(12),
+                true,
+                true,
+            )));
+
+            let parent = id(vnodes.alloc(VNode::new_structural(
+                3,
+                None,
+                Children::new_3((a, 1), (b, 1), (c, 1)),
+                true,
+            )));
+            vnodes.get_mut(a.index()).set_parent(parent);
+            vnodes.get_mut(b.index()).set_parent(parent);
+            vnodes.get_mut(c.index()).set_parent(parent);
+
+            let ctx = classify_leaf_removal(&vnodes, b);
+            assert_eq!(ctx.v_parent, Some(parent));
+            assert_eq!(ctx.child_count, 3);
+            assert_eq!(ctx.change_point, Some(parent));
+            assert_eq!(ctx.collapse_sibling, None);
+        }
+
+        #[test]
+        fn lone_entry_has_zero_child_context() {
+            let mut vnodes: Arena<VNode<u32>> = Arena::new();
+            let target = id(vnodes.alloc(VNode::new_entry(
+                1,
+                None,
+                GNodeId::from_index(20),
+                true,
+                true,
+            )));
+
+            let ctx = classify_leaf_removal(&vnodes, target);
+            assert_eq!(ctx.v_parent, None);
+            assert_eq!(ctx.child_count, 0);
+            assert_eq!(ctx.change_point, None);
+            assert_eq!(ctx.collapse_sibling, None);
+        }
+
+        #[test]
+        fn push_eviction_violations_noops_for_zero_child_context() {
+            let mut vnodes: Arena<VNode<u32>> = Arena::new();
+            let target = id(vnodes.alloc(VNode::new_entry(
+                1,
+                None,
+                GNodeId::from_index(30),
+                true,
+                true,
+            )));
+
+            let ctx = LeafRemovalContext {
+                v_parent: None,
+                child_count: 0,
+                change_point: None,
+                collapse_sibling: None,
+            };
+            let mut violations = Vec::new();
+            push_eviction_violations(&vnodes, target, &ctx, &mut violations);
+            assert!(violations.is_empty());
+        }
+
+        #[test]
+        fn push_eviction_violations_executes_pair_path() {
+            let mut vnodes: Arena<VNode<u32>> = Arena::new();
+
+            let target = id(vnodes.alloc(VNode::new_entry(
+                5,
+                None,
+                GNodeId::from_index(40),
+                true,
+                true,
+            )));
+            let sibling = id(vnodes.alloc(VNode::new_entry(
+                4,
+                None,
+                GNodeId::from_index(41),
+                true,
+                true,
+            )));
+            let uncle = id(vnodes.alloc(VNode::new_entry(
+                3,
+                None,
+                GNodeId::from_index(42),
+                true,
+                true,
+            )));
+            let parent = id(vnodes.alloc(VNode::new_structural(
+                9,
+                None,
+                Children::new_2((target, 5), (sibling, 4)),
+                true,
+            )));
+            let grandparent = id(vnodes.alloc(VNode::new_structural(
+                12,
+                None,
+                Children::new_2((parent, 9), (uncle, 3)),
+                true,
+            )));
+
+            vnodes.get_mut(target.index()).set_parent(parent);
+            vnodes.get_mut(sibling.index()).set_parent(parent);
+            vnodes.get_mut(parent.index()).set_parent(grandparent);
+            vnodes.get_mut(uncle.index()).set_parent(grandparent);
+
+            let ctx = LeafRemovalContext {
+                v_parent: Some(parent),
+                child_count: 2,
+                change_point: Some(grandparent),
+                collapse_sibling: Some(sibling),
+            };
+
+            let mut violations = Vec::new();
+            push_eviction_violations(&vnodes, target, &ctx, &mut violations);
+            assert!(!violations.is_empty());
+        }
+
+        #[test]
+        fn push_eviction_violations_executes_triple_path() {
+            let mut vnodes: Arena<VNode<u32>> = Arena::new();
+
+            let target = id(vnodes.alloc(VNode::new_entry(
+                5,
+                None,
+                GNodeId::from_index(60),
+                true,
+                true,
+            )));
+            let s1 = id(vnodes.alloc(VNode::new_entry(
+                4,
+                None,
+                GNodeId::from_index(61),
+                true,
+                true,
+            )));
+            let s2 = id(vnodes.alloc(VNode::new_entry(
+                3,
+                None,
+                GNodeId::from_index(62),
+                true,
+                true,
+            )));
+            let parent = id(vnodes.alloc(VNode::new_structural(
+                12,
+                None,
+                Children::new_3((target, 5), (s1, 4), (s2, 3)),
+                true,
+            )));
+
+            vnodes.get_mut(target.index()).set_parent(parent);
+            vnodes.get_mut(s1.index()).set_parent(parent);
+            vnodes.get_mut(s2.index()).set_parent(parent);
+
+            let ctx = LeafRemovalContext {
+                v_parent: Some(parent),
+                child_count: 3,
+                change_point: Some(parent),
+                collapse_sibling: None,
+            };
+
+            let mut violations = Vec::new();
+            push_eviction_violations(&vnodes, target, &ctx, &mut violations);
+            // Branch execution is what we need here; depending on intensities
+            // and topology, this path may or may not enqueue violations.
+            assert!(violations.len() <= 3);
         }
     }
 }

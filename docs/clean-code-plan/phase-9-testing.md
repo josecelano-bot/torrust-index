@@ -12,10 +12,10 @@ Phases 1–8 each have at least one direct unit test.
 
 - `src/graph/algorithm/plateau/` (combined: 74.23 %)
 - `src/diagnostics/invariants.rs` (76.86 %)
-- `src/graph/algorithm/evict.rs` (83.95 %)
-- `src/graph/algorithm/rebalance.rs` (86.26 %)
+- `src/graph/algorithm/evict.rs` (90.16 %)
+- `src/graph/algorithm/rebalance.rs` (91.39 %)
 - `src/diagnostics/diagnostic.rs` (87.27 %)
-- `src/graph/algorithm/query.rs` (83.81 %)
+- `src/graph/algorithm/query.rs` (92.17 %)
 - `src/graph/algorithm/budget.rs` (91.83 %)
 - `src/spatial/contour_range.rs` (94.04 %)
 
@@ -25,10 +25,10 @@ Phases 1–8 each have at least one direct unit test.
 | ------------------------------------------- | ---------: | -------: |
 | `graph/algorithm/plateau/` (combined)       |     74.23% |   74.26% |
 | `diagnostics/invariants.rs`                 |     76.86% |   90.91% |
-| `graph/algorithm/evict.rs`                  |     83.95% |   91.67% |
-| `graph/algorithm/rebalance.rs`              |     86.26% |   94.44% |
+| `graph/algorithm/evict.rs`                  |     90.16% |   91.67% |
+| `graph/algorithm/rebalance.rs`              |     91.39% |   94.44% |
 | `diagnostics/diagnostic.rs`                 |     87.27% |   94.12% |
-| `graph/algorithm/query.rs`                  |     83.81% |   95.12% |
+| `graph/algorithm/query.rs`                  |     92.17% |   95.12% |
 | `graph/algorithm/budget.rs`                 |     91.83% |   92.86% |
 | `spatial/contour_range.rs`                  |     94.04% |  100.00% |
 
@@ -141,11 +141,11 @@ fn assert_plateau_count(graph: &GvGraph<...>, expected: usize) { ... }
 
 ### P9.3 — Add unit tests for `evict.rs`
 
-**Status:** `[ ]` not started
+**Status:** `[x]` done
 
 **Depends on:** P9.1, P6.3 (prefer running after Phase 6 decomposes `evict_tip`)
 
-**Current coverage:** 77.09%.
+**Current coverage:** 90.16%.
 
 **What to do:**
 
@@ -169,11 +169,11 @@ Write tests that:
 
 ### P9.4 — Add unit tests for `rebalance.rs`
 
-**Status:** `[ ]` not started
+**Status:** `[x]` done
 
 **Depends on:** P9.1, P3.x (Phase 3 decomposition)
 
-**Current coverage:** 78.65%.
+**Current coverage:** 91.39%.
 
 **What to do:**
 
@@ -220,11 +220,11 @@ To raise coverage:
 
 ### P9.6 — Add unit tests for `query.rs`
 
-**Status:** `[ ]` not started
+**Status:** `[x]` done
 
 **Depends on:** P9.1, P4.x (Phase 4 query decomposition)
 
-**Current coverage:** 84.22%.
+**Current coverage:** 92.17%.
 
 **What to do:**
 

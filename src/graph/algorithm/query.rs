@@ -453,6 +453,22 @@ mod tests {
         }
 
         #[test]
+        fn range_with_excluded_end_bound() {
+            let mut g = fresh_graph();
+            g.observe(64u8, 10u32);
+            let r = g.range_sum((Bound::Included(0u8), Bound::Excluded(100u8)));
+            assert!(r <= g.total_sum());
+        }
+
+        #[test]
+        fn unbounded_start_with_finite_end_is_valid() {
+            let mut g = fresh_graph();
+            g.observe(64u8, 10u32);
+            let r = g.range_sum(..100u8);
+            assert!(r <= g.total_sum());
+        }
+
+        #[test]
         fn range_with_uncovered_interval_returns_zero() {
             let g = fresh_graph();
             // lo >= hi after bounds processing → returns 0
@@ -556,6 +572,28 @@ mod tests {
         }
 
         #[test]
+        fn contour_range_energy_returns_none_when_start_equals_end() {
+            let g = fresh_graph();
+            let be = BasisEdge(0u8);
+            let result = g.contour_range_energy(be, be);
+            assert!(result.is_none());
+        }
+
+        #[test]
+        fn contour_range_energy_returns_none_when_start_not_in_plateaus() {
+            let g = fresh_graph();
+            let result = g.contour_range_energy(BasisEdge(1u8), BasisEdge(u8::domain_max(8)));
+            assert!(result.is_none());
+        }
+
+        #[test]
+        fn contour_range_energy_returns_none_when_end_not_in_plateaus_and_not_domain_end() {
+            let g = fresh_graph();
+            let result = g.contour_range_energy(BasisEdge(0u8), BasisEdge(100u8));
+            assert!(result.is_none());
+        }
+
+        #[test]
         fn contour_range_after_observations() {
             let mut g = fresh_graph();
             g.observe(64u8, 2u32); // no split (own=2, not > threshold=2)
@@ -621,6 +659,57 @@ mod tests {
             let cr = result.unwrap();
             // Right child [127,255) is fully covered → 1 element
             assert_eq!(cr.basis.len(), 1);
+        }
+
+        #[test]
+        fn contour_range_energy_for_valid_partial_interval_returns_some() {
+            let mut g = fresh_graph();
+            g.observe(64u8, 3u32); // creates BasisEdge(127)
+
+            let result = g.contour_range_energy(BasisEdge(0u8), BasisEdge(127u8));
+            assert!(result.is_some());
+        }
+
+        #[test]
+        fn decompose_basis_out_of_range_returns_no_elements() {
+            let g = fresh_graph();
+            let mut basis = Vec::new();
+            // Root interval is [0, 255), so [255, 255) has no overlap.
+            g.decompose_basis(g.gtree.root, 255u8, 255u8, &mut basis);
+            assert!(basis.is_empty());
+        }
+
+        #[test]
+        fn decompose_basis_semi_internal_cross_midpoint_emits_single_thatch_tile() {
+            let mut g = fresh_graph();
+            // Create two children under root.
+            g.observe(64u8, 3u32);
+
+            let root = g.gtree.root;
+            let evict_child = g
+                .gtree
+                .nodes
+                .get(root.index())
+                .left()
+                .expect("root must have left child after split");
+            let evict_entry = g
+                .gtree
+                .nodes
+                .get(evict_child.index())
+                .entry()
+                .expect("split child must have entry");
+
+            // Evict one child so the root becomes semi-internal.
+            g.evict_tip(evict_entry);
+
+            let mut basis = Vec::new();
+            // Query spans both halves but is not full coverage -> hits the
+            // asymmetric semi-internal fast-path in decompose_basis.
+            g.decompose_basis(root, 1u8, 254u8, &mut basis);
+            assert_eq!(basis.len(), 1);
+            assert_eq!(basis[0].gnode_id, root);
+            assert_eq!(basis[0].start, 1u8);
+            assert_eq!(basis[0].end, 254u8);
         }
     }
 }
