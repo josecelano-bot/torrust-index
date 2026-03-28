@@ -29,11 +29,11 @@ Two structural weaknesses remain:
 
 ## Acceptance criteria
 
-- [ ] `GNode` fields are `pub(crate)` at most; all mutation goes through methods.
-- [ ] `VNode` fields are `pub(crate)` at most; all mutation goes through methods.
-- [ ] `Children` is a proper pair/triple enum — no runtime `len` field.
-- [ ] All existing tests still pass (`cargo test`).
-- [ ] No new `pub(crate)` field introductions in algorithm modules.
+- [x] `GNode` fields are `pub(crate)` at most; all mutation goes through methods.
+- [x] `VNode` fields are `pub(crate)` at most; all mutation goes through methods.
+- [x] `Children` is a proper pair/triple enum — no runtime `len` field.
+- [x] All existing tests still pass (`cargo test`).
+- [x] No new `pub(crate)` field introductions in algorithm modules.
 
 ---
 
@@ -41,7 +41,13 @@ Two structural weaknesses remain:
 
 ### P1.1 — Audit current field visibility in `GNode` and `VNode`
 
-**Status:** `[ ]` not started
+**Status:** `[x]` done
+
+**Findings (2026-03-28):**
+- All `GNode` fields were `pub(super)` (visible within `nodes/` only); no code outside `nodes/gnode.rs` accessed them directly — all reads went through accessor methods and all writes through mutator methods.
+- `GNode.parent` is set only at construction; no runtime set_parent is needed.
+- All `VNode` fields were `pub(super)`; algorithm modules mutate `VKind` sub-fields through `kind_mut()` (returns `&mut VKind<V>`) — not through raw field access.
+- `Children` was already a typed enum (`Pair`/`Triple`) with no `len` field — P1.4 was already complete.
 
 **What to do:**
 
@@ -57,7 +63,7 @@ Two structural weaknesses remain:
 
 ### P1.2 — Make `GNode` fields private, add/update typed mutators
 
-**Status:** `[ ]` not started
+**Status:** `[x]` done
 
 **Depends on:** P1.1
 
@@ -88,7 +94,7 @@ Each method must enforce any invariant it is responsible for (e.g.
 
 ### P1.3 — Make `VNode` fields private, add/update typed mutators
 
-**Status:** `[ ]` not started
+**Status:** `[x]` done
 
 **Depends on:** P1.1
 
@@ -111,7 +117,7 @@ Same approach as P1.2 but for `VNode`:
 
 ### P1.4 — Redesign `Children` as a typed pair/triple enum
 
-**Status:** `[ ]` not started
+**Status:** `[x]` done (already implemented before this phase)
 
 **Depends on:** P1.3
 

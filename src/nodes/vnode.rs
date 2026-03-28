@@ -2,11 +2,11 @@ use crate::handle::{GNodeId, VNodeId};
 
 #[derive(Debug, Clone, Copy)]
 pub struct VNode<V> {
-    pub(super) intensity: V,
+    intensity: V,
 
-    pub(super) parent: Option<VNodeId>,
+    parent: Option<VNodeId>,
 
-    pub(super) kind: VKind<V>,
+    kind: VKind<V>,
 }
 
 impl<V: Copy> VNode<V> {

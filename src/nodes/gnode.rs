@@ -10,21 +10,21 @@ pub struct GNodeChildren {
 
 #[derive(Debug, Clone)]
 pub struct GNode<C, V> {
-    pub(super) lo: C,
+    lo: C,
 
-    pub(super) hi: C,
+    hi: C,
 
-    pub(super) sum: V,
+    sum: V,
 
-    pub(super) own: V,
+    own: V,
 
-    pub(super) left: Option<GNodeId>,
+    left: Option<GNodeId>,
 
-    pub(super) right: Option<GNodeId>,
+    right: Option<GNodeId>,
 
-    pub(super) parent: Option<GNodeId>,
+    parent: Option<GNodeId>,
 
-    pub(super) entry: Option<VNodeId>,
+    entry: Option<VNodeId>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
