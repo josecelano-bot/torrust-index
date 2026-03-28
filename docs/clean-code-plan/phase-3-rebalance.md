@@ -52,7 +52,7 @@ first needing annotations.
 
 ### P3.1 — Extract `escalate_after_promote` phase helpers
 
-**Status:** `[ ]` not started
+**Status:** `[x]` done
 
 **What to do:**
 
@@ -76,7 +76,7 @@ fallback.
 
 ### P3.2 — Annotate and clarify `resolve` dispatch paths
 
-**Status:** `[ ]` not started
+**Status:** `[x]` done
 
 **Depends on:** P3.1
 
@@ -101,7 +101,7 @@ fallback.
 
 ### P3.3 — Simplify `rebalance` loop structure
 
-**Status:** `[ ]` not started
+**Status:** `[x]` done
 
 **Depends on:** P3.2
 
