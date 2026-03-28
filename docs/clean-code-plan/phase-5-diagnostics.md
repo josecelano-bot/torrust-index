@@ -73,7 +73,7 @@ The high cognitive scores come from two patterns:
 
 ### P5.1 — Extract `dump_plateaus` into a traversal + renderer split
 
-**Status:** `[ ]` not started
+**Status:** `[x]` done
 
 **File:** `diagnostics/dump.rs`
 
@@ -94,7 +94,7 @@ and formats each entry.  Split it:
 
 ### P5.2 — Extract `diagnose_missed_violation` evidence builder
 
-**Status:** `[ ]` not started
+**Status:** `[x]` done
 
 **Depends on:** P5.1
 
@@ -157,7 +157,7 @@ check function body > 25 SLOC.
 
 ### P5.4 — Reduce nesting in `contour_steps`
 
-**Status:** `[ ]` not started
+**Status:** `[x]` done
 
 **Depends on:** P5.3
 

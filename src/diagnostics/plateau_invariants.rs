@@ -168,6 +168,11 @@ fn tile_of<C: Coordinate, V: Accumulator>(g: &GNode<C, V>) -> (C, C) {
 }
 
 #[cfg(feature = "dynamic-contour-tracking")]
+fn is_contour_step_node(state: GState) -> bool {
+    matches!(state, GState::Terminal | GState::SemiInternal)
+}
+
+#[cfg(feature = "dynamic-contour-tracking")]
 fn contour_steps<C: Coordinate, V: Accumulator + Inspectable, const N: u32>(
     graph: &GvGraph<C, V, N>,
 ) -> Vec<(C, u32)> {
@@ -175,30 +180,31 @@ fn contour_steps<C: Coordinate, V: Accumulator + Inspectable, const N: u32>(
     let mut stack = vec![graph.gtree.root];
     while let Some(gid) = stack.pop() {
         let g = graph.gtree.nodes.get(gid.index());
-        match g.state() {
-            GState::Terminal => {
-                let d = GTree::<C, V, N>::depth_of_interval(g.lo(), g.hi());
-                cells.push((g.lo(), d));
-            }
-            GState::SemiInternal => {
-                let (ulo, _uhi) = g.uncovered_range().unwrap();
-                let d = GTree::<C, V, N>::depth_of_interval(g.lo(), g.hi());
-                cells.push((ulo, d));
+        let d = GTree::<C, V, N>::depth_of_interval(g.lo(), g.hi());
 
+        if is_contour_step_node(g.state()) {
+            // Terminal: the tile's lo is a contour step.
+            // SemiInternal: the uncovered-range lo is the step; also recurse.
+            let step_lo = if g.state() == GState::Terminal {
+                g.lo()
+            } else {
+                let (ulo, _) = g.uncovered_range().unwrap();
                 if let Some(l) = g.left() {
                     stack.push(l);
                 }
                 if let Some(r) = g.right() {
                     stack.push(r);
                 }
+                ulo
+            };
+            cells.push((step_lo, d));
+        } else {
+            // Internal: just recurse.
+            if let Some(l) = g.left() {
+                stack.push(l);
             }
-            GState::Internal => {
-                if let Some(l) = g.left() {
-                    stack.push(l);
-                }
-                if let Some(r) = g.right() {
-                    stack.push(r);
-                }
+            if let Some(r) = g.right() {
+                stack.push(r);
             }
         }
     }

@@ -103,6 +103,77 @@ pub fn dump_gtree<C: Coordinate, V: Accumulator + Inspectable, const N: u32>(
     out
 }
 
+/// Renders a single basis-element row (for one `gid`) into `out`.
+#[cfg(feature = "dynamic-contour-tracking")]
+fn render_plateau_element<C: Coordinate, V: Accumulator + Inspectable, const N: u32>(
+    out: &mut String,
+    graph: &GvGraph<C, V, N>,
+    gid: GNodeId,
+) {
+    use std::fmt::Write;
+    if !graph.gtree.nodes.is_occupied(gid.index()) {
+        writeln!(
+            out,
+            "    !! DANGLING GNodeId({}) — slot deallocated !!",
+            gid.index()
+        )
+        .unwrap();
+        return;
+    }
+    let g = graph.gtree.nodes.get(gid.index());
+    let state = state_label(g.state());
+    let g_depth = GTree::<C, V, N>::depth_of_interval(g.lo(), g.hi());
+    let contour_depth = match g.state() {
+        GState::Terminal | GState::SemiInternal => g_depth,
+        GState::Internal => g_depth + 1,
+    };
+    let parent_str = g
+        .parent()
+        .map_or_else(|| "None".to_string(), |p| format!("G({})", p.index()));
+    let left_str = g
+        .left()
+        .map_or_else(|| "_".to_string(), |l| format!("G({})", l.index()));
+    let right_str = g
+        .right()
+        .map_or_else(|| "_".to_string(), |r| format!("G({})", r.index()));
+    let lineage = semi_internal_lineage(graph, gid);
+    writeln!(out,
+        "    G({:>3}) {state} [{:>6.1}, {:>6.1})  d={g_depth} contour_d={contour_depth}  par={parent_str} L={left_str} R={right_str}  sum={:.1}{lineage}",
+        gid.index(), g.lo().to_f64(), g.hi().to_f64(), g.sum().to_f64_approx(),
+    )
+    .unwrap();
+}
+
+/// Renders the header and all basis elements of one plateau entry into `out`.
+#[cfg(feature = "dynamic-contour-tracking")]
+fn render_plateau_entry<C: Coordinate, V: Accumulator + Inspectable, const N: u32>(
+    out: &mut String,
+    graph: &GvGraph<C, V, N>,
+    key: &crate::spatial::plateau::BasisEdge<C>,
+    plateau: &crate::spatial::plateau::Plateau<C, V>,
+    tile_end: &str,
+) {
+    use std::fmt::Write;
+    writeln!(
+        out,
+        "  Plateau {key:?}  depth={}  tile=[{:.1}, {tile_end})  span=[{:.1},{:.1})  sum={:.1}",
+        plateau.depth,
+        key.0.to_f64(),
+        plateau.start.to_f64(),
+        plateau.end.to_f64(),
+        plateau.sum.to_f64_approx(),
+    )
+    .unwrap();
+
+    let elements = graph.plateau_basis().basis_elements(key);
+    let raw_ids: Vec<usize> = elements.iter().map(|g| g.index()).collect();
+    writeln!(out, "    basis_elements (raw): {raw_ids:?}").unwrap();
+
+    for &gid in elements {
+        render_plateau_element::<C, V, N>(out, graph, gid);
+    }
+}
+
 #[cfg(feature = "dynamic-contour-tracking")]
 #[allow(dead_code)]
 pub fn dump_plateaus<C: Coordinate, V: Accumulator + Inspectable, const N: u32>(
@@ -132,55 +203,7 @@ pub fn dump_plateaus<C: Coordinate, V: Accumulator + Inspectable, const N: u32>(
             .find(|&(k, _)| *k != *key)
             .map(|(k, _)| k.0.to_f64());
         let tile_end = next_key.map_or_else(|| "∞".to_string(), |v| format!("{v:.1}"));
-
-        writeln!(
-            out,
-            "  Plateau {key:?}  depth={}  tile=[{:.1}, {tile_end})  span=[{:.1},{:.1})  sum={:.1}",
-            plateau.depth,
-            key.0.to_f64(),
-            plateau.start.to_f64(),
-            plateau.end.to_f64(),
-            plateau.sum.to_f64_approx(),
-        )
-        .unwrap();
-
-        let elements = graph.plateau_basis().basis_elements(key);
-        let raw_ids: Vec<usize> = elements.iter().map(|g| g.index()).collect();
-        writeln!(out, "    basis_elements (raw): {raw_ids:?}").unwrap();
-
-        for &gid in elements {
-            if !graph.gtree.nodes.is_occupied(gid.index()) {
-                writeln!(
-                    out,
-                    "    !! DANGLING GNodeId({}) — slot deallocated !!",
-                    gid.index()
-                )
-                .unwrap();
-                continue;
-            }
-            let g = graph.gtree.nodes.get(gid.index());
-            let state = state_label(g.state());
-            let g_depth = GTree::<C, V, N>::depth_of_interval(g.lo(), g.hi());
-            let contour_depth = match g.state() {
-                GState::Terminal | GState::SemiInternal => g_depth,
-                GState::Internal => g_depth + 1,
-            };
-            let parent_str = g
-                .parent()
-                .map_or_else(|| "None".to_string(), |p| format!("G({})", p.index()));
-            let left_str = g
-                .left()
-                .map_or_else(|| "_".to_string(), |l| format!("G({})", l.index()));
-            let right_str = g
-                .right()
-                .map_or_else(|| "_".to_string(), |r| format!("G({})", r.index()));
-            let lineage = semi_internal_lineage(graph, gid);
-
-            writeln!(out,
-                "    G({:>3}) {state} [{:>6.1}, {:>6.1})  d={g_depth} contour_d={contour_depth}  par={parent_str} L={left_str} R={right_str}  sum={:.1}{lineage}",
-                gid.index(), g.lo().to_f64(), g.hi().to_f64(), g.sum().to_f64_approx(),
-            ).unwrap();
-        }
+        render_plateau_entry::<C, V, N>(&mut out, graph, key, plateau, &tile_end);
     }
 
     writeln!(
