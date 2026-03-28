@@ -10,6 +10,18 @@ use crate::tree::vtree::VTree;
 
 use super::config::Config;
 
+// -------------------------------------------------------------------------------------------
+// GvGraph methods are implemented as a combined owner in this file, but the core algorithm
+// behaviors are defined in submodules under `src/graph/algorithm/`:
+// - budget.rs
+// - evict.rs
+// - extract.rs
+// - observe.rs
+// - split.rs
+//
+// This keeps formulae localized while preserving a single conceptual root type.
+// -------------------------------------------------------------------------------------------
+
 /// Feature-conditional default tracker type.
 ///
 /// When `dynamic-contour-tracking` is enabled this resolves to
