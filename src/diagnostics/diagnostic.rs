@@ -223,6 +223,25 @@ mod tests {
     // ── audit_violations ──────────────────────────────────────────────
     mod audit_violations_fn {
         use super::*;
+        use crate::nodes::vnode::VKind;
+
+        fn find_depth_two_entry(g: &G) -> Option<crate::handle::VNodeId> {
+            let v_root = g.v_root()?;
+            let mut stack: Vec<(crate::handle::VNodeId, usize)> = vec![(v_root, 0)];
+            while let Some((id, depth)) = stack.pop() {
+                let n = g.vnodes().get(id.index());
+                match &n.kind() {
+                    VKind::Entry { .. } if depth >= 2 => return Some(id),
+                    VKind::Structural { children, .. } => {
+                        for (cid, _) in children.iter() {
+                            stack.push((cid, depth + 1));
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            None
+        }
 
         #[test]
         fn returns_empty_for_fresh_graph_with_no_violations_queued() {
@@ -248,6 +267,48 @@ mod tests {
             }
             let missed = audit_violations(g.vnodes(), &[], "test");
             assert!(missed.is_empty());
+        }
+
+        #[test]
+        fn returns_missed_when_violated_node_is_not_in_queue() {
+            let mut g: G = GvGraph::new(make_config());
+            for coord in [32u8, 96, 160, 224] {
+                g.observe(coord, 3u32);
+            }
+
+            let Some(entry_id) = find_depth_two_entry(&g) else {
+                return;
+            };
+
+            // Force a violation by making this node heavier than any uncle.
+            g.vtree.nodes.get_mut(entry_id.index()).set_intensity(10_000u32);
+
+            let missed = audit_violations(g.vnodes(), &[], "test");
+            assert!(
+                missed.contains(&entry_id),
+                "expected forced violated node to be reported as missed; missed={missed:?}, target={entry_id:?}"
+            );
+        }
+
+        #[test]
+        fn returns_empty_when_only_violated_node_is_queued() {
+            let mut g: G = GvGraph::new(make_config());
+            for coord in [32u8, 96, 160, 224] {
+                g.observe(coord, 3u32);
+            }
+
+            let Some(entry_id) = find_depth_two_entry(&g) else {
+                return;
+            };
+
+            g.vtree.nodes.get_mut(entry_id.index()).set_intensity(10_000u32);
+
+            let queued = [entry_id];
+            let missed = audit_violations(g.vnodes(), &queued, "test");
+            assert!(
+                missed.is_empty(),
+                "expected empty missed set when the only violated node is queued; missed={missed:?}"
+            );
         }
     }
 

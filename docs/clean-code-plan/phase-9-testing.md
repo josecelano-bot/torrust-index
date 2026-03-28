@@ -14,7 +14,7 @@ Phases 1–8 each have at least one direct unit test.
 - `src/diagnostics/invariants.rs` (76.86 %)
 - `src/graph/algorithm/evict.rs` (83.95 %)
 - `src/graph/algorithm/rebalance.rs` (86.26 %)
-- `src/diagnostics/diagnostic.rs` (84.32 %)
+- `src/diagnostics/diagnostic.rs` (87.27 %)
 - `src/graph/algorithm/query.rs` (83.81 %)
 - `src/graph/algorithm/budget.rs` (91.83 %)
 - `src/spatial/contour_range.rs` (94.04 %)
@@ -27,7 +27,7 @@ Phases 1–8 each have at least one direct unit test.
 | `diagnostics/invariants.rs`                 |     76.86% |   90.91% |
 | `graph/algorithm/evict.rs`                  |     83.95% |   91.67% |
 | `graph/algorithm/rebalance.rs`              |     86.26% |   94.44% |
-| `diagnostics/diagnostic.rs`                 |     84.32% |   94.12% |
+| `diagnostics/diagnostic.rs`                 |     87.27% |   94.12% |
 | `graph/algorithm/query.rs`                  |     83.81% |   95.12% |
 | `graph/algorithm/budget.rs`                 |     91.83% |   92.86% |
 | `spatial/contour_range.rs`                  |     94.04% |  100.00% |
