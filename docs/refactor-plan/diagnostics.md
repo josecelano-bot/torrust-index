@@ -6,9 +6,9 @@
 
 ## Progress
 - [x] initial plan
-- [ ] step 11.1
-- [ ] step 11.2
-- [ ] step 11.3
+- [x] step 11.1
+- [x] step 11.2
+- [x] step 11.3
 
 ## Test command
 - `cargo test --lib`

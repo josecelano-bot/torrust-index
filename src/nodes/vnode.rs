@@ -90,6 +90,58 @@ impl<V: Copy> VNode<V> {
     pub const fn set_parent_opt(&mut self, p: Option<VNodeId>) {
         self.parent = p;
     }
+
+    #[inline]
+    #[must_use]
+    #[allow(dead_code)]
+    pub const fn is_entry(&self) -> bool {
+        matches!(self.kind, VKind::Entry { .. })
+    }
+
+    #[inline]
+    #[must_use]
+    #[allow(dead_code)]
+    pub const fn is_structural(&self) -> bool {
+        matches!(self.kind, VKind::Structural { .. })
+    }
+
+    #[must_use]
+    #[allow(dead_code)]
+    pub const fn children(&self) -> Option<&Children<V>> {
+        match &self.kind {
+            VKind::Structural { children, .. } => Some(children),
+            VKind::Entry { .. } => None,
+        }
+    }
+
+    #[must_use]
+    #[allow(dead_code)]
+    pub fn child_ids(&self) -> Option<&[VNodeId]> {
+        self.children().map(Children::ids)
+    }
+
+    /// Validates local structural invariants for this V-node.
+    #[must_use]
+    #[allow(dead_code)]
+    pub fn validate(&self) -> Result<(), &'static str>
+    where
+        V: crate::traits::Accumulator + PartialEq,
+    {
+        match &self.kind {
+            VKind::Entry { .. } => Ok(()),
+            VKind::Structural { children, .. } => {
+                let child_sum = children
+                    .iter()
+                    .fold(V::zero(), |acc, (_, intensity)| V::add(acc, intensity));
+                if child_sum != self.intensity {
+                    return Err(
+                        "VNode invariant: structural intensity must equal sum of child intensities",
+                    );
+                }
+                Ok(())
+            }
+        }
+    }
 }
 
 const _: () = assert!(std::mem::size_of::<VNode<u64>>() == 64);
@@ -187,6 +239,16 @@ impl<V> Children<V> {
         match self {
             Self::Pair { intensities, .. } => intensities[index] = new,
             Self::Triple { intensities, .. } => intensities[index] = new,
+        }
+    }
+
+    /// Returns the child id slice in slot order.
+    #[must_use]
+    #[allow(dead_code)]
+    pub fn ids(&self) -> &[VNodeId] {
+        match self {
+            Self::Pair { ids, .. } => ids,
+            Self::Triple { ids, .. } => ids,
         }
     }
 }
@@ -313,8 +375,8 @@ impl<V: Default> Default for VNode<V> {
 
 #[cfg(test)]
 mod tests {
-    use super::Children;
-    use crate::handle::VNodeId;
+    use super::{Children, VNode};
+    use crate::handle::{GNodeId, VNodeId};
     use rstest::rstest;
 
     fn id(i: usize) -> VNodeId {
@@ -512,6 +574,58 @@ mod tests {
             let cloned = original.clone();
             assert_eq!(original.intensity, 10);
             assert_ne!(cloned.intensity, 99);
+        }
+    }
+
+    // ── VNode helper methods ────────────────────────────────────────────
+    mod vnode_helpers {
+        use super::*;
+
+        #[test]
+        fn entry_node_reports_entry_kind() {
+            let n = VNode::new_entry(10u32, None, GNodeId::from_index(0), true, true);
+            assert!(n.is_entry());
+            assert!(!n.is_structural());
+            assert!(n.children().is_none());
+            assert!(n.child_ids().is_none());
+        }
+
+        #[test]
+        fn structural_node_reports_children() {
+            let children = Children::new_2((id(0), 4u32), (id(1), 6u32));
+            let n = VNode::new_structural(10u32, None, children, true);
+            assert!(!n.is_entry());
+            assert!(n.is_structural());
+            assert_eq!(n.children().map(|c| c.len()), Some(2));
+            assert_eq!(n.child_ids().expect("children present"), &[id(0), id(1)]);
+        }
+    }
+
+    // ── VNode::validate ────────────────────────────────────────────────
+    mod vnode_validate {
+        use super::*;
+
+        #[test]
+        fn entry_node_is_valid() {
+            let n = VNode::new_entry(5u32, None, GNodeId::from_index(0), true, true);
+            assert!(n.validate().is_ok());
+        }
+
+        #[test]
+        fn structural_node_is_valid_when_intensity_matches_children_sum() {
+            let n = VNode::new_structural(
+                9u32,
+                None,
+                Children::new_3((id(0), 1u32), (id(1), 3u32), (id(2), 5u32)),
+                true,
+            );
+            assert!(n.validate().is_ok());
+        }
+
+        #[test]
+        fn structural_node_is_invalid_when_intensity_mismatches_children_sum() {
+            let n = VNode::new_structural(10u32, None, Children::new_2((id(0), 4u32), (id(1), 3u32)), true);
+            assert!(n.validate().is_err());
         }
     }
 }

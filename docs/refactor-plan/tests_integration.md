@@ -6,9 +6,9 @@
 
 ## Progress
 - [x] initial plan
-- [ ] step 12.1
-- [ ] step 12.2
-- [ ] step 12.3
+- [x] step 12.1
+- [x] step 12.2
+- [x] step 12.3
 
 ## Test command
 - `cargo test --test integration`

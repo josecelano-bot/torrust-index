@@ -168,6 +168,27 @@ impl<C, V> GNode<C, V> {
 
     #[inline]
     #[must_use]
+    pub const fn is_leaf(&self) -> bool {
+        self.is_terminal()
+    }
+
+    #[inline]
+    #[must_use]
+    pub const fn has_children(&self) -> bool {
+        self.left.is_some() || self.right.is_some()
+    }
+
+    #[inline]
+    #[must_use]
+    pub const fn child_ids(&self) -> GNodeChildren {
+        GNodeChildren {
+            left: self.left,
+            right: self.right,
+        }
+    }
+
+    #[inline]
+    #[must_use]
     #[allow(dead_code)]
     pub const fn has_dependents(&self) -> bool {
         self.left.is_some() || self.right.is_some()
@@ -177,6 +198,26 @@ impl<C, V> GNode<C, V> {
     #[must_use]
     pub const fn is_semi_internal(&self) -> bool {
         matches!(self.state(), GState::SemiInternal)
+    }
+
+    /// Validates local structural invariants for this node.
+    #[must_use]
+    pub fn validate(&self) -> Result<(), &'static str> {
+        if let (Some(left), Some(right)) = (self.left, self.right) {
+            if left == right {
+                return Err("GNode invariant: left and right child cannot be the same node");
+            }
+        }
+
+        match self.state() {
+            GState::Terminal if self.has_children() => {
+                Err("GNode invariant: terminal node cannot have children")
+            }
+            GState::Internal if !self.has_children() => {
+                Err("GNode invariant: internal node must have children")
+            }
+            _ => Ok(()),
+        }
     }
 
     #[must_use]
@@ -373,6 +414,63 @@ mod tests {
         fn returns_true_when_right_child_exists() {
             let r = GNodeId::from_index(1);
             assert!(make_node(None, Some(r)).has_dependents());
+        }
+    }
+
+    // ── GNode helpers ───────────────────────────────────────────────────
+    mod helpers {
+        use super::*;
+
+        #[test]
+        fn is_leaf_matches_terminal_state() {
+            assert!(make_node(None, None).is_leaf());
+
+            let l = GNodeId::from_index(1);
+            assert!(!make_node(Some(l), None).is_leaf());
+        }
+
+        #[test]
+        fn has_children_is_true_when_any_child_exists() {
+            assert!(!make_node(None, None).has_children());
+
+            let l = GNodeId::from_index(1);
+            assert!(make_node(Some(l), None).has_children());
+
+            let r = GNodeId::from_index(2);
+            assert!(make_node(None, Some(r)).has_children());
+        }
+
+        #[test]
+        fn child_ids_returns_both_child_slots() {
+            let l = GNodeId::from_index(1);
+            let r = GNodeId::from_index(2);
+            let children = make_node(Some(l), Some(r)).child_ids();
+            assert_eq!(children.left, Some(l));
+            assert_eq!(children.right, Some(r));
+        }
+    }
+
+    // ── GNode::validate ─────────────────────────────────────────────────
+    mod validate {
+        use super::*;
+
+        #[test]
+        fn accepts_terminal_node() {
+            assert!(make_node(None, None).validate().is_ok());
+        }
+
+        #[test]
+        fn accepts_internal_node_with_distinct_children() {
+            let l = GNodeId::from_index(1);
+            let r = GNodeId::from_index(2);
+            assert!(make_node(Some(l), Some(r)).validate().is_ok());
+        }
+
+        #[test]
+        fn rejects_internal_node_with_same_child_on_both_sides() {
+            let c = GNodeId::from_index(1);
+            let err = make_node(Some(c), Some(c)).validate();
+            assert!(err.is_err());
         }
     }
 }

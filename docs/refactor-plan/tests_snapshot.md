@@ -6,9 +6,9 @@
 
 ## Progress
 - [x] initial plan
-- [ ] step 12.4
-- [ ] step 12.5
-- [ ] step 12.6
+- [x] step 12.4
+- [x] step 12.5
+- [x] step 12.6
 
 ## Test command
 - `cargo test --test snapshot_tests`
