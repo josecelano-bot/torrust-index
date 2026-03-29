@@ -242,17 +242,17 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
                 evicted_parent_child_count: removal_ctx.child_count,
                 collapse_sibling: removal_ctx.collapse_sibling,
             };
-            let all_violated = rebalance::find_violated_nodes(&self.vtree.nodes);
-            let queued: std::collections::HashSet<usize> =
-                self.vtree.violations.iter().map(|v| v.index()).collect();
-            for v in all_violated {
-                if !queued.contains(&v.index()) {
-                    crate::diagnostics::diagnostic::diagnose_missed_violation_in_tree(
-                        &self.vtree,
-                        v,
-                        &ctx,
-                    );
-                }
+            let missed = crate::diagnostics::diagnostic::audit_violations(
+                &self.vtree.nodes,
+                &self.vtree.violations,
+                "POST-EVICT",
+            );
+            for v in missed {
+                crate::diagnostics::diagnostic::diagnose_missed_violation_in_tree(
+                    &self.vtree,
+                    v,
+                    &ctx,
+                );
             }
         }
 
