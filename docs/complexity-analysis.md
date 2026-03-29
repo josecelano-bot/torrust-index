@@ -210,6 +210,37 @@ find metrics-output -name "*.json" | xargs -I{} sh -c '
 - The previous top-CC hotspot (`decompose_basis`, CC=20) is no longer the max.
 - Remaining pressure is now mostly cognitive (not McCabe), centered in plateau dynamic-tracker helpers.
 
+## Post-Follow-up Refresh (2026-03-29)
+
+> Recomputed after extracting helper phases from:
+>
+> - `evict_ancestor_key`
+> - `collect_normalize_elements`
+> - `on_catalytic_split_impl`
+>
+> Snapshot path: `metrics-output/recheck-2026-03-29-stabilization-followups/`
+
+### Delta vs stabilization snapshot
+
+| Metric | Stabilization | Post-follow-up | Delta |
+| --- | ---: | ---: | ---: |
+| Analyzed files under `src` | 102 | 102 | 0 |
+| Total functions/closures | 1133 | 1145 | +12 |
+| Total CC (sum) | 2383 | 2394 | +11 |
+| Total Cognitive (sum) | 1460 | 1400 | -60 |
+| Total SLOC | 18131 | 18229 | +98 |
+| Functions with CC > 10 | 27 | 24 | -3 |
+| Functions with CC > 20 | 0 | 0 | 0 |
+| Max function CC | 17 | 17 | 0 |
+
+### Extracted hotspot function deltas
+
+| Function | Before | After |
+| --- | --- | --- |
+| `evict_ancestor_key` | CC=16, Cog=49 | CC=3, Cog=3 |
+| `collect_normalize_elements` | CC=12, Cog=32 | CC=2, Cog=1 |
+| `on_catalytic_split_impl` | CC=11, Cog=31 | CC=1, Cog=0 |
+
 ### Suggested Next Refactor Targets
 
 1. `evict_ancestor_key` (Cog=49): split nested control flow into phase helpers.

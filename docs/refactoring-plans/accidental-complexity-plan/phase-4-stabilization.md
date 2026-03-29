@@ -60,7 +60,7 @@ Prove improvements with refreshed metrics and document what complexity remains e
 
 - Previous top CC function: `decompose_basis` (CC=20, Cog=40)
 - Current top CC functions: `build_plateaus` (CC=17, Cog=39), `observe` (CC=17, Cog=23)
-- Snapshot cognitive outlier: `evict_ancestor_key` (CC=16, Cog=49); helper extraction pass completed after snapshot, re-measure pending.
+- Snapshot cognitive outlier: `evict_ancestor_key` (CC=16, Cog=49); post-follow-up re-measure now captured below.
 
 ### Benchmark Refresh
 
@@ -96,6 +96,30 @@ Reasoning: complexity is driven by branching/nesting and mixed responsibilities 
 1. [x] Extract `evict_ancestor_key` into branch-specific phase helpers (selection, displacement, merge, reinsert).
 2. [x] Split `collect_normalize_elements` into traversal/selection and merge-policy components.
 3. [x] Isolate `on_catalytic_split_impl` post-split normalization from mirror/debug responsibilities.
+
+## Post-Follow-up Re-measure (2026-03-29)
+
+- Snapshot path: `metrics-output/recheck-2026-03-29-stabilization-followups/`
+- Tool: `rust-code-analysis-cli 0.0.25`
+
+| Metric | Stabilization Snapshot | Post-follow-up | Delta |
+| --- | ---: | ---: | ---: |
+| Analyzed files | 102 | 102 | 0 |
+| Total functions/closures | 1133 | 1145 | +12 |
+| Total CC (sum) | 2383 | 2394 | +11 |
+| Total Cognitive (sum) | 1460 | 1400 | -60 |
+| Total SLOC | 18131 | 18229 | +98 |
+| Functions with CC > 10 | 27 | 24 | -3 |
+| Functions with CC > 20 | 0 | 0 | 0 |
+| Max function CC | 17 | 17 | 0 |
+
+### Follow-up Hotspot Deltas
+
+| Function | Previous Snapshot | Post-follow-up |
+| --- | --- | --- |
+| `evict_ancestor_key` | CC=16, Cog=49 | CC=3, Cog=3 |
+| `collect_normalize_elements` | CC=12, Cog=32 | CC=2, Cog=1 |
+| `on_catalytic_split_impl` | CC=11, Cog=31 | CC=1, Cog=0 |
 
 ## Progress Log
 
@@ -161,7 +185,7 @@ Reasoning: complexity is driven by branching/nesting and mixed responsibilities 
 - Notes:
   - Split `evict_ancestor_key` into helper phases (`covering_ancestor_key`, `displace_semi_internal_survivor`, `displace_path_siblings`) while preserving behavior and ordering.
 - Follow-up:
-  - Recompute complexity snapshot to capture post-extraction cognitive delta.
+  - Completed: post-follow-up complexity snapshot captured.
 
 - Step: P4 follow-up backlog item 2 (`collect_normalize_elements` extraction)
 - Status: [x]
@@ -178,7 +202,7 @@ Reasoning: complexity is driven by branching/nesting and mixed responsibilities 
   - Split normalize-element gathering into focused traversal helpers (`basis_ids_snapshot`, `collect_from_basis_root`, `process_normalize_node`, `push_normalize_element`).
   - Preserved normalize behavior while reducing mixed traversal/collection branching inside the public helper.
 - Follow-up:
-  - Recompute complexity snapshot to capture post-extraction cognitive delta.
+  - Completed: post-follow-up complexity snapshot captured.
 
 - Step: P4 follow-up backlog item 3 (`on_catalytic_split_impl` extraction)
 - Status: [x]
@@ -195,4 +219,4 @@ Reasoning: complexity is driven by branching/nesting and mixed responsibilities 
   - Split catalytic split flow into focused helpers for depth capture, covering-key discovery, sibling displacement collection, and reinsertion.
   - Kept `on_catalytic_split_impl` as an orchestrator while preserving behavior.
 - Follow-up:
-  - Recompute complexity snapshot to capture post-extraction cognitive delta.
+  - Completed: post-follow-up complexity snapshot captured.

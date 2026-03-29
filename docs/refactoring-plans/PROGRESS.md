@@ -58,6 +58,7 @@
 - Completed follow-up extraction for `collect_normalize_elements` by splitting traversal/collection phases into focused helpers
 - Synchronized stale checklist states across accidental-complexity phase trackers (P1/P2/P3/index)
 - Completed follow-up extraction for `on_catalytic_split_impl` by splitting covering/displacement/reinsert phases into focused helpers
+- Recomputed complexity metrics after all three follow-up extractions and recorded hotspot deltas
 
 ### Test Status
 - **Gate A (cargo check):** [PASS - 2026-03-29]
@@ -187,6 +188,7 @@
 | 2026-03-29 | Phase 5 | Follow-up hotspot extraction (`collect_normalize_elements`) | ✅ | current worktree | — | Split normalize traversal/collection flow into focused helper phases in consolidate helper module |
 | 2026-03-29 | Phase 5 | Tracker synchronization (phase docs) | ✅ | current worktree | — | Updated stale checklists/acceptance criteria in accidental-complexity index and Phase 1-3 docs |
 | 2026-03-29 | Phase 5 | Follow-up hotspot extraction (`on_catalytic_split_impl`) | ✅ | current worktree | — | Split catalytic split covering/displacement/reinsert responsibilities into focused helper phases |
+| 2026-03-29 | Phase 5 | Post-follow-up complexity re-measure | ✅ | current worktree | — | Added `metrics-output/recheck-2026-03-29-stabilization-followups/` and documented delta improvements in complexity docs |
 
 ---
 
