@@ -79,6 +79,19 @@ Make ownership boundaries explicit by converting method-shaped free functions in
 
 ### 2026-03-29
 
+- Step: P1.3 wrapper exposure cleanup (partial)
+- Status: [x]
+- Files: `src/tree/vtree.rs`
+- Commit: `ebbee4a`
+- Tests:
+  - [x] Gate A
+  - [x] Gate B
+  - [x] Gate C
+- Notes: Tightened visibility of migrated arena-first helpers (`propagate_v_sums`, `recompute_all_v_intensities`, `sync_intensity_in_parent`) and related internal utilities to keep owner-method paths as the primary API surface.
+- Follow-up: Complete the remaining `Remove wrappers after all call sites are migrated` checklist item after depth/ancestry helper exposure is fully reconciled.
+
+### 2026-03-29
+
 - Step: P1.1 inventory and classification
 - Status: [x]
 - Files: `docs/refactoring-plans/accidental-complexity-plan/phase-1-inventory-2026-03-29.md`

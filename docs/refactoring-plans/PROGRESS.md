@@ -40,6 +40,7 @@
 - Added `VTree::is_ancestor` and migrated eviction diagnostics to an in-tree owner API path
 - Expanded `VTreeMutContext` usage into rebalance resolve contraction/skip-promote helpers to reduce repeated parameter threading
 - Migrated the `resolve` entrypoint to accept `VTreeMutContext` directly and updated rebalance call wiring
+- Tightened `src/tree/vtree.rs` helper visibility to reduce arena-first API exposure after owner-method migrations
 
 ### Test Status
 - **Gate A (cargo check):** [PASS - 2026-03-29]
@@ -148,6 +149,7 @@
 | 2026-03-29 | Phase 1 | VTree ancestry owner-API migration | ✅ | current worktree | — | Eviction diagnostics now route through in-tree owner entrypoint |
 | 2026-03-29 | Phase 2 | Rebalance resolve context expansion | ✅ | current worktree | — | `VTreeMutContext` now threads through contraction and skip-promote helper paths (`a3d2dce`) |
 | 2026-03-29 | Phase 2 | Rebalance resolve context entrypoint migration | ✅ | current worktree | — | `resolve` now takes `&mut VTreeMutContext` directly; rebalance caller updated |
+| 2026-03-29 | Phase 1 | VTree helper visibility cleanup | ✅ | current worktree | — | Reduced exposure of arena-first helpers after owner-method migration (`ebbee4a`) |
 
 ---
 
