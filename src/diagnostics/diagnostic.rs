@@ -11,7 +11,10 @@ use crate::traits::{Accumulator, Inspectable};
 use crate::tree::vtree::VTree;
 
 mod logging;
-use logging::{diagnose_collapse_sibling, log_vtree_ancestry};
+use logging::{
+    diagnose_collapse_sibling, diagnose_collapse_sibling_in_tree, log_vtree_ancestry,
+    log_vtree_ancestry_in_tree,
+};
 mod diagnose;
 
 pub fn audit_violations<V: Accumulator + Inspectable>(
@@ -54,7 +57,7 @@ pub fn diagnose_missed_violation_in_tree<V: Accumulator + Inspectable>(
     violated: VNodeId,
     context: &MissedViolationContext,
 ) {
-    diagnose::diagnose_missed_violation_impl(&vtree.nodes, violated, context);
+    diagnose::diagnose_missed_violation_in_tree_impl(vtree, violated, context);
 }
 
 #[cfg(test)]

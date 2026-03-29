@@ -101,6 +101,10 @@ impl<V: Accumulator> VTree<V> {
         v_depth(&self.nodes, id)
     }
 
+    pub(crate) fn is_ancestor(&self, ancestor: VNodeId, descendant: VNodeId) -> bool {
+        is_ancestor(&self.nodes, ancestor, descendant)
+    }
+
     // ── Evictable flags ───────────────────────────────────────────────────
 
     pub(crate) fn propagate_evictable(&mut self, id: VNodeId) {
