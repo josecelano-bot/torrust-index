@@ -228,7 +228,7 @@ pub fn vtree_remove_leaf<C: Coordinate, V: Accumulator>(
 /// Walks ancestors of `start` (exclusive — `start` itself is not recomputed)
 /// and updates each structural node's intensity and its cached slot in its parent.
 /// Use [`recompute_and_propagate_v_sums`] when `start` also needs recomputing.
-pub fn propagate_v_sums<V: Accumulator>(vnodes: &mut Arena<VNode<V>>, start: VNodeId) {
+fn propagate_v_sums<V: Accumulator>(vnodes: &mut Arena<VNode<V>>, start: VNodeId) {
     tracing::trace!(start = start.index(), "propagate_v_sums");
     let mut current = vnodes.get(start.index()).parent();
     while let Some(id) = current {
@@ -242,7 +242,7 @@ pub fn propagate_v_sums<V: Accumulator>(vnodes: &mut Arena<VNode<V>>, start: VNo
 /// Recomputes intensities for every node in the tree rooted at `v_root`
 /// (full post-order traversal). Use [`propagate_v_sums`] for a cheaper
 /// ancestor-only walk after a targeted update.
-pub fn recompute_all_v_intensities<V: Accumulator>(vnodes: &mut Arena<VNode<V>>, v_root: VNodeId) {
+fn recompute_all_v_intensities<V: Accumulator>(vnodes: &mut Arena<VNode<V>>, v_root: VNodeId) {
     recompute_v_postorder(vnodes, v_root);
 }
 
@@ -287,7 +287,10 @@ fn recompute_v_postorder<V: Accumulator>(vnodes: &mut Arena<VNode<V>>, id: VNode
     vnodes.get_mut(id.index()).set_intensity(total);
 }
 
-pub fn propagate_evictable_flags<V: Accumulator>(vnodes: &mut Arena<VNode<V>>, start: VNodeId) {
+pub(crate) fn propagate_evictable_flags<V: Accumulator>(
+    vnodes: &mut Arena<VNode<V>>,
+    start: VNodeId,
+) {
     let mut current = Some(start);
     while let Some(id) = current {
         let node = vnodes.get(id.index());
@@ -319,7 +322,7 @@ pub fn v_depth<V: Accumulator>(vnodes: &Arena<VNode<V>>, id: VNodeId) -> u32 {
     node.parent().map_or(0, |p| v_depth(vnodes, p) + 1)
 }
 
-pub fn sync_intensity_in_parent<V: Accumulator>(
+fn sync_intensity_in_parent<V: Accumulator>(
     vnodes: &mut Arena<VNode<V>>,
     child_id: VNodeId,
     new_intensity: V,
@@ -334,7 +337,7 @@ pub fn sync_intensity_in_parent<V: Accumulator>(
     }
 }
 
-pub fn replace_child_in_parent<V: Accumulator>(
+pub(crate) fn replace_child_in_parent<V: Accumulator>(
     vnodes: &mut Arena<VNode<V>>,
     parent: VNodeId,
     old_child: VNodeId,
@@ -347,7 +350,7 @@ pub fn replace_child_in_parent<V: Accumulator>(
     }
 }
 
-pub fn set_entry_flags<V: Accumulator>(
+pub(crate) fn set_entry_flags<V: Accumulator>(
     vnodes: &mut Arena<VNode<V>>,
     entry_id: VNodeId,
     is_exposed_value: bool,
@@ -392,7 +395,7 @@ fn sole_sibling<V: Accumulator>(
     unreachable!("sole_sibling: child not found in parent");
 }
 
-pub fn recompute_structural_intensity<V: Accumulator>(vnodes: &mut Arena<VNode<V>>, id: VNodeId) {
+fn recompute_structural_intensity<V: Accumulator>(vnodes: &mut Arena<VNode<V>>, id: VNodeId) {
     let node = vnodes.get(id.index());
     if let VKind::Structural { children, .. } = &node.kind() {
         let mut total = V::zero();
@@ -407,7 +410,7 @@ pub fn recompute_structural_intensity<V: Accumulator>(vnodes: &mut Arena<VNode<V
 
 /// Recomputes the structural intensity of `child_id` and immediately updates
 /// the cached intensity slot in its parent (if any).
-pub fn recompute_and_sync_parent_slot<V: Accumulator>(
+pub(crate) fn recompute_and_sync_parent_slot<V: Accumulator>(
     vnodes: &mut Arena<VNode<V>>,
     child_id: VNodeId,
 ) {
@@ -445,7 +448,7 @@ fn set_has_evictable<V: Accumulator>(vnodes: &mut Arena<VNode<V>>, id: VNodeId, 
 
 /// Returns `true` if `ancestor` is a strict ancestor of `descendant` in the V-tree
 /// (i.e. reachable by following parent links from `descendant`).
-pub fn is_ancestor<V: Accumulator>(
+pub(crate) fn is_ancestor<V: Accumulator>(
     vnodes: &Arena<VNode<V>>,
     ancestor: VNodeId,
     mut descendant: VNodeId,
