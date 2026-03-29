@@ -74,8 +74,8 @@ Use this tool to:
 
 ## Current Snapshot
 
-- Overall status: [x] In progress (stabilization follow-up extraction ongoing)
-- Active phase: [ ] P1 / [ ] P2 / [ ] P3 / [x] P4
-- Last completed step: P4 follow-up backlog item 2 (`collect_normalize_elements` extraction)
+- Overall status: [x] Completed
+- Active phase: [ ] P1 / [ ] P2 / [ ] P3 / [x] P4 (completed)
+- Last completed step: P4 follow-up backlog item 3 (`on_catalytic_split_impl` extraction)
 - Current branch: `review/pr-832-mudlark-isolated`
 - Last successful full test run: `cargo test --all-features` (2026-03-29)

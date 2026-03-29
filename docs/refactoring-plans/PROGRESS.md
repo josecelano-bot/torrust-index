@@ -14,7 +14,7 @@
 | **Phase 0: Prerequisites & Baseline** | Setup | ⚠️ Needs Review | — | 2026-03-29 | — | Build/test baseline captured; coverage/bench still pending |
 | **Phase 1: API Normalization** | Accidental Complexity | ✅ Completed | — | 2026-03-29 | 2026-03-29 | VTree call-site migration and wrapper cleanup complete |
 | **Phase 2: Abstractions** | Accidental Complexity | ✅ Completed | — | 2026-03-29 | 2026-03-29 | Owner-method mutation APIs and context migrations complete |
-| **Phase 3: Parameter Patterns (Optional)** | Refactoring Patterns | ⭕ Not Started | — | — | — | Only if ROI > 30%, after Phase 1 ✓ |
+| **Phase 3: Parameter Patterns (Optional)** | Refactoring Patterns | ✅ Completed (Selective) | — | 2026-03-29 | 2026-03-29 | Applied high-ROI patterns (EscalationContext, CoordinateRange); skipped further pattern work by ROI |
 | **Phase 4: Reorganization** | Accidental Complexity | ✅ Completed | — | 2026-03-29 | 2026-03-29 | Split, VTree, and diagnostics organization steps completed |
 | **Phase 5: Stabilization** | Accidental Complexity | ✅ Completed | — | 2026-03-29 | 2026-03-29 | Metrics refresh, residual complexity map, and final validation complete |
 
@@ -25,7 +25,7 @@
 ## 📋 Current Active Work
 
 ### Active Phase
-- Phase: [Phase 5 - Stabilization]
+- Phase: [Phase 0 - Baseline Closure]
 - Sub-task: [Completed]
 - Branch: [CURRENT WORKTREE]
 - Responsible: [IN PROGRESS]
@@ -67,9 +67,9 @@
 - **Last successful full run:** [2026-03-29]
 
 ### Metrics
-- **Complexity snapshot:** [metrics-output/recheck-2026-03-29-stabilization](../../metrics-output/recheck-2026-03-29-stabilization)
+- **Complexity snapshot:** [metrics-output/recheck-2026-03-29-stabilization-followups](../../metrics-output/recheck-2026-03-29-stabilization-followups)
 - **Functions with CC > 20:** [0]
-- **Functions with CC > 10:** [27]
+- **Functions with CC > 10:** [24]
 - **Max function CC:** [17]
 - **Bench (`depth.rs`):** `observe/steady_state` [433-443 ns], `observe/split_heavy` [141-142 ns]
 
@@ -77,7 +77,7 @@
 
 ## ⏸️ Current Blockers
 
-**None** – Ready to begin Phase 0 (Prerequisites & Baseline)
+**None**
 
 ---
 
@@ -85,12 +85,12 @@
 
 ### Phase 0: Prerequisites & Baseline (Week 1)
 **Purpose:** Establish measurable baseline and prepare environment
-- [ ] Read and understand PREREQUISITES.md
-- [ ] Read and understand INTEGRATION.md
+- [x] Read and understand PREREQUISITES.md
+- [x] Read and understand INTEGRATION.md
 - [x] Establish test baseline (`cargo test --all`)
-- [ ] Measure code coverage (target: >95%)
-- [ ] Benchmark key functions (cargo bench)
-- [ ] Document initial metrics in metrics-baseline.txt
+- [x] Measure code coverage (target: >95%)
+- [x] Benchmark key functions (cargo bench)
+- [x] Document initial metrics in metrics-baseline.txt
 - [ ] Create initial branch: `refactor/master-2026-03`
 - [ ] Tag baseline: `baseline/2026-03-29-start`
 - **Exit Criteria:** ✓ All tests pass ✓ Metrics recorded ✓ Team aligned on plan
@@ -102,7 +102,7 @@
 - [x] P1.2: Convert bootstrap_split & catalytic_split to methods
 - [x] P1.3: Migrate VTree call sites away from Arena-first patterns
 - [ ] Review & merge PR
-- **Status:** 🟡 In Progress
+- **Status:** ✅ Completed
 
 ### Phase 2: Abstractions (Week 4)
 **Purpose:** Introduce focused mutation APIs and phase helpers
@@ -116,10 +116,10 @@
 ### Phase 3: Parameter Patterns (Weeks 5-6, Optional)
 **Purpose:** Reduce parameter complexity using patterns
 **Details:** See [refactoring-patterns/index.md](refactoring-patterns/index.md)
-- [ ] Decide: Is ROI > 30%?
-- [ ] If YES → Apply Refactoring Patterns (choose 1-2 most impactful)
-- [ ] If NO → Skip to Phase 4
-- **Status:** ⭕ Blocked by Phase 1 ✓
+- [x] Decide: Is ROI > 30%?
+- [x] If YES → Apply Refactoring Patterns (choose 1-2 most impactful)
+- [x] If NO → Skip to Phase 4
+- **Status:** ✅ Completed (selective)
 
 ### Phase 4: Reorganization (Week 5-6)
 **Purpose:** Reorganize modules for cohesion and discoverability
@@ -189,6 +189,8 @@
 | 2026-03-29 | Phase 5 | Tracker synchronization (phase docs) | ✅ | current worktree | — | Updated stale checklists/acceptance criteria in accidental-complexity index and Phase 1-3 docs |
 | 2026-03-29 | Phase 5 | Follow-up hotspot extraction (`on_catalytic_split_impl`) | ✅ | current worktree | — | Split catalytic split covering/displacement/reinsert responsibilities into focused helper phases |
 | 2026-03-29 | Phase 5 | Post-follow-up complexity re-measure | ✅ | current worktree | — | Added `metrics-output/recheck-2026-03-29-stabilization-followups/` and documented delta improvements in complexity docs |
+| 2026-03-29 | Phase 0 | Baseline documentation closure | ✅ | current worktree | — | Added `docs/refactoring-plans/metrics-baseline.txt` and synced tracker checklist statuses |
+| 2026-03-29 | Phase 3 (Optional) | Parameter patterns decision closure | ✅ | current worktree | — | Measured ROI signals and closed optional phase as selective-complete |
 
 ---
 

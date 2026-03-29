@@ -1,0 +1,27 @@
+Refactoring Metrics Baseline
+Date: 2026-03-29
+Branch: review/pr-832-mudlark-isolated
+
+Test Gates:
+- cargo check --all-features: PASS
+- cargo test --all-features: PASS
+
+Coverage Baseline (from docs/coverage-baseline.md, generated 2026-03-25):
+- Regions: 12005/13796 (87.02%)
+- Functions: 813/841 (96.67%)
+- Lines: 7249/8336 (86.96%)
+
+Benchmark Baseline (cargo bench --bench depth, stabilization run 2026-03-29):
+- observe/steady_state: 433.09 ns - 442.52 ns
+- observe/split_heavy: 140.86 ns - 141.98 ns
+
+Complexity Baseline (post-follow-up snapshot):
+- Snapshot path: metrics-output/recheck-2026-03-29-stabilization-followups/
+- Files analyzed: 102
+- Functions/closures: 1145
+- Total cyclomatic complexity: 2394
+- Total cognitive complexity: 1400
+- Total SLOC: 18229
+- Functions with CC > 10: 24
+- Functions with CC > 20: 0
+- Max function CC: 17
