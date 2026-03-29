@@ -1,6 +1,6 @@
 # Phase 6: Quality, Testability, and Sustainability
 
-Status: IN PROGRESS  
+Status: COMPLETED  
 Owner: current worktree  
 Start Date: 2026-03-29
 
@@ -28,7 +28,7 @@ This phase is intentionally incremental: small changes, tests after each change,
 - [x] Q6.2 Promote-path helper extraction (remove duplicated sibling scans)
 - [x] Q6.3 Add focused regression tests for promote helper behavior
 - [x] Q6.4 Diagnostics error-message consistency cleanup (`unwrap` -> `expect` where applicable)
-- [ ] Q6.5 Run full validation gates and close phase
+- [x] Q6.5 Run full validation gates and close phase
 
 ## Metrics Targets
 
@@ -51,25 +51,25 @@ This phase is intentionally incremental: small changes, tests after each change,
 - Date: 2026-03-29
 - Change: Reused `sibling_of` in `standard_promote` and `skip_promote` to remove duplicated sibling/uncle scans.
 - Tests: `cargo test promote --all-features && cargo test --test integration`
-- Commit: pending
+- Commit: `7ed5bdc`
 
 ### Q6.3
 
 - Date: 2026-03-29
 - Change: Added focused unit tests for `standard_promote` and `skip_promote` transformation behavior.
 - Tests: `cargo test promote::tests --all-features && cargo test --test integration`
-- Commit: pending
+- Commit: `789f8f1`
 
 ### Q6.4
 
 - Date: 2026-03-29
 - Change: Replaced bare `unwrap()` calls in DOT diagnostics renderers with contextual `expect(...)` messages.
 - Tests: `cargo test diagnostics:: --all-features && cargo test --test integration`
-- Commit: pending
+- Commit: `05821a4`
 
 ### Q6.5
 
-- Date:
-- Change:
-- Tests:
-- Commit:
+- Date: 2026-03-29
+- Change: Ran full validation gates and closed Phase 6.
+- Tests: `cargo check --all-features && cargo test --all-features`
+- Commit: pending
