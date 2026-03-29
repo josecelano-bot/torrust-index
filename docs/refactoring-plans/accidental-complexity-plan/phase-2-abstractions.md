@@ -148,3 +148,16 @@ Introduce small, focused abstractions that reduce cognitive load and duplication
   - [x] Gate C
 - Notes: Added named helper `add_child_to_structural`, promoted `remove_child_from_structural` to crate-visible helper scope, and migrated split's inline structural child mutation to the helper entrypoint.
 - Follow-up: Complete P2.2 by migrating remaining replace/remove-child helper usage to owner-facing API where practical.
+
+### 2026-03-29
+
+- Step: P2.2 VTree mutation mini-API (split owner-method wiring)
+- Status: [ ]
+- Files: `src/tree/vtree.rs`, `src/graph/algorithm/split.rs`
+- Commit: `2d7b74b`
+- Tests:
+  - [x] Gate A
+  - [x] Gate B
+  - [x] Gate C
+- Notes: Added `VTree::add_structural_child` owner method and migrated split catalytic wiring to use `self.vtree.add_structural_child(...)` directly.
+- Follow-up: Continue owner-method migration where function signatures already carry `&mut VTree`.
