@@ -48,6 +48,12 @@ mod traversal;
 use traversal::{compute_has_evictable, is_ancestor};
 use traversal::v_depth;
 
+mod mutation;
+pub(crate) use mutation::{
+    add_child_to_structural, remove_child_from_structural, replace_child_in_parent,
+    set_entry_flags, set_has_evictable,
+};
+
 // ── VTree ────────────────────────────────────────────────────────────────────
 
 /// The V-tree: an intensity-aggregation binary tree overlaid on the G-tree.
@@ -358,59 +364,6 @@ fn sync_intensity_in_parent<V: Accumulator>(
     }
 }
 
-pub(crate) fn replace_child_in_parent<V: Accumulator>(
-    vnodes: &mut Arena<VNode<V>>,
-    parent: VNodeId,
-    old_child: VNodeId,
-    new_child: VNodeId,
-    new_intensity: V,
-) {
-    let p = vnodes.get_mut(parent.index());
-    if let VKind::Structural { children, .. } = p.kind_mut() {
-        children.replace_child(old_child, new_child, new_intensity);
-    }
-}
-
-pub(crate) fn add_child_to_structural<V: Accumulator>(
-    vnodes: &mut Arena<VNode<V>>,
-    parent: VNodeId,
-    child: VNodeId,
-    child_intensity: V,
-) {
-    let p = vnodes.get_mut(parent.index());
-    if let VKind::Structural { children, .. } = p.kind_mut() {
-        children.add_child(child, child_intensity);
-    }
-}
-
-pub(crate) fn set_entry_flags<V: Accumulator>(
-    vnodes: &mut Arena<VNode<V>>,
-    entry_id: VNodeId,
-    is_exposed_value: bool,
-    is_evictable_value: bool,
-) {
-    if let VKind::Entry {
-        is_exposed,
-        is_evictable,
-        ..
-    } = vnodes.get_mut(entry_id.index()).kind_mut()
-    {
-        *is_exposed = is_exposed_value;
-        *is_evictable = is_evictable_value;
-    }
-}
-
-pub(crate) fn remove_child_from_structural<V: Accumulator>(
-    vnodes: &mut Arena<VNode<V>>,
-    parent: VNodeId,
-    child: VNodeId,
-) {
-    let p = vnodes.get_mut(parent.index());
-    if let VKind::Structural { children, .. } = p.kind_mut() {
-        children.remove_child(child);
-    }
-}
-
 fn sole_sibling<V: Accumulator>(
     vnodes: &Arena<VNode<V>>,
     parent: VNodeId,
@@ -455,13 +408,6 @@ pub(crate) fn recompute_and_sync_parent_slot<V: Accumulator>(
 fn recompute_and_propagate_v_sums<V: Accumulator>(vnodes: &mut Arena<VNode<V>>, start: VNodeId) {
     recompute_and_sync_parent_slot(vnodes, start);
     propagate_v_sums(vnodes, start);
-}
-
-fn set_has_evictable<V: Accumulator>(vnodes: &mut Arena<VNode<V>>, id: VNodeId, flag: bool) {
-    let node = vnodes.get_mut(id.index());
-    if let VKind::Structural { has_evictable, .. } = node.kind_mut() {
-        *has_evictable = flag;
-    }
 }
 
 #[cfg(test)]
