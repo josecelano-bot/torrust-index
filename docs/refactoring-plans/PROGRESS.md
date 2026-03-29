@@ -39,6 +39,7 @@
 - Added VTree mutation helpers (`recompute_and_sync_parent_slot`, `set_entry_flags`) and migrated promote/split/evict sites
 - Added `VTree::is_ancestor` and migrated eviction diagnostics to an in-tree owner API path
 - Expanded `VTreeMutContext` usage into rebalance resolve contraction/skip-promote helpers to reduce repeated parameter threading
+- Migrated the `resolve` entrypoint to accept `VTreeMutContext` directly and updated rebalance call wiring
 
 ### Test Status
 - **Gate A (cargo check):** [PASS - 2026-03-29]
@@ -146,6 +147,7 @@
 | 2026-03-29 | Phase 2 | VTree mutation helper extraction | ✅ | current worktree | — | Added recompute+sync and entry-flag helpers; migrated call sites |
 | 2026-03-29 | Phase 1 | VTree ancestry owner-API migration | ✅ | current worktree | — | Eviction diagnostics now route through in-tree owner entrypoint |
 | 2026-03-29 | Phase 2 | Rebalance resolve context expansion | ✅ | current worktree | — | `VTreeMutContext` now threads through contraction and skip-promote helper paths (`a3d2dce`) |
+| 2026-03-29 | Phase 2 | Rebalance resolve context entrypoint migration | ✅ | current worktree | — | `resolve` now takes `&mut VTreeMutContext` directly; rebalance caller updated |
 
 ---
 
