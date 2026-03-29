@@ -69,3 +69,16 @@ Improve cohesion and discoverability by keeping orchestrators thin and moving de
   - [x] Gate C
 - Notes: Kept `split.rs` as the orchestration facade and moved candidate/preprocess/allocation/mirror mechanics into `split/helpers.rs` with focused helper names.
 - Follow-up: Continue P3.2 by separating traversal-heavy and mutation-heavy internals in `src/tree/vtree.rs`.
+
+### 2026-03-29
+
+- Step: P3.2 VTree decomposition (traversal extraction)
+- Status: [ ]
+- Files: `src/tree/vtree.rs`, `src/tree/vtree/traversal.rs`
+- Commit: `2bcd99b`
+- Tests:
+  - [x] Gate A
+  - [x] Gate B
+  - [x] Gate C
+- Notes: Extracted traversal-focused internals (`v_depth`, strict-ancestor walk, evictable-child predicate) from the VTree facade into `tree/vtree/traversal.rs`.
+- Follow-up: Continue P3.2 by extracting mutation-heavy internals into a dedicated companion module.
