@@ -47,6 +47,7 @@
 - Migrated split structural child wiring to `VTree::add_structural_child` owner method
 - Decomposed split mechanics into `split/helpers.rs` while keeping `split.rs` as orchestrator facade
 - Started VTree decomposition by extracting traversal internals into `tree/vtree/traversal.rs`
+- Completed VTree decomposition by extracting mutation helpers into `tree/vtree/mutation.rs`
 
 ### Test Status
 - **Gate A (cargo check):** [PASS - 2026-03-29]
@@ -164,6 +165,7 @@
 | 2026-03-29 | Phase 2 | Replace/remove owner-method integration | ✅ | current worktree | — | Inlined leaf removal into `VTree::remove_leaf` and routed replace/remove via owner methods (`5f40f32`) |
 | 2026-03-29 | Phase 4 | Split module decomposition | ✅ | current worktree | — | Moved split mechanics to `split/helpers.rs`; kept orchestrator entry module concise (`dc2aed7`) |
 | 2026-03-29 | Phase 4 | VTree traversal decomposition start | ✅ | current worktree | — | Extracted traversal internals to `tree/vtree/traversal.rs` (`2bcd99b`) |
+| 2026-03-29 | Phase 4 | VTree mutation decomposition completion | ✅ | current worktree | — | Extracted mutation helpers to `tree/vtree/mutation.rs` with API-compatible re-exports (`bfe44b1`) |
 
 ---
 

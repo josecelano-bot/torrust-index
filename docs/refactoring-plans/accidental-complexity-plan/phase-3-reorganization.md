@@ -20,9 +20,9 @@ Improve cohesion and discoverability by keeping orchestrators thin and moving de
 
 ### P3.2 VTree decomposition
 
-- [ ] Separate traversal-heavy internals from mutation-heavy internals
-- [ ] Keep top-level VTree file readable as a facade
-- [ ] Validate visibility boundaries to avoid leaks
+- [x] Separate traversal-heavy internals from mutation-heavy internals
+- [x] Keep top-level VTree file readable as a facade
+- [x] Validate visibility boundaries to avoid leaks
 
 ### P3.3 Diagnostics organization
 
@@ -82,3 +82,16 @@ Improve cohesion and discoverability by keeping orchestrators thin and moving de
   - [x] Gate C
 - Notes: Extracted traversal-focused internals (`v_depth`, strict-ancestor walk, evictable-child predicate) from the VTree facade into `tree/vtree/traversal.rs`.
 - Follow-up: Continue P3.2 by extracting mutation-heavy internals into a dedicated companion module.
+
+### 2026-03-29
+
+- Step: P3.2 VTree decomposition (mutation extraction completion)
+- Status: [x]
+- Files: `src/tree/vtree.rs`, `src/tree/vtree/mutation.rs`
+- Commit: `bfe44b1`
+- Tests:
+  - [x] Gate A
+  - [x] Gate B
+  - [x] Gate C
+- Notes: Extracted structural-mutation helpers (add/replace/remove child, entry flags, evictable setter) into `tree/vtree/mutation.rs` and kept crate-visible API compatibility through controlled re-exports.
+- Follow-up: Continue P3.3 diagnostics organization by consolidating duplicated read-only traversal/check patterns.
