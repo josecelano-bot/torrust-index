@@ -159,11 +159,11 @@ fn escalate_after_promote<V: Accumulator>(
 /// and propagate side-effect violations. Returns `true` if the contraction
 /// resolved `c`'s violation (caller should return `None` immediately).
 fn resolve_try_contract_parent<V: Accumulator>(
-    vnodes: &mut Arena<VNode<V>>,
+    tree: &mut VTreeMutContext<'_, V>,
     p: VNodeId,
     c: VNodeId,
-    violations: &mut Vec<VNodeId>,
 ) -> bool {
+    let (vnodes, violations) = (&mut *tree.vnodes, &mut *tree.violations);
     if structural_child_count(vnodes, p) == 3 {
         tracing::debug!(p = %Nd(vnodes, p), "phase 1: contracting 3-node parent");
         let merged = contract(vnodes, p);
@@ -184,14 +184,14 @@ fn resolve_try_contract_parent<V: Accumulator>(
 /// `c` is a semi-internal entry at or above `depth_evict`) or skip-promotes.
 /// Returns `Some(new_g)` only when a legacy promote created a new G-node.
 fn resolve_path_b<C: Coordinate, V: Accumulator>(
-    vnodes: &mut Arena<VNode<V>>,
+    tree: &mut VTreeMutContext<'_, V>,
     gnodes: &mut Arena<GNode<C, V>>,
     c: VNodeId,
     p: VNodeId,
     g: VNodeId,
-    violations: &mut Vec<VNodeId>,
     depth_evict: u32,
 ) -> Option<GNodeId> {
+    let (vnodes, violations) = (&mut *tree.vnodes, &mut *tree.violations);
     // Optional grandparent contraction before the promote attempt.
     let g_merged = if structural_child_count(vnodes, g) == 3 {
         let merged = contract(vnodes, g);
@@ -266,41 +266,43 @@ pub fn resolve<C: Coordinate, V: Accumulator>(
     violations: &mut Vec<VNodeId>,
     depth_evict: u32,
 ) -> Option<GNodeId> {
-    let _span = tracing::debug_span!("resolve", node = c.index()).entered();
-    tracing::debug!(ctx = %Ctx(vnodes, c), "begin");
+    let mut tree = VTreeMutContext { vnodes, violations };
 
-    let Some(p) = vnodes.get(c.index()).parent() else {
+    let _span = tracing::debug_span!("resolve", node = c.index()).entered();
+    tracing::debug!(ctx = %Ctx(tree.vnodes, c), "begin");
+
+    let Some(p) = tree.vnodes.get(c.index()).parent() else {
         tracing::trace!("no parent — nothing to resolve");
         return None;
     };
 
     // Phase 1: optional parent contraction.
-    if resolve_try_contract_parent(vnodes, p, c, violations) {
+    if resolve_try_contract_parent(&mut tree, p, c) {
         return None;
     }
 
     // Path A: standard promote.
-    if vnodes.get(c.index()).is_structural_pair() {
+    if tree.vnodes.get(c.index()).is_structural_pair() {
         tracing::debug!("phase 2: standard promote");
-        standard_promote(vnodes, c);
-        push_side_effect_violations(vnodes, p, violations);
-        push_promoted_violations(vnodes, p, violations);
-        escalate_after_promote(vnodes, p, violations);
+        standard_promote(tree.vnodes, c);
+        push_side_effect_violations(tree.vnodes, p, tree.violations);
+        push_promoted_violations(tree.vnodes, p, tree.violations);
+        escalate_after_promote(tree.vnodes, p, tree.violations);
         return None;
     }
 
     // Path B: skip / legacy promote.
     tracing::debug!("phase 2: skip promote path");
-    let Some(g) = vnodes.get(p.index()).parent() else {
+    let Some(g) = tree.vnodes.get(p.index()).parent() else {
         tracing::trace!("no grandparent — cannot skip-promote");
         return None;
     };
 
-    let result = resolve_path_b(vnodes, gnodes, c, p, g, violations, depth_evict);
+    let result = resolve_path_b(&mut tree, gnodes, c, p, g, depth_evict);
 
-    if vnodes.is_occupied(c.index()) && is_violated(vnodes, c) {
+    if tree.vnodes.is_occupied(c.index()) && is_violated(tree.vnodes, c) {
         tracing::warn!(
-            node = %Ctx(vnodes, c),
+            node = %Ctx(tree.vnodes, c),
             "resolve() returning with node STILL violated",
         );
     }
