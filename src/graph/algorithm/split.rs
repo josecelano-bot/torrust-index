@@ -6,8 +6,9 @@ use crate::graph::algorithm::violation_push::{
 };
 use crate::handle::{GNodeId, VNodeId};
 use crate::nodes::gnode::GNode;
-use crate::nodes::vnode::{Children, VKind, VNode};
+use crate::nodes::vnode::{Children, VNode};
 use crate::traits::{Accumulator, Coordinate, Inspectable};
+use crate::tree::vtree::add_child_to_structural;
 
 impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N> {
     pub(crate) fn attempt_split(&mut self, g_id: GNodeId) {
@@ -111,10 +112,7 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
             .set_parent(s_id);
 
         // ── Phase 4: Wire `s` into the parent's child list ───────────────────
-        let p = self.vtree.nodes.get_mut(p_id.index());
-        if let VKind::Structural { children, .. } = p.kind_mut() {
-            children.add_child(s_id, V::zero());
-        }
+        add_child_to_structural(&mut self.vtree.nodes, p_id, s_id, V::zero());
 
         self.vtree.set_entry_flags(entry_id, false, false);
 

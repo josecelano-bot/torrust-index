@@ -364,6 +364,18 @@ pub(crate) fn replace_child_in_parent<V: Accumulator>(
     }
 }
 
+pub(crate) fn add_child_to_structural<V: Accumulator>(
+    vnodes: &mut Arena<VNode<V>>,
+    parent: VNodeId,
+    child: VNodeId,
+    child_intensity: V,
+) {
+    let p = vnodes.get_mut(parent.index());
+    if let VKind::Structural { children, .. } = p.kind_mut() {
+        children.add_child(child, child_intensity);
+    }
+}
+
 pub(crate) fn set_entry_flags<V: Accumulator>(
     vnodes: &mut Arena<VNode<V>>,
     entry_id: VNodeId,
@@ -381,7 +393,7 @@ pub(crate) fn set_entry_flags<V: Accumulator>(
     }
 }
 
-fn remove_child_from_structural<V: Accumulator>(
+pub(crate) fn remove_child_from_structural<V: Accumulator>(
     vnodes: &mut Arena<VNode<V>>,
     parent: VNodeId,
     child: VNodeId,
