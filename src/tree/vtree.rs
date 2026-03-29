@@ -41,8 +41,12 @@
 use crate::arena::Arena;
 use crate::handle::{GNodeId, VNodeId};
 use crate::nodes::gnode::GNode;
-use crate::nodes::vnode::{Children, VKind, VNode};
+use crate::nodes::vnode::{VKind, VNode};
 use crate::traits::{Accumulator, Coordinate};
+
+mod traversal;
+use traversal::{compute_has_evictable, is_ancestor};
+use traversal::v_depth;
 
 // ── VTree ────────────────────────────────────────────────────────────────────
 
@@ -339,12 +343,6 @@ pub(crate) fn propagate_evictable_flags<V: Accumulator>(
     }
 }
 
-#[must_use]
-fn v_depth<V: Accumulator>(vnodes: &Arena<VNode<V>>, id: VNodeId) -> u32 {
-    let node = vnodes.get(id.index());
-    node.parent().map_or(0, |p| v_depth(vnodes, p) + 1)
-}
-
 fn sync_intensity_in_parent<V: Accumulator>(
     vnodes: &mut Arena<VNode<V>>,
     child_id: VNodeId,
@@ -459,42 +457,11 @@ fn recompute_and_propagate_v_sums<V: Accumulator>(vnodes: &mut Arena<VNode<V>>, 
     propagate_v_sums(vnodes, start);
 }
 
-fn compute_has_evictable<V: Accumulator>(vnodes: &Arena<VNode<V>>, children: &Children<V>) -> bool {
-    for i in 0..children.len() {
-        let (child_id, _) = children.get(i);
-        let child = vnodes.get(child_id.index());
-        let child_flag = match &child.kind() {
-            VKind::Entry { is_evictable, .. } => *is_evictable,
-            VKind::Structural { has_evictable, .. } => *has_evictable,
-        };
-        if child_flag {
-            return true;
-        }
-    }
-    false
-}
-
 fn set_has_evictable<V: Accumulator>(vnodes: &mut Arena<VNode<V>>, id: VNodeId, flag: bool) {
     let node = vnodes.get_mut(id.index());
     if let VKind::Structural { has_evictable, .. } = node.kind_mut() {
         *has_evictable = flag;
     }
-}
-
-/// Returns `true` if `ancestor` is a strict ancestor of `descendant` in the V-tree
-/// (i.e. reachable by following parent links from `descendant`).
-fn is_ancestor<V: Accumulator>(
-    vnodes: &Arena<VNode<V>>,
-    ancestor: VNodeId,
-    mut descendant: VNodeId,
-) -> bool {
-    while let Some(p) = vnodes.get(descendant.index()).parent() {
-        if p == ancestor {
-            return true;
-        }
-        descendant = p;
-    }
-    false
 }
 
 #[cfg(test)]
