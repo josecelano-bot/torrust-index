@@ -21,10 +21,10 @@ Introduce small, focused abstractions that reduce cognitive load and duplication
 
 ### P2.2 VTree mutation mini-API
 
-- [ ] Add or standardize `replace_child` style operation
-- [ ] Add or standardize `remove_child` style operation
+- [x] Add or standardize `replace_child` style operation
+- [x] Add or standardize `remove_child` style operation
 - [x] Add or standardize recompute+propagate helper
-- [ ] Replace repeated mutation snippets with named operations
+- [x] Replace repeated mutation snippets with named operations
 
 ### P2.3 Signature simplification
 
@@ -161,3 +161,16 @@ Introduce small, focused abstractions that reduce cognitive load and duplication
   - [x] Gate C
 - Notes: Added `VTree::add_structural_child` owner method and migrated split catalytic wiring to use `self.vtree.add_structural_child(...)` directly.
 - Follow-up: Continue owner-method migration where function signatures already carry `&mut VTree`.
+
+### 2026-03-29
+
+- Step: P2.2 VTree mutation mini-API (replace/remove owner integration)
+- Status: [x]
+- Files: `src/tree/vtree.rs`
+- Commit: `5f40f32`
+- Tests:
+  - [x] Gate A
+  - [x] Gate B
+  - [x] Gate C
+- Notes: Inlined leaf-removal flow into `VTree::remove_leaf` and routed structural replace/remove operations through owner methods (`replace_structural_child`, `remove_structural_child`) instead of free wrapper orchestration.
+- Follow-up: Keep any new structural mutation paths aligned with owner-first APIs.

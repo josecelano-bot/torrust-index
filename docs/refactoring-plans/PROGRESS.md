@@ -12,7 +12,7 @@
 | Phase | Type | Status | Owner | Start | Est. End | Notes |
 |-------|------|--------|-------|-------|----------|-------|
 | **Phase 0: Prerequisites & Baseline** | Setup | ⚠️ Needs Review | — | 2026-03-29 | — | Build/test baseline captured; coverage/bench still pending |
-| **Phase 1: API Normalization** | Accidental Complexity | 🟡 In Progress | — | 2026-03-29 | — | Split helper ownership normalized; VTree migration still open |
+| **Phase 1: API Normalization** | Accidental Complexity | ✅ Completed | — | 2026-03-29 | 2026-03-29 | VTree call-site migration and wrapper cleanup complete |
 | **Phase 2: Abstractions** | Accidental Complexity | 🟡 In Progress | — | 2026-03-29 | — | Running in parallel with late Phase 1 migration |
 | **Phase 3: Parameter Patterns (Optional)** | Refactoring Patterns | ⭕ Not Started | — | — | — | Only if ROI > 30%, after Phase 1 ✓ |
 | **Phase 4: Reorganization** | Accidental Complexity | ⭕ Not Started | — | — | — | Depends on Phase 1 ✓ |
@@ -158,6 +158,8 @@
 | 2026-03-29 | Phase 1 | VTree leaf-removal wrapper internalization | ✅ | current worktree | — | `vtree_remove_leaf` reduced to module-private after owner-method migration (`a01d354`) |
 | 2026-03-29 | Phase 2 | Structural-child helper standardization | ✅ | current worktree | — | Added `add_child_to_structural` and migrated split mutation call site (`d56e9ed`) |
 | 2026-03-29 | Phase 2 | Split structural child owner-method migration | ✅ | current worktree | — | Added `VTree::add_structural_child` and migrated catalytic split wiring (`2d7b74b`) |
+| 2026-03-29 | Phase 1 | VTree wrapper cleanup completion | ✅ | current worktree | — | Localized depth/ancestry helpers and internalized free wrappers (`6e20453`) |
+| 2026-03-29 | Phase 2 | Replace/remove owner-method integration | ✅ | current worktree | — | Inlined leaf removal into `VTree::remove_leaf` and routed replace/remove via owner methods (`5f40f32`) |
 
 ---
 

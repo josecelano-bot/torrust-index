@@ -35,7 +35,7 @@ Make ownership boundaries explicit by converting method-shaped free functions in
 - [x] Migrate to `VTree::recompute_all_intensities`
 - [x] Migrate to `VTree::depth`
 - [x] Migrate to `VTree::is_ancestor` or add and then migrate
-- [ ] Remove wrappers after all call sites are migrated
+- [x] Remove wrappers after all call sites are migrated
 
 ## Acceptance Criteria
 
@@ -102,6 +102,19 @@ Make ownership boundaries explicit by converting method-shaped free functions in
   - [x] Gate C
 - Notes: `vtree_remove_leaf` is now module-internal since all external use is already routed through `VTree::remove_leaf`.
 - Follow-up: Continue reducing remaining non-owner helper exposure where call-site migration is complete.
+
+### 2026-03-29
+
+- Step: P1.3 wrapper exposure cleanup (depth/ancestry wrappers)
+- Status: [x]
+- Files: `src/tree/vtree.rs`, `src/graph/algorithm/rebalance/resolve.rs`, `src/graph/algorithm/rebalance/violation_scan.rs`, `src/diagnostics/diagnostic/logging.rs`
+- Commit: `6e20453`
+- Tests:
+  - [x] Gate A
+  - [x] Gate B
+  - [x] Gate C
+- Notes: Removed external reliance on free `v_depth`/`is_ancestor` wrappers by localizing helper logic to consuming modules and keeping wrapper implementations internal to `vtree`.
+- Follow-up: P1.3 migration checklist is now complete; keep owner-method APIs as the primary integration boundary.
 
 ### 2026-03-29
 
