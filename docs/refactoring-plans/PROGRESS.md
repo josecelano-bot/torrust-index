@@ -27,11 +27,12 @@
 
 ### Active Phase
 - Phase: [Phase 6 - Quality Sustainment]
-- Sub-task: [Q6.3 Promote regression tests]
+- Sub-task: [Q6.4 Diagnostics panic-context cleanup]
 - Branch: [CURRENT WORKTREE]
 - Responsible: [active]
 
 ### Recent Activity
+- Completed Q6.4 DOT diagnostics cleanup by replacing bare unwrap calls with contextual expect messages
 - Completed Q6.3 focused promote regression tests covering standard and skip promote transformations
 - Completed Q6.2 promote-path deduplication by reusing shared sibling lookup helper in standard/skip promote flows
 - Initialized Phase 6 execution plan and tracker hooks for post-stabilization small-step refactors
@@ -199,6 +200,7 @@
 | 2026-03-29 | Phase 6 | Tracker initialization | ✅ | current worktree | — | Added `phase-6-quality-sustainability.md` and linked it from refactoring index |
 | 2026-03-29 | Phase 6 | Promote-path deduplication | ✅ | current worktree | — | Reused `sibling_of` in promote flow to remove duplicated sibling scans; focused tests passed |
 | 2026-03-29 | Phase 6 | Promote regression tests | ✅ | current worktree | — | Added focused unit tests for standard/skip promote transformations; focused + integration tests passed |
+| 2026-03-29 | Phase 6 | Diagnostics panic-context cleanup | ✅ | current worktree | — | Replaced bare `unwrap()` with contextual `expect(...)` in DOT diagnostics output path; tests passed |
 
 ---
 

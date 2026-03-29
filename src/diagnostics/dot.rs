@@ -38,15 +38,15 @@ pub fn dump_gtree_dot<C: Coordinate, V: Accumulator + Inspectable, const N: u32>
     use std::fmt::Write;
     let mut out = String::new();
 
-    writeln!(out, "digraph gtree {{").unwrap();
-    writeln!(out, "  label={label:?};").unwrap();
-    writeln!(out, "  rankdir=TB;").unwrap();
+    writeln!(out, "digraph gtree {{").expect("writing DOT output failed");
+    writeln!(out, "  label={label:?};").expect("writing DOT output failed");
+    writeln!(out, "  rankdir=TB;").expect("writing DOT output failed");
     writeln!(
         out,
         "  node [shape=box, fontname=\"Courier New\", fontsize=11];"
     )
-    .unwrap();
-    writeln!(out).unwrap();
+    .expect("writing DOT output failed");
+    writeln!(out).expect("writing DOT output failed");
 
     // BFS from the root so the node ordering in the file is breadth-first.
     let mut queue = std::collections::VecDeque::new();
@@ -67,7 +67,7 @@ pub fn dump_gtree_dot<C: Coordinate, V: Accumulator + Inspectable, const N: u32>
         };
 
         let entry_note = if has_entry {
-            format!("VEntry({})", g.entry().unwrap().index())
+            format!("VEntry({})", g.entry().expect("writing DOT output failed").index())
         } else {
             "no VEntry".to_string()
         };
@@ -81,7 +81,7 @@ pub fn dump_gtree_dot<C: Coordinate, V: Accumulator + Inspectable, const N: u32>
             g.own().to_f64_approx(),
             g.sum().to_f64_approx(),
         )
-        .unwrap();
+        .expect("writing DOT output failed");
 
         if let Some(left) = g.left() {
             queue.push_back(left);
@@ -91,7 +91,7 @@ pub fn dump_gtree_dot<C: Coordinate, V: Accumulator + Inspectable, const N: u32>
         }
     }
 
-    writeln!(out).unwrap();
+    writeln!(out).expect("writing DOT output failed");
 
     // Edges (separate pass so all nodes are declared before edges).
     let mut queue = std::collections::VecDeque::new();
@@ -100,16 +100,16 @@ pub fn dump_gtree_dot<C: Coordinate, V: Accumulator + Inspectable, const N: u32>
         let g = graph.gtree.nodes.get(gid.index());
         let idx = gid.index();
         if let Some(left) = g.left() {
-            writeln!(out, "  G{idx} -> G{} [label=\"L\"];", left.index()).unwrap();
+            writeln!(out, "  G{idx} -> G{} [label=\"L\"];", left.index()).expect("writing DOT output failed");
             queue.push_back(left);
         }
         if let Some(right) = g.right() {
-            writeln!(out, "  G{idx} -> G{} [label=\"R\"];", right.index()).unwrap();
+            writeln!(out, "  G{idx} -> G{} [label=\"R\"];", right.index()).expect("writing DOT output failed");
             queue.push_back(right);
         }
     }
 
-    writeln!(out, "}}").unwrap();
+    writeln!(out, "}}").expect("writing DOT output failed");
     out
 }
 
@@ -131,22 +131,22 @@ pub fn dump_vtree_dot<C: Coordinate, V: Accumulator + Inspectable, const N: u32>
     let mut out = String::new();
 
     let Some(v_root) = graph.v_root() else {
-        writeln!(out, "digraph vtree {{").unwrap();
-        writeln!(out, "  label={label:?};").unwrap();
+        writeln!(out, "digraph vtree {{").expect("writing DOT output failed");
+        writeln!(out, "  label={label:?};").expect("writing DOT output failed");
         writeln!(
             out,
             "  empty [label=\"(empty — no observations yet)\", shape=plaintext];"
         )
-        .unwrap();
-        writeln!(out, "}}").unwrap();
+        .expect("writing DOT output failed");
+        writeln!(out, "}}").expect("writing DOT output failed");
         return out;
     };
 
-    writeln!(out, "digraph vtree {{").unwrap();
-    writeln!(out, "  label={label:?};").unwrap();
-    writeln!(out, "  rankdir=TB;").unwrap();
-    writeln!(out, "  node [fontname=\"Courier New\", fontsize=11];").unwrap();
-    writeln!(out).unwrap();
+    writeln!(out, "digraph vtree {{").expect("writing DOT output failed");
+    writeln!(out, "  label={label:?};").expect("writing DOT output failed");
+    writeln!(out, "  rankdir=TB;").expect("writing DOT output failed");
+    writeln!(out, "  node [fontname=\"Courier New\", fontsize=11];").expect("writing DOT output failed");
+    writeln!(out).expect("writing DOT output failed");
 
     // Declare nodes (BFS).
     let mut queue: std::collections::VecDeque<VNodeId> = std::collections::VecDeque::new();
@@ -175,7 +175,7 @@ pub fn dump_vtree_dot<C: Coordinate, V: Accumulator + Inspectable, const N: u32>
                     g.hi().to_f64(),
                     vnode.intensity().to_f64_approx(),
                 )
-                .unwrap();
+                .expect("writing DOT output failed");
             }
             VKind::Structural {
                 children,
@@ -187,7 +187,7 @@ pub fn dump_vtree_dot<C: Coordinate, V: Accumulator + Inspectable, const N: u32>
                      label=\"V{idx} Struct\\nintensity={:.0}  has_evict={has_evictable}\"];",
                     vnode.intensity().to_f64_approx(),
                 )
-                .unwrap();
+                .expect("writing DOT output failed");
                 for i in 0..children.len() {
                     let (child_id, _) = children.get(i);
                     queue.push_back(child_id);
@@ -196,7 +196,7 @@ pub fn dump_vtree_dot<C: Coordinate, V: Accumulator + Inspectable, const N: u32>
         }
     }
 
-    writeln!(out).unwrap();
+    writeln!(out).expect("writing DOT output failed");
 
     // Edges (separate BFS pass).
     let mut queue: std::collections::VecDeque<VNodeId> = std::collections::VecDeque::new();
@@ -215,12 +215,12 @@ pub fn dump_vtree_dot<C: Coordinate, V: Accumulator + Inspectable, const N: u32>
                     child_id.index(),
                     child_intensity.to_f64_approx(),
                 )
-                .unwrap();
+                .expect("writing DOT output failed");
                 queue.push_back(child_id);
             }
         }
     }
 
-    writeln!(out, "}}").unwrap();
+    writeln!(out, "}}").expect("writing DOT output failed");
     out
 }
