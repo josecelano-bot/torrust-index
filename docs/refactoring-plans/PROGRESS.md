@@ -15,7 +15,7 @@
 | **Phase 1: API Normalization** | Accidental Complexity | ✅ Completed | — | 2026-03-29 | 2026-03-29 | VTree call-site migration and wrapper cleanup complete |
 | **Phase 2: Abstractions** | Accidental Complexity | 🟡 In Progress | — | 2026-03-29 | — | Running in parallel with late Phase 1 migration |
 | **Phase 3: Parameter Patterns (Optional)** | Refactoring Patterns | ⭕ Not Started | — | — | — | Only if ROI > 30%, after Phase 1 ✓ |
-| **Phase 4: Reorganization** | Accidental Complexity | ⭕ Not Started | — | — | — | Depends on Phase 1 ✓ |
+| **Phase 4: Reorganization** | Accidental Complexity | 🟡 In Progress | — | 2026-03-29 | — | P3.1 split decomposition completed |
 | **Phase 5: Stabilization** | Accidental Complexity | ⭕ Not Started | — | — | — | Final integration & cleanup |
 
 **Legend:** ⭕ Not Started | 🟡 In Progress | ✅ Completed | ❌ Blocked | ⚠️ Needs Review
@@ -45,6 +45,7 @@
 - Internalized `vtree_remove_leaf` after migrating usage through `VTree::remove_leaf`
 - Standardized structural-child mutation through named helper entrypoints in split flow
 - Migrated split structural child wiring to `VTree::add_structural_child` owner method
+- Decomposed split mechanics into `split/helpers.rs` while keeping `split.rs` as orchestrator facade
 
 ### Test Status
 - **Gate A (cargo check):** [PASS - 2026-03-29]
@@ -160,6 +161,7 @@
 | 2026-03-29 | Phase 2 | Split structural child owner-method migration | ✅ | current worktree | — | Added `VTree::add_structural_child` and migrated catalytic split wiring (`2d7b74b`) |
 | 2026-03-29 | Phase 1 | VTree wrapper cleanup completion | ✅ | current worktree | — | Localized depth/ancestry helpers and internalized free wrappers (`6e20453`) |
 | 2026-03-29 | Phase 2 | Replace/remove owner-method integration | ✅ | current worktree | — | Inlined leaf removal into `VTree::remove_leaf` and routed replace/remove via owner methods (`5f40f32`) |
+| 2026-03-29 | Phase 4 | Split module decomposition | ✅ | current worktree | — | Moved split mechanics to `split/helpers.rs`; kept orchestrator entry module concise (`dc2aed7`) |
 
 ---
 

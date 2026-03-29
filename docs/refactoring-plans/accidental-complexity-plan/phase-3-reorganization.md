@@ -14,9 +14,9 @@ Improve cohesion and discoverability by keeping orchestrators thin and moving de
 
 ### P3.1 Split module decomposition
 
-- [ ] Keep orchestrator role in split entry module
-- [ ] Move detailed mechanics into focused submodules
-- [ ] Ensure names describe behavior and intent
+- [x] Keep orchestrator role in split entry module
+- [x] Move detailed mechanics into focused submodules
+- [x] Ensure names describe behavior and intent
 
 ### P3.2 VTree decomposition
 
@@ -56,3 +56,16 @@ Improve cohesion and discoverability by keeping orchestrators thin and moving de
   - [ ] Gate C
 - Notes:
 - Follow-up:
+
+### 2026-03-29
+
+- Step: P3.1 split module decomposition
+- Status: [x]
+- Files: `src/graph/algorithm/split.rs`, `src/graph/algorithm/split/helpers.rs`
+- Commit: `dc2aed7`
+- Tests:
+  - [x] Gate A
+  - [x] Gate B
+  - [x] Gate C
+- Notes: Kept `split.rs` as the orchestration facade and moved candidate/preprocess/allocation/mirror mechanics into `split/helpers.rs` with focused helper names.
+- Follow-up: Continue P3.2 by separating traversal-heavy and mutation-heavy internals in `src/tree/vtree.rs`.
