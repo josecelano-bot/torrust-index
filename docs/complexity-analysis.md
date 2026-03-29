@@ -241,14 +241,56 @@ find metrics-output -name "*.json" | xargs -I{} sh -c '
 | `collect_normalize_elements` | CC=12, Cog=32 | CC=2, Cog=1 |
 | `on_catalytic_split_impl` | CC=11, Cog=31 | CC=1, Cog=0 |
 
-### Suggested Next Refactor Targets
+## Finalization Refresh (2026-03-29)
 
-1. `evict_ancestor_key` (Cog=49): split nested control flow into phase helpers.
-2. `decompose_basis` (CC=20, Cog=40): extract branch-specific decomposition
-   strategies to reduce decision density.
-3. `build_plateaus` (CC=17, Cog=39): separate traversal from output assembly.
-4. `collect_normalize_elements` (CC=12, Cog=32): isolate filtering and merge
-   policy branches.
+> Recomputed after completing the Pattern 4 (`ViolationQueue`) migration and
+> final plan synchronization updates.
+>
+> Snapshot path: `metrics-output/recheck-2026-03-29-finalization/`
+
+### Delta vs post-follow-up snapshot
+
+| Metric | Post-follow-up | Finalization | Delta |
+| --- | ---: | ---: | ---: |
+| Analyzed files under `src` | 102 | 102 | 0 |
+| Total functions/closures | 1145 | 1154 | +9 |
+| Total CC (sum) | 2394 | 2404 | +10 |
+| Total Cognitive (sum) | 1400 | 1400 | 0 |
+| Total SLOC | 18229 | 18296 | +67 |
+| Functions with CC > 10 | 24 | 24 | 0 |
+| Functions with CC > 20 | 0 | 0 | 0 |
+| Max function CC | 17 | 17 | 0 |
+
+### Current top file hotspots (aggregate CC)
+
+| CC | Cognitive | SLOC | File |
+| ---: | ---: | ---: | --- |
+| 128 | 174 | 825 | `src/diagnostics/invariants.rs` |
+| 128 | 192 | 628 | `src/diagnostics/plateau_invariants.rs` |
+| 95 | 18 | 696 | `src/nodes/vnode.rs` |
+| 85 | 15 | 559 | `src/nodes/gnode.rs` |
+| 77 | 52 | 436 | `src/graph/algorithm/violation_push.rs` |
+| 73 | 54 | 651 | `src/graph/algorithm/rebalance.rs` |
+| 71 | 75 | 378 | `src/graph/algorithm/plateau/dynamic_tracker/core_helpers/fixup.rs` |
+| 69 | 42 | 590 | `src/tree/vtree.rs` |
+
+### Current function hotspots (CC > 10)
+
+Top entries remain stable and below the CC>20 threshold:
+
+- `observe` (`CC=17`, `Cog=23`) in `src/graph/algorithm/observe.rs`
+- `build_plateaus` (`CC=17`, `Cog=39`) in `src/graph/algorithm/plateau/read_api.rs`
+- `fixup_plateau` (`CC=15`, `Cog=17`) in `src/graph/algorithm/plateau/dynamic_tracker/core_helpers/fixup.rs`
+- `evacuate_adjacent_plateaus` (`CC=15`, `Cog=18`) in `src/graph/algorithm/plateau/dynamic_tracker/core_helpers/fixup.rs`
+- `normalize_impl` (`CC=15`, `Cog=14`) in `src/graph/algorithm/plateau/dynamic_tracker/normalize.rs`
+
+### Final observations
+
+- The acceptance goal remains satisfied: no functions above CC 20.
+- Cognitive complexity stayed flat while total CC/SLOC rose slightly from
+  helper-oriented extraction and queue migration glue.
+- Residual hotspots are mostly in diagnostics and plateau helper logic and are
+  now primarily candidates for optional readability-focused follow-up.
 
 ## Thresholds (Reference)
 
