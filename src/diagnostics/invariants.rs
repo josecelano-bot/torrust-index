@@ -629,6 +629,9 @@ fn check_depth_gate_invariants<C: Coordinate, V: Accumulator + Inspectable, cons
 }
 
 #[cfg(test)]
+mod coverage_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::graph::{Config, StructuralConfig};
@@ -891,5 +894,29 @@ mod tests {
 
         assert!(errors.iter().any(|e| e.contains("D-I3 floor")));
         assert!(errors.iter().any(|e| e.contains("D-I3 buffer")));
+    }
+
+    #[test]
+    fn grouped_invariant_wrappers_run_on_fresh_graph() {
+        let g: G = GvGraph::new(make_config(None));
+        let mut errors = Vec::new();
+
+        check_g_tree_invariants(&g, &mut errors);
+        check_v_tree_invariants(&g, &mut errors);
+        check_accounting_invariants(&g, &mut errors);
+
+        assert!(errors.is_empty(), "fresh graph should satisfy grouped invariants: {errors:?}");
+    }
+
+    #[cfg(feature = "dynamic-contour-tracking")]
+    #[test]
+    fn plateau_only_helpers_run_without_errors_on_fresh_graph() {
+        let g: G = GvGraph::new(make_config(None));
+        let mut errors = Vec::new();
+
+        check_plateau_only(&g, &mut errors);
+        check_p_i3_only(&g, &mut errors);
+
+        assert!(errors.is_empty(), "fresh graph should satisfy plateau-only checks: {errors:?}");
     }
 }

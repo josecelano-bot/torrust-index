@@ -279,8 +279,12 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32>
 
 #[cfg(test)]
 mod tests {
+    use crate::arena::Arena;
     use crate::graph::{Config, GvGraph, StructuralConfig};
+    use crate::handle::GNodeId;
+    use crate::nodes::gnode::GNode;
     use crate::spatial::plateau::BasisEdge;
+    use crate::traits::PlateauTracking;
 
     type G = GvGraph<u8, u32, 8>;
 
@@ -299,6 +303,24 @@ mod tests {
 
     fn fresh() -> G {
         GvGraph::new(make_config())
+    }
+
+    fn add_leaf(
+        gnodes: &mut Arena<GNode<u8, u32>>,
+        lo: u8,
+        hi: u8,
+        sum: u32,
+        parent: Option<GNodeId>,
+    ) -> GNodeId {
+        let id = GNodeId::from_index(gnodes.alloc(GNode::new_leaf(lo, hi, 0u32, parent)));
+        let g = gnodes.get_mut(id.index());
+        g.set_own(sum);
+        g.set_sum(sum);
+        id
+    }
+
+    fn add_node(gnodes: &mut Arena<GNode<u8, u32>>, lo: u8, hi: u8, parent: Option<GNodeId>) -> GNodeId {
+        GNodeId::from_index(gnodes.alloc(GNode::new_leaf(lo, hi, 0u32, parent)))
     }
 
     // ── build_plateaus ────────────────────────────────────────────────
@@ -397,6 +419,194 @@ mod tests {
             assert!(result.is_some());
             let (start, _end) = result.unwrap();
             assert_eq!(start, BasisEdge(0u8));
+        }
+    }
+
+    #[cfg(feature = "dynamic-contour-tracking")]
+    mod dynamic_tracker_behavior_fn {
+        use super::*;
+        use crate::graph::algorithm::plateau::DynamicPlateauTracker;
+        use crate::nodes::gnode::GState;
+        use crate::spatial::plateau::Plateau;
+
+        #[test]
+        fn on_observe_updates_matching_plateau_sums_along_path() {
+            let mut gnodes = Arena::new();
+            let root = add_node(&mut gnodes, 0, 16, None);
+            let child = add_leaf(&mut gnodes, 8, 16, 7, Some(root));
+            gnodes.get_mut(root.index()).link_right(child);
+            gnodes.get_mut(root.index()).set_sum(7);
+
+            let mut tracker = DynamicPlateauTracker::<u8, u32>::with_root(BasisEdge(0), 0, 0, 16, root, 4);
+            tracker.plateau_basis.insert(BasisEdge(8), child);
+            tracker.plateaus.insert(
+                BasisEdge(8),
+                Plateau {
+                    basis_edge: BasisEdge(8),
+                    start: 8,
+                    end: 16,
+                    depth: 1,
+                    sum: 0,
+                },
+            );
+
+            PlateauTracking::on_observe(&mut tracker, &gnodes, child, 7);
+
+            assert_eq!(tracker.plateaus.get(&BasisEdge(0)).map(|p| p.sum), Some(7));
+            assert_eq!(tracker.plateaus.get(&BasisEdge(8)).map(|p| p.sum), Some(7));
+        }
+
+        #[test]
+        fn on_bootstrap_split_handles_unequal_child_depths() {
+            let mut gnodes = Arena::new();
+            let root = add_node(&mut gnodes, 0, 16, None);
+            let left = add_leaf(&mut gnodes, 0, 4, 0, Some(root));
+            let right = add_leaf(&mut gnodes, 4, 16, 0, Some(root));
+            gnodes.get_mut(root.index()).link_left(left);
+            gnodes.get_mut(root.index()).link_right(right);
+
+            let mut tracker = DynamicPlateauTracker::<u8, u32>::with_root(BasisEdge(0), 0, 0, 16, root, 4);
+            PlateauTracking::on_bootstrap_split(&mut tracker, &gnodes, root, left);
+
+            assert_eq!(tracker.plateau_basis.plateau_key(root), None);
+            assert!(tracker.plateau_basis.plateau_key(left).is_some());
+            assert!(tracker.plateau_basis.plateau_key(right).is_some());
+        }
+
+        #[test]
+        fn on_catalytic_split_uses_covering_ancestor_when_target_not_in_basis() {
+            let mut gnodes = Arena::new();
+            let root = add_node(&mut gnodes, 0, 32, None);
+            let g_id = add_node(&mut gnodes, 0, 16, Some(root));
+            let sibling = add_leaf(&mut gnodes, 16, 32, 0, Some(root));
+            gnodes.get_mut(root.index()).link_left(g_id);
+            gnodes.get_mut(root.index()).link_right(sibling);
+
+            let left = add_leaf(&mut gnodes, 0, 8, 0, Some(g_id));
+            let right = add_leaf(&mut gnodes, 8, 16, 0, Some(g_id));
+            gnodes.get_mut(g_id.index()).link_left(left);
+            gnodes.get_mut(g_id.index()).link_right(right);
+
+            let mut tracker = DynamicPlateauTracker::<u8, u32>::with_root(BasisEdge(0), 0, 0, 32, root, 5);
+            PlateauTracking::on_catalytic_split(&mut tracker, &gnodes, g_id, left);
+
+            assert_eq!(tracker.plateau_basis.plateau_key(root), None);
+            assert!(tracker.plateau_basis.plateau_key(left).is_some() || tracker.plateau_basis.plateau_key(g_id).is_some());
+        }
+
+        #[test]
+        fn on_evict_replaces_parent_and_survivor_when_parent_is_in_basis() {
+            let mut gnodes = Arena::new();
+            let parent = add_node(&mut gnodes, 0, 16, None);
+            let survivor = add_leaf(&mut gnodes, 8, 16, 2, Some(parent));
+            let evicted = add_leaf(&mut gnodes, 0, 8, 1, Some(parent));
+            gnodes.get_mut(parent.index()).link_right(survivor);
+
+            let mut tracker = DynamicPlateauTracker::<u8, u32>::with_root(BasisEdge(0), 0, 0, 16, parent, 4);
+            tracker.plateau_basis.insert(BasisEdge(0), evicted);
+
+            PlateauTracking::on_evict(
+                &mut tracker,
+                &gnodes,
+                evicted,
+                parent,
+                GState::SemiInternal,
+                0,
+                16,
+            );
+
+            assert!(tracker.plateau_basis.plateau_key(parent).is_some());
+            assert!(tracker.plateau_basis.plateau_key(survivor).is_some());
+        }
+
+        #[test]
+        fn on_legacy_promotes_batched_places_existing_and_new_children() {
+            let mut gnodes = Arena::new();
+            let parent = add_node(&mut gnodes, 0, 16, None);
+            let existing = add_leaf(&mut gnodes, 0, 8, 1, Some(parent));
+            let new_child = add_leaf(&mut gnodes, 8, 16, 1, Some(parent));
+            gnodes.get_mut(parent.index()).link_left(existing);
+            gnodes.get_mut(parent.index()).link_right(new_child);
+
+            let mut tracker = DynamicPlateauTracker::<u8, u32>::with_root(BasisEdge(0), 0, 0, 16, parent, 4);
+            PlateauTracking::on_legacy_promotes_batched(&mut tracker, &gnodes, &[new_child]);
+
+            assert!(tracker.plateaus_dirty);
+            assert!(tracker.plateau_basis.basis_count() >= 1);
+            assert!(tracker.plateau_basis.plateau_key(parent).is_some() || tracker.plateau_basis.plateau_key(new_child).is_some());
+            assert!(tracker.plateaus.len() >= 1);
+        }
+
+        #[test]
+        fn normalize_and_repair_cover_noop_and_skip_paths() {
+            let mut gnodes = Arena::new();
+            let lone = add_leaf(&mut gnodes, 0, 16, 3, None);
+
+            let mut tracker = DynamicPlateauTracker::<u8, u32>::with_root(BasisEdge(0), 0, 0, 16, lone, 4);
+            PlateauTracking::normalize(&mut tracker, &gnodes);
+
+            tracker.pending_p_i4.push((lone, BasisEdge(8)));
+            PlateauTracking::repair_p_i4(&mut tracker, &gnodes);
+
+            assert_eq!(tracker.plateau_basis.plateau_key(lone), Some(BasisEdge(0)));
+        }
+
+        #[test]
+        fn on_bootstrap_split_equal_depth_keeps_parent_as_basis_element() {
+            let mut gnodes = Arena::new();
+            let root = add_node(&mut gnodes, 0, 16, None);
+            let left = add_leaf(&mut gnodes, 0, 8, 0, Some(root));
+            let right = add_leaf(&mut gnodes, 8, 16, 0, Some(root));
+            gnodes.get_mut(root.index()).link_left(left);
+            gnodes.get_mut(root.index()).link_right(right);
+
+            let mut tracker = DynamicPlateauTracker::<u8, u32>::with_root(BasisEdge(0), 0, 0, 16, root, 4);
+            PlateauTracking::on_bootstrap_split(&mut tracker, &gnodes, root, left);
+
+            assert_eq!(tracker.plateau_basis.plateau_key(root), Some(BasisEdge(0)));
+        }
+
+        #[test]
+        fn on_catalytic_split_equal_depth_reinserts_parent() {
+            let mut gnodes = Arena::new();
+            let root = add_node(&mut gnodes, 0, 16, None);
+            let left = add_leaf(&mut gnodes, 0, 8, 0, Some(root));
+            let right = add_leaf(&mut gnodes, 8, 16, 0, Some(root));
+            gnodes.get_mut(root.index()).link_left(left);
+            gnodes.get_mut(root.index()).link_right(right);
+
+            let mut tracker = DynamicPlateauTracker::<u8, u32>::with_root(BasisEdge(0), 0, 0, 16, root, 4);
+            PlateauTracking::on_catalytic_split(&mut tracker, &gnodes, root, left);
+
+            assert!(tracker.plateau_basis.plateau_key(root).is_some());
+        }
+
+        #[test]
+        fn on_legacy_promotes_batched_empty_input_is_noop() {
+            let mut gnodes = Arena::new();
+            let root = add_leaf(&mut gnodes, 0, 16, 0, None);
+            let mut tracker = DynamicPlateauTracker::<u8, u32>::with_root(BasisEdge(0), 0, 0, 16, root, 4);
+
+            PlateauTracking::on_legacy_promotes_batched(&mut tracker, &gnodes, &[]);
+
+            assert!(!tracker.plateaus_dirty);
+            assert_eq!(tracker.plateau_basis.plateau_key(root), Some(BasisEdge(0)));
+        }
+
+        #[test]
+        #[should_panic(expected = "evict_tip: parent cannot remain Internal after eviction")]
+        fn on_evict_panics_when_parent_state_after_is_internal() {
+            let mut gnodes = Arena::new();
+            let parent = add_node(&mut gnodes, 0, 16, None);
+            let left = add_leaf(&mut gnodes, 0, 8, 1, Some(parent));
+            let right = add_leaf(&mut gnodes, 8, 16, 1, Some(parent));
+            gnodes.get_mut(parent.index()).link_left(left);
+            gnodes.get_mut(parent.index()).link_right(right);
+
+            let mut tracker = DynamicPlateauTracker::<u8, u32>::with_root(BasisEdge(0), 0, 0, 16, parent, 4);
+            tracker.plateau_basis.insert(BasisEdge(0), left);
+
+            PlateauTracking::on_evict(&mut tracker, &gnodes, left, parent, GState::Internal, 0, 16);
         }
     }
 }
