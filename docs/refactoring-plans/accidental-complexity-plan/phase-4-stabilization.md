@@ -95,7 +95,7 @@ Reasoning: complexity is driven by branching/nesting and mixed responsibilities 
 
 1. [x] Extract `evict_ancestor_key` into branch-specific phase helpers (selection, displacement, merge, reinsert).
 2. [x] Split `collect_normalize_elements` into traversal/selection and merge-policy components.
-3. Isolate `on_catalytic_split_impl` post-split normalization from mirror/debug responsibilities.
+3. [x] Isolate `on_catalytic_split_impl` post-split normalization from mirror/debug responsibilities.
 
 ## Progress Log
 
@@ -177,5 +177,22 @@ Reasoning: complexity is driven by branching/nesting and mixed responsibilities 
 - Notes:
   - Split normalize-element gathering into focused traversal helpers (`basis_ids_snapshot`, `collect_from_basis_root`, `process_normalize_node`, `push_normalize_element`).
   - Preserved normalize behavior while reducing mixed traversal/collection branching inside the public helper.
+- Follow-up:
+  - Recompute complexity snapshot to capture post-extraction cognitive delta.
+
+- Step: P4 follow-up backlog item 3 (`on_catalytic_split_impl` extraction)
+- Status: [x]
+- Files:
+  - `src/graph/algorithm/plateau/dynamic_tracker/split_catalytic.rs`
+  - `docs/refactoring-plans/accidental-complexity-plan/phase-4-stabilization.md`
+  - `docs/refactoring-plans/PROGRESS.md`
+- Commit: [pending]
+- Tests:
+  - [x] Gate A
+  - [x] Gate B
+  - [x] Gate C
+- Notes:
+  - Split catalytic split flow into focused helpers for depth capture, covering-key discovery, sibling displacement collection, and reinsertion.
+  - Kept `on_catalytic_split_impl` as an orchestrator while preserving behavior.
 - Follow-up:
   - Recompute complexity snapshot to capture post-extraction cognitive delta.
