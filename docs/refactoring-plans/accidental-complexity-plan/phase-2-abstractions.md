@@ -86,6 +86,19 @@ Introduce small, focused abstractions that reduce cognitive load and duplication
 
 ### 2026-03-29
 
+- Step: P2.3 signature simplification (rebalance resolve extension)
+- Status: [x]
+- Files: `src/graph/algorithm/rebalance/resolve.rs`
+- Commit: `a3d2dce`
+- Tests:
+  - [x] Gate A
+  - [x] Gate B
+  - [x] Gate C
+- Notes: Expanded `VTreeMutContext` usage from escalation-only helpers into `resolve_try_contract_parent` and `resolve_path_b`, reducing repeated `vnodes`/`violations` parameter threading across the resolve paths.
+- Follow-up: Keep context scope narrow and avoid long-lived mutable aliases when borrowing through the context.
+
+### 2026-03-29
+
 - Step: P2.2 VTree mutation mini-API (partial)
 - Status: [ ]
 - Files: `src/tree/vtree.rs`, `src/graph/algorithm/promote.rs`, `src/graph/algorithm/split.rs`, `src/graph/algorithm/evict.rs`

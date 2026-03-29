@@ -13,7 +13,7 @@
 |-------|------|--------|-------|-------|----------|-------|
 | **Phase 0: Prerequisites & Baseline** | Setup | ⚠️ Needs Review | — | 2026-03-29 | — | Build/test baseline captured; coverage/bench still pending |
 | **Phase 1: API Normalization** | Accidental Complexity | 🟡 In Progress | — | 2026-03-29 | — | Split helper ownership normalized; VTree migration still open |
-| **Phase 2: Abstractions** | Accidental Complexity | ⭕ Not Started | — | — | — | Depends on Phase 1 ✓ |
+| **Phase 2: Abstractions** | Accidental Complexity | 🟡 In Progress | — | 2026-03-29 | — | Running in parallel with late Phase 1 migration |
 | **Phase 3: Parameter Patterns (Optional)** | Refactoring Patterns | ⭕ Not Started | — | — | — | Only if ROI > 30%, after Phase 1 ✓ |
 | **Phase 4: Reorganization** | Accidental Complexity | ⭕ Not Started | — | — | — | Depends on Phase 1 ✓ |
 | **Phase 5: Stabilization** | Accidental Complexity | ⭕ Not Started | — | — | — | Final integration & cleanup |
@@ -38,6 +38,7 @@
 - Decomposed split flow into named helper phases (candidate check, parent preprocess, child allocation, shared post-split cleanup)
 - Added VTree mutation helpers (`recompute_and_sync_parent_slot`, `set_entry_flags`) and migrated promote/split/evict sites
 - Added `VTree::is_ancestor` and migrated eviction diagnostics to an in-tree owner API path
+- Expanded `VTreeMutContext` usage into rebalance resolve contraction/skip-promote helpers to reduce repeated parameter threading
 
 ### Test Status
 - **Gate A (cargo check):** [PASS - 2026-03-29]
@@ -144,6 +145,7 @@
 | 2026-03-29 | Phase 1 / Pattern Prep | Rebalance/query parameter grouping started | ✅ | current worktree | — | Added `EscalationContext`, `VTreeMutContext`, and `CoordinateRange` |
 | 2026-03-29 | Phase 2 | VTree mutation helper extraction | ✅ | current worktree | — | Added recompute+sync and entry-flag helpers; migrated call sites |
 | 2026-03-29 | Phase 1 | VTree ancestry owner-API migration | ✅ | current worktree | — | Eviction diagnostics now route through in-tree owner entrypoint |
+| 2026-03-29 | Phase 2 | Rebalance resolve context expansion | ✅ | current worktree | — | `VTreeMutContext` now threads through contraction and skip-promote helper paths (`a3d2dce`) |
 
 ---
 
@@ -211,5 +213,5 @@
 ---
 
 **Last Updated:** 2026-03-29 (active implementation)  
-**Next Review:** Before resuming P1.3 VTree call-site migration
+**Next Review:** Before continuing P1.3 VTree call-site migration and remaining P2.2 mini-API work
 
