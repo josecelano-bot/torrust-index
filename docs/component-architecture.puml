@@ -42,8 +42,10 @@ package "② Node Types  (nodes/)" {
 ' ③ Spatial / Output Types
 ' ─────────────────────────────────────────
 package "③ Spatial / Output Types  (spatial/)" {
-    [spatial/view\n<size:9>Span · Cell · Node</size>] as view
-    [spatial/plateau\n<size:9>Plateau · BasisEdge\nPlateauBasis</size>] as plateau
+    [spatial/view\n<size:9>Span · Cell</size>] as view
+    [spatial/node\n<size:9>Node (query-facing\nGNode projection)</size>] as node
+    [spatial/plateau\n<size:9>Plateau · BasisEdge</size>] as plateau
+    [spatial/plateau_basis\n<size:9>PlateauBasis\n(dynamic tracker index)</size>] as plateau_basis
     [spatial/pewei\n<size:9>Pewei · Layer\nTransition · Terminal</size>] as pewei
     [spatial/contour_range\n<size:9>ContourRange · BasisElement</size>] as contour_range
 }
@@ -60,7 +62,9 @@ package "④ Tree Utilities  (tree/)" {
 ' ⑤ Core Data Structure
 ' ─────────────────────────────────────────
 package "⑤ Core Data Structure  (graph/)" {
-    [graph/mod\n<size:9>GvGraph<C,V,N> + Config\nnew() · accessors</size>] as graph
+    [graph/mod\n<size:9>thin namespace\nre-exports only</size>] as graph
+    [graph/config\n<size:9>Config · StructuralConfig\nvalidate()</size>] as graph_config
+    [graph/gv_graph\n<size:9>GvGraph · DefaultGraph\nstate + accessors</size>] as graph_core
 }
 
 ' ─────────────────────────────────────────
@@ -100,10 +104,11 @@ package "⑧ Diagnostics  (diagnostics/)" {
 handle --> gnode
 handle --> vnode
 
-gnode --> view
+gnode --> node
 gnode --> plateau
-handle --> view
-handle --> plateau
+handle --> node
+view --> node
+view --> plateau
 view --> pewei
 plateau --> contour_range
 
@@ -113,21 +118,24 @@ gnode --> gtree
 gnode --> vtree
 vnode --> vtree
 
-arena --> graph
-gnode --> graph
-vnode --> graph
-plateau --> graph
-view --> graph
+arena --> graph_core
+gnode --> graph_core
+vnode --> graph_core
+plateau --> graph_core
+node --> graph_core
+graph_config --> graph_core
+graph_core --> graph
+graph_config --> graph
 
-graph --> observe
-graph --> split
-graph --> rebalance
-graph --> evict
-graph --> decay
-graph --> graph_budget
-graph --> graph_plateau
-graph --> graph_query
-graph --> graph_extract
+graph_core --> observe
+graph_core --> split
+graph_core --> rebalance
+graph_core --> evict
+graph_core --> decay
+graph_core --> graph_budget
+graph_core --> graph_plateau
+graph_core --> graph_query
+graph_core --> graph_extract
 
 gtree --> split
 gtree --> rebalance
@@ -137,6 +145,7 @@ vtree --> rebalance
 contour_range --> graph_query
 plateau --> graph_query
 plateau --> graph_plateau
+plateau_basis --> graph_plateau
 pewei --> graph_extract
 
 rebalance ..> split : called by
@@ -145,9 +154,9 @@ evict ..> graph_budget : called by
 graph_budget ..> observe : called by
 graph_plateau ..> observe : called by
 
-graph --> graph_traits
-graph --> invariants
-graph --> diagnostic
+graph_core --> graph_traits
+graph_core --> invariants
+graph_core --> diagnostic
 rebalance --> invariants
 rebalance --> diagnostic
 gtree --> invariants
