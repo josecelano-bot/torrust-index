@@ -340,7 +340,7 @@ pub(crate) fn propagate_evictable_flags<V: Accumulator>(
 }
 
 #[must_use]
-pub fn v_depth<V: Accumulator>(vnodes: &Arena<VNode<V>>, id: VNodeId) -> u32 {
+fn v_depth<V: Accumulator>(vnodes: &Arena<VNode<V>>, id: VNodeId) -> u32 {
     let node = vnodes.get(id.index());
     node.parent().map_or(0, |p| v_depth(vnodes, p) + 1)
 }
@@ -483,7 +483,7 @@ fn set_has_evictable<V: Accumulator>(vnodes: &mut Arena<VNode<V>>, id: VNodeId, 
 
 /// Returns `true` if `ancestor` is a strict ancestor of `descendant` in the V-tree
 /// (i.e. reachable by following parent links from `descendant`).
-pub(crate) fn is_ancestor<V: Accumulator>(
+fn is_ancestor<V: Accumulator>(
     vnodes: &Arena<VNode<V>>,
     ancestor: VNodeId,
     mut descendant: VNodeId,

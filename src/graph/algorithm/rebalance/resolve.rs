@@ -3,7 +3,6 @@ use crate::handle::{GNodeId, VNodeId};
 use crate::nodes::gnode::GNode;
 use crate::nodes::vnode::{VKind, VNode};
 use crate::traits::{Accumulator, Coordinate};
-use crate::tree::vtree::v_depth;
 
 use super::super::promote::{legacy_promote, skip_promote, standard_promote};
 use super::super::violation_push::{
@@ -29,6 +28,11 @@ fn any_child_violated<V: Accumulator>(vnodes: &Arena<VNode<V>>, node: VNodeId) -
         }
         VKind::Entry { .. } => false,
     }
+}
+
+fn v_depth_local<V: Accumulator>(vnodes: &Arena<VNode<V>>, id: VNodeId) -> u32 {
+    let node = vnodes.get(id.index());
+    node.parent().map_or(0, |p| v_depth_local(vnodes, p) + 1)
 }
 
 /// Contracts the 3-child parent `p` after a promote, propagates violations,
@@ -221,7 +225,7 @@ fn resolve_path_b<C: Coordinate, V: Accumulator>(
             if gnodes.get(gnode.index()).is_semi_internal()
     );
 
-    let result = if is_semi && v_depth(vnodes, c) <= depth_evict {
+    let result = if is_semi && v_depth_local(vnodes, c) <= depth_evict {
         tracing::debug!("phase 2: legacy promote (semi-internal entry)");
         let new_g = legacy_promote(vnodes, gnodes, c);
         push_side_effect_violations(vnodes, p, violations);

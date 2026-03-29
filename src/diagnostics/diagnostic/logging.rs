@@ -2,7 +2,21 @@ use crate::arena::Arena;
 use crate::handle::VNodeId;
 use crate::nodes::vnode::{VKind, VNode};
 use crate::traits::{Accumulator, Inspectable};
-use crate::tree::vtree::{VTree, is_ancestor};
+use crate::tree::vtree::VTree;
+
+fn is_ancestor_in_nodes<V: Accumulator>(
+    vnodes: &Arena<VNode<V>>,
+    ancestor: VNodeId,
+    mut descendant: VNodeId,
+) -> bool {
+    while let Some(p) = vnodes.get(descendant.index()).parent() {
+        if p == ancestor {
+            return true;
+        }
+        descendant = p;
+    }
+    false
+}
 
 #[allow(clippy::too_many_lines)]
 /// Walks the V-tree ancestry from `violated` to the root, logging each hop
@@ -50,7 +64,7 @@ pub(super) fn diagnose_collapse_sibling<V: Accumulator + Inspectable>(
     violated: VNodeId,
     sole: VNodeId,
 ) {
-    if is_ancestor(vnodes, sole, violated) {
+    if is_ancestor_in_nodes(vnodes, sole, violated) {
         tracing::error!(
             node = violated.index(),
             collapse_sibling = sole.index(),
