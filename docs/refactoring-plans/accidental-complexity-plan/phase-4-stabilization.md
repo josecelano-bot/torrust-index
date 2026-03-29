@@ -60,7 +60,7 @@ Prove improvements with refreshed metrics and document what complexity remains e
 
 - Previous top CC function: `decompose_basis` (CC=20, Cog=40)
 - Current top CC functions: `build_plateaus` (CC=17, Cog=39), `observe` (CC=17, Cog=23)
-- Cognitive outlier remains: `evict_ancestor_key` (CC=16, Cog=49)
+- Snapshot cognitive outlier: `evict_ancestor_key` (CC=16, Cog=49); helper extraction pass completed after snapshot, re-measure pending.
 
 ### Benchmark Refresh
 
@@ -93,7 +93,7 @@ Reasoning: complexity is driven by branching/nesting and mixed responsibilities 
 
 ## Follow-up Backlog
 
-1. Extract `evict_ancestor_key` into branch-specific phase helpers (selection, displacement, merge, reinsert).
+1. [x] Extract `evict_ancestor_key` into branch-specific phase helpers (selection, displacement, merge, reinsert).
 2. Split `collect_normalize_elements` into traversal/selection and merge-policy components.
 3. Isolate `on_catalytic_split_impl` post-split normalization from mirror/debug responsibilities.
 
@@ -146,3 +146,19 @@ Reasoning: complexity is driven by branching/nesting and mixed responsibilities 
   - Follow-up backlog captured for accidental hotspots.
 - Follow-up:
   - Execute backlog in a post-refactor hardening pass.
+
+- Step: P4 follow-up backlog item 1 (`evict_ancestor_key` extraction)
+- Status: [x]
+- Files:
+  - `src/graph/algorithm/plateau/dynamic_tracker/core_helpers/fixup.rs`
+  - `docs/refactoring-plans/accidental-complexity-plan/phase-4-stabilization.md`
+  - `docs/refactoring-plans/PROGRESS.md`
+- Commit: [pending]
+- Tests:
+  - [x] Gate A
+  - [x] Gate B
+  - [x] Gate C
+- Notes:
+  - Split `evict_ancestor_key` into helper phases (`covering_ancestor_key`, `displace_semi_internal_survivor`, `displace_path_siblings`) while preserving behavior and ordering.
+- Follow-up:
+  - Recompute complexity snapshot to capture post-extraction cognitive delta.

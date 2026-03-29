@@ -54,6 +54,7 @@
 - Completed residual complexity mapping and captured accidental follow-up backlog
 - Fixed release-build lint failure in dynamic tracker recompute helper (unused debug-only label)
 - Ran final benchmark pass (`cargo bench --bench depth`) and full validation gates
+- Completed follow-up extraction for `evict_ancestor_key` by splitting selection/displacement phases into named helpers
 
 ### Test Status
 - **Gate A (cargo check):** [PASS - 2026-03-29]
@@ -179,6 +180,7 @@
 | 2026-03-29 | Phase 5 | Stabilization metrics refresh | ✅ | current worktree | — | Recomputed complexity snapshot at `metrics-output/recheck-2026-03-29-stabilization/` |
 | 2026-03-29 | Phase 5 | Residual complexity classification | ✅ | current worktree | — | Classified essential vs accidental hotspots and captured follow-up backlog |
 | 2026-03-29 | Phase 5 | Final benchmark and gate validation | ✅ | current worktree | — | `cargo bench --bench depth`, `cargo check --all-features`, focused and full tests all passed |
+| 2026-03-29 | Phase 5 | Follow-up hotspot extraction (`evict_ancestor_key`) | ✅ | current worktree | — | Split covering/displacement logic into focused helpers in dynamic tracker fixup flow |
 
 ---
 
