@@ -23,10 +23,10 @@ Make ownership boundaries explicit by converting method-shaped free functions in
 
 ### P1.2 Split helper method conversion
 
-- [ ] Convert `bootstrap_split(graph, g_id)` -> private `self.bootstrap_split(g_id)`
-- [ ] Convert `catalytic_split(graph, g_id)` -> private `self.catalytic_split(g_id)`
-- [ ] Keep `attempt_split` as orchestrator entrypoint
-- [ ] Update call sites
+- [x] Convert `bootstrap_split(graph, g_id)` -> private `self.bootstrap_split(g_id)`
+- [x] Convert `catalytic_split(graph, g_id)` -> private `self.catalytic_split(g_id)`
+- [x] Keep `attempt_split` as orchestrator entrypoint
+- [x] Update call sites
 
 ### P1.3 VTree call-site migration
 
@@ -45,9 +45,9 @@ Make ownership boundaries explicit by converting method-shaped free functions in
 
 ## Test Checklist (per step)
 
-- [ ] Gate A: `cargo check --all-features`
-- [ ] Gate B: targeted tests for touched area
-- [ ] Gate C: `cargo test --all-features`
+- [x] Gate A: `cargo check --all-features`
+- [x] Gate B: targeted tests for touched area
+- [x] Gate C: `cargo test --all-features`
 
 ## Progress Log
 
@@ -63,3 +63,16 @@ Make ownership boundaries explicit by converting method-shaped free functions in
   - [ ] Gate C
 - Notes:
 - Follow-up:
+
+### 2026-03-29
+
+- Step: P1.2 split helper method conversion
+- Status: [x]
+- Files: `src/graph/algorithm/split.rs`
+- Commit: [pending]
+- Tests:
+  - [x] Gate A
+  - [x] Gate B
+  - [x] Gate C
+- Notes: `bootstrap_split` and `catalytic_split` now live on `GvGraph`; `attempt_split` remains the entrypoint.
+- Follow-up: Complete P1.1 inventory and P1.3 VTree migration before calling Phase 1 complete.

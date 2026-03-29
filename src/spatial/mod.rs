@@ -5,4 +5,5 @@ pub mod pewei_types;
 pub mod plateau;
 #[cfg(feature = "dynamic-contour-tracking")]
 pub mod plateau_basis;
+pub mod range;
 pub mod view;

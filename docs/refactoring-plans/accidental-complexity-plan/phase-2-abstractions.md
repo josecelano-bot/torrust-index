@@ -14,10 +14,10 @@ Introduce small, focused abstractions that reduce cognitive load and duplication
 
 ### P2.1 Split flow phases
 
-- [ ] Extract split precondition helper
-- [ ] Extract parent-triple preprocess helper
-- [ ] Extract child allocation and V wiring helper
-- [ ] Extract finalize helper for evictable propagation and plateau update
+- [x] Extract split precondition helper
+- [x] Extract parent-triple preprocess helper
+- [x] Extract child allocation and V wiring helper
+- [x] Extract finalize helper for evictable propagation and plateau update
 
 ### P2.2 VTree mutation mini-API
 
@@ -28,7 +28,7 @@ Introduce small, focused abstractions that reduce cognitive load and duplication
 
 ### P2.3 Signature simplification
 
-- [ ] Introduce focused context struct only where it clearly reduces noise
+- [x] Introduce focused context struct only where it clearly reduces noise
 - [ ] Validate contexts do not become generic dumping containers
 
 ## Acceptance Criteria
@@ -57,3 +57,29 @@ Introduce small, focused abstractions that reduce cognitive load and duplication
   - [ ] Gate C
 - Notes:
 - Follow-up:
+
+### 2026-03-29
+
+- Step: P2.1 split flow phases
+- Status: [x]
+- Files: `src/graph/algorithm/split.rs`
+- Commit: [pending]
+- Tests:
+  - [x] Gate A
+  - [x] Gate B
+  - [x] Gate C
+- Notes: Split flow now uses named helpers for candidate checks, parent preprocessing, child allocation, and shared entry cleanup.
+- Follow-up: Continue P2.2 VTree mutation mini-API and keep helper scope narrow.
+
+### 2026-03-29
+
+- Step: P2.3 signature simplification
+- Status: [x]
+- Files: `src/graph/algorithm/rebalance/context.rs`, `src/graph/algorithm/rebalance/resolve.rs`, `src/spatial/range.rs`, `src/graph/algorithm/query/*.rs`
+- Commit: [pending]
+- Tests:
+  - [x] Gate A
+  - [x] Gate B
+  - [x] Gate C
+- Notes: Added `EscalationContext`, `VTreeMutContext`, and `CoordinateRange` to remove repeated parameter groupings in rebalance and query code.
+- Follow-up: Measure whether additional grouping is still warranted before expanding this pattern further.

@@ -10,7 +10,7 @@ mod resolve;
 mod violation_scan;
 
 pub(super) use super::fmt::Ch;
-pub use context::{Ctx, Nd};
+pub use context::{Ctx, EscalationContext, Nd, VTreeMutContext};
 pub use resolve::resolve;
 pub use violation_scan::find_violated_nodes;
 

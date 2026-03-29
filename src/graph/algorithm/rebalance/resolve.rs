@@ -10,7 +10,7 @@ use super::super::violation_push::{
     push_contraction_child_violations, push_promoted_violations, push_side_effect_violations,
     push_source_10_violations,
 };
-use super::{Ctx, Nd, contract, is_violated};
+use super::{contract, is_violated, Ctx, EscalationContext, Nd, VTreeMutContext};
 
 fn structural_child_count<V: Accumulator>(vnodes: &Arena<VNode<V>>, id: VNodeId) -> usize {
     vnodes.get(id.index()).child_count()
@@ -35,19 +35,18 @@ fn any_child_violated<V: Accumulator>(vnodes: &Arena<VNode<V>>, node: VNodeId) -
 /// and returns `Some(merged)` if the violation persists (Phase 3 needed),
 /// or `None` if the contraction resolved it.
 fn escalate_contract_parent<V: Accumulator>(
-    vnodes: &mut Arena<VNode<V>>,
-    p: VNodeId,
-    heaviest: VNodeId,
-    h_direct: bool,
-    violations: &mut Vec<VNodeId>,
+    tree: &mut VTreeMutContext<'_, V>,
+    ctx: &mut EscalationContext,
 ) -> Option<VNodeId> {
-    let merged = contract(vnodes, p);
-    push_side_effect_violations(vnodes, p, violations);
+    let (vnodes, violations) = (&mut *tree.vnodes, &mut *tree.violations);
+    let merged = contract(vnodes, ctx.parent_id);
+    push_side_effect_violations(vnodes, ctx.parent_id, violations);
     push_side_effect_violations(vnodes, merged, violations);
-    push_contraction_child_violations(vnodes, p, heaviest, violations);
+    push_contraction_child_violations(vnodes, ctx.parent_id, ctx.heaviest_id, violations);
+    ctx.merged_id = Some(merged);
 
-    let needs_skip = if h_direct {
-        is_violated(vnodes, heaviest)
+    let needs_skip = if ctx.heaviest_is_direct_child {
+        is_violated(vnodes, ctx.heaviest_id)
     } else {
         is_violated(vnodes, merged)
     };
@@ -65,44 +64,44 @@ fn escalate_contract_parent<V: Accumulator>(
 /// `resolved = true` means the violation was resolved and the caller should
 /// return immediately.
 fn escalate_try_contract_grandparent<V: Accumulator>(
-    vnodes: &mut Arena<VNode<V>>,
-    g: VNodeId,
-    heaviest: VNodeId,
-    merged: VNodeId,
-    h_direct: bool,
-    violations: &mut Vec<VNodeId>,
-) -> (Option<VNodeId>, bool) {
-    if structural_child_count(vnodes, g) == 3 {
-        let g_merged = contract(vnodes, g);
-        push_side_effect_violations(vnodes, g, violations);
+    tree: &mut VTreeMutContext<'_, V>,
+    ctx: &mut EscalationContext,
+) -> bool {
+    let (vnodes, violations) = (&mut *tree.vnodes, &mut *tree.violations);
+    if structural_child_count(vnodes, ctx.grandparent_id) == 3 {
+        let g_merged = contract(vnodes, ctx.grandparent_id);
+        push_side_effect_violations(vnodes, ctx.grandparent_id, violations);
         push_side_effect_violations(vnodes, g_merged, violations);
-        push_promoted_violations(vnodes, g, violations);
-        let resolved = !is_violated(vnodes, heaviest) && (h_direct || !is_violated(vnodes, merged));
+        push_promoted_violations(vnodes, ctx.grandparent_id, violations);
+        ctx.grandparent_merged_id = Some(g_merged);
+
+        let merged = ctx
+            .merged_id
+            .expect("escalate_try_contract_grandparent: parent contraction must run first");
+        let resolved = !is_violated(vnodes, ctx.heaviest_id)
+            && (ctx.heaviest_is_direct_child || !is_violated(vnodes, merged));
         if resolved {
             tracing::debug!("resolved by g-contraction");
-            return (Some(g_merged), true);
+            return true;
         }
-        (Some(g_merged), false)
-    } else {
-        (None, false)
     }
+
+    false
 }
 
 /// Skip-promote fallback (Phase 4): moves the violation upward when neither
 /// parent nor grandparent contraction resolved it.
 fn escalate_skip_promote<V: Accumulator>(
-    vnodes: &mut Arena<VNode<V>>,
-    p: VNodeId,
-    heaviest: VNodeId,
-    g_merged: Option<VNodeId>,
-    violations: &mut Vec<VNodeId>,
+    tree: &mut VTreeMutContext<'_, V>,
+    ctx: &EscalationContext,
 ) {
-    if let Some(g_id) = vnodes.get(p.index()).parent() {
-        skip_promote(vnodes, heaviest);
+    let (vnodes, violations) = (&mut *tree.vnodes, &mut *tree.violations);
+    if let Some(g_id) = vnodes.get(ctx.parent_id.index()).parent() {
+        skip_promote(vnodes, ctx.heaviest_id);
         push_side_effect_violations(vnodes, g_id, violations);
         push_promoted_violations(vnodes, g_id, violations);
 
-        if let Some(gm) = g_merged {
+        if let Some(gm) = ctx.grandparent_merged_id {
             push_source_10_violations(vnodes, gm, violations);
         }
     }
@@ -139,20 +138,21 @@ fn escalate_after_promote<V: Accumulator>(
     )
     .entered();
 
+    let mut tree = VTreeMutContext { vnodes, violations };
+    let mut ctx = EscalationContext::new(p, g, heaviest, h_direct);
+
     // Phase 2: Contract 3-child parent `p` and propagate violations.
-    let Some(merged) = escalate_contract_parent(vnodes, p, heaviest, h_direct, violations) else {
+    let Some(_merged) = escalate_contract_parent(&mut tree, &mut ctx) else {
         return;
     };
 
     // Phase 3: Optionally contract grandparent `g` if it has 3 children.
-    let (g_merged, resolved) =
-        escalate_try_contract_grandparent(vnodes, g, heaviest, merged, h_direct, violations);
-    if resolved {
+    if escalate_try_contract_grandparent(&mut tree, &mut ctx) {
         return;
     }
 
     // Phase 4: Skip-promote fallback.
-    escalate_skip_promote(vnodes, p, heaviest, g_merged, violations);
+    escalate_skip_promote(&mut tree, &ctx);
 }
 
 /// Phase 1 of `resolve`: if the parent of `c` is a 3-child node, contract it

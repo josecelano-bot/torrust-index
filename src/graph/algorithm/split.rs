@@ -11,176 +11,191 @@ use crate::traits::{Accumulator, Coordinate, Inspectable};
 
 impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N> {
     pub(crate) fn attempt_split(&mut self, g_id: GNodeId) {
-        let g = self.gtree.nodes.get(g_id.index());
-
-        if g.left().is_some() || g.right().is_some() {
-            return;
-        }
-
-        let mid = C::midpoint(g.lo(), g.hi());
-        if mid.partial_cmp(&g.lo()) != Some(std::cmp::Ordering::Greater) {
-            return;
-        }
-
-        if g.sum().partial_cmp(&self.config.split_threshold) != Some(std::cmp::Ordering::Greater) {
-            return;
-        }
-
-        let Some(entry_id) = g.entry() else {
+        let Some(entry_id) = self.split_candidate_entry(g_id) else {
             return;
         };
 
         if self.vtree.nodes.get(entry_id.index()).parent().is_none() {
-            bootstrap_split(self, g_id);
+            self.bootstrap_split(g_id);
             return;
         }
 
-        let p_id = self.vtree.nodes.get(entry_id.index()).parent().unwrap();
-        if self.vtree.nodes.get(p_id.index()).is_structural_triple() {
-            let _span = tracing::debug_span!(
-                "split_preprocess",
-                p = %Nd(&self.vtree.nodes, p_id),
-            )
-            .entered();
-            let merged = contract(&mut self.vtree.nodes, p_id);
-            push_side_effect_violations(&self.vtree.nodes, p_id, &mut self.vtree.violations);
-            push_side_effect_violations(&self.vtree.nodes, merged, &mut self.vtree.violations);
-            push_promoted_violations(&self.vtree.nodes, p_id, &mut self.vtree.violations);
-        }
+        self.preprocess_split_parent(entry_id);
 
         let entry_id = self.gtree.nodes.get(g_id.index()).entry().unwrap();
         if self.vtree.depth(entry_id) > self.gtree.live_depth_create {
             return;
         }
 
-        catalytic_split(self, g_id);
+        self.catalytic_split(g_id);
+    }
+
+    fn bootstrap_split(&mut self, g_id: GNodeId) {
+        let (lo, hi, entry_id) = {
+            let g = self.gtree.nodes.get(g_id.index());
+            (
+                g.lo(),
+                g.hi(),
+                g.entry().expect("bootstrap_split: g must have an entry"),
+            )
+        };
+        let _span = tracing::debug_span!("bootstrap_split", g_id = g_id.index(), ?lo, ?hi,).entered();
+
+        let children = self.allocate_split_children(g_id);
+
+        let cs_id = alloc_v_structural_2(
+            &mut self.vtree.nodes,
+            children.left_entry_id,
+            children.right_entry_id,
+        );
+
+        let entry_int = self.vtree.nodes.get(entry_id.index()).intensity();
+        let root_structural = VNode::new_structural(
+            entry_int,
+            None,
+            Children::new_2((entry_id, entry_int), (cs_id, V::zero())),
+            true,
+        );
+        let root_s_id = VNodeId::from_index(self.vtree.nodes.alloc(root_structural));
+        self.vtree.nodes.get_mut(entry_id.index()).set_parent(root_s_id);
+        self.vtree.nodes.get_mut(cs_id.index()).set_parent(root_s_id);
+
+        self.hide_entry_from_parent(entry_id);
+
+        self.vtree.root = Some(root_s_id);
+
+        self.plateau_after_bootstrap_split(g_id, children.left_id);
+        self.debug_assert_split_mirror_consistency("POST-BOOTSTRAP-SPLIT");
+    }
+
+    #[allow(clippy::too_many_lines)]
+    fn catalytic_split(&mut self, g_id: GNodeId) {
+        let (lo, hi, entry_id) = {
+            let g = self.gtree.nodes.get(g_id.index());
+            (
+                g.lo(),
+                g.hi(),
+                g.entry().expect("catalytic_split: g must have an entry"),
+            )
+        };
+        let mid = C::midpoint(lo, hi);
+        let _span =
+            tracing::debug_span!("catalytic_split", g_id = g_id.index(), ?lo, ?hi, ?mid,).entered();
+        let p_id = self
+            .vtree
+            .nodes
+            .get(entry_id.index())
+            .parent()
+            .expect("catalytic_split: entry must have a parent");
+
+        let children = self.allocate_split_children(g_id);
+
+        // ── Phase 2: Allocate structural node ───────────────────────────────
+        let s = VNode::new_structural(
+            V::zero(),
+            Some(p_id),
+            Children::new_2(
+                (children.left_entry_id, V::zero()),
+                (children.right_entry_id, V::zero()),
+            ),
+            true,
+        );
+        let s_id = VNodeId::from_index(self.vtree.nodes.alloc(s));
+        self.vtree
+            .nodes
+            .get_mut(children.left_entry_id.index())
+            .set_parent(s_id);
+        self.vtree
+            .nodes
+            .get_mut(children.right_entry_id.index())
+            .set_parent(s_id);
+
+        // ── Phase 4: Wire `s` into the parent's child list ───────────────────
+        let p = self.vtree.nodes.get_mut(p_id.index());
+        if let VKind::Structural { children, .. } = p.kind_mut() {
+            children.add_child(s_id, V::zero());
+        }
+
+        self.hide_entry_from_parent(entry_id);
+
+        // ── Phase 5: Propagate evictable flags ────────────────────────────────
+        self.vtree.propagate_evictable(p_id);
+
+        // ── Phase 6: Plateau state update ─────────────────────────────────────
+        self.plateau_after_catalytic_split(g_id, children.left_id);
+        self.debug_assert_split_mirror_consistency("POST-CATALYTIC-SPLIT");
+    }
+
+    fn split_candidate_entry(&self, g_id: GNodeId) -> Option<VNodeId> {
+        let g = self.gtree.nodes.get(g_id.index());
+        if g.left().is_some() || g.right().is_some() {
+            return None;
+        }
+
+        let mid = C::midpoint(g.lo(), g.hi());
+        if mid.partial_cmp(&g.lo()) != Some(std::cmp::Ordering::Greater) {
+            return None;
+        }
+
+        if g.sum().partial_cmp(&self.config.split_threshold) != Some(std::cmp::Ordering::Greater) {
+            return None;
+        }
+
+        g.entry()
+    }
+
+    fn preprocess_split_parent(&mut self, entry_id: VNodeId) {
+        let p_id = self.vtree.nodes.get(entry_id.index()).parent().unwrap();
+        if !self.vtree.nodes.get(p_id.index()).is_structural_triple() {
+            return;
+        }
+
+        let _span = tracing::debug_span!(
+            "split_preprocess",
+            p = %Nd(&self.vtree.nodes, p_id),
+        )
+        .entered();
+        let merged = contract(&mut self.vtree.nodes, p_id);
+        push_side_effect_violations(&self.vtree.nodes, p_id, &mut self.vtree.violations);
+        push_side_effect_violations(&self.vtree.nodes, merged, &mut self.vtree.violations);
+        push_promoted_violations(&self.vtree.nodes, p_id, &mut self.vtree.violations);
+    }
+
+    fn allocate_split_children(&mut self, g_id: GNodeId) -> SplitChildren {
+        let (left_id, right_id) = self.gtree.allocate_children(g_id);
+        let left_entry_id = alloc_v_entry(&mut self.vtree.nodes, &mut self.gtree.nodes, left_id);
+        let right_entry_id = alloc_v_entry(&mut self.vtree.nodes, &mut self.gtree.nodes, right_id);
+
+        SplitChildren {
+            left_id,
+            left_entry_id,
+            right_entry_id,
+        }
+    }
+
+    fn hide_entry_from_parent(&mut self, entry_id: VNodeId) {
+        if let VKind::Entry {
+            is_exposed,
+            is_evictable,
+            ..
+        } = self.vtree.nodes.get_mut(entry_id.index()).kind_mut()
+        {
+            *is_exposed = false;
+            *is_evictable = false;
+        }
+    }
+
+    fn debug_assert_split_mirror_consistency(&self, label: &str) {
+        if tracing::enabled!(tracing::Level::DEBUG) {
+            self.debug_assert_plateau_mirror_consistency(label);
+        }
     }
 }
 
-fn bootstrap_split<C: Coordinate, V: Accumulator + Inspectable, const N: u32>(
-    graph: &mut GvGraph<C, V, N>,
-    g_id: GNodeId,
-) {
-    let (lo, hi, entry_id) = {
-        let g = graph.gtree.nodes.get(g_id.index());
-        (
-            g.lo(),
-            g.hi(),
-            g.entry().expect("bootstrap_split: g must have an entry"),
-        )
-    };
-    let _span = tracing::debug_span!("bootstrap_split", g_id = g_id.index(), ?lo, ?hi,).entered();
-
-    let (left_id, right_id) = graph.gtree.allocate_children(g_id);
-
-    let le_id = alloc_v_entry(&mut graph.vtree.nodes, &mut graph.gtree.nodes, left_id);
-    let re_id = alloc_v_entry(&mut graph.vtree.nodes, &mut graph.gtree.nodes, right_id);
-
-    let cs_id = alloc_v_structural_2(&mut graph.vtree.nodes, le_id, re_id);
-
-    let entry_int = graph.vtree.nodes.get(entry_id.index()).intensity();
-    let root_structural = VNode::new_structural(
-        entry_int,
-        None,
-        Children::new_2((entry_id, entry_int), (cs_id, V::zero())),
-        true,
-    );
-    let root_s_id = VNodeId::from_index(graph.vtree.nodes.alloc(root_structural));
-    graph
-        .vtree
-        .nodes
-        .get_mut(entry_id.index())
-        .set_parent(root_s_id);
-    graph
-        .vtree
-        .nodes
-        .get_mut(cs_id.index())
-        .set_parent(root_s_id);
-
-    if let VKind::Entry {
-        is_exposed,
-        is_evictable,
-        ..
-    } = graph.vtree.nodes.get_mut(entry_id.index()).kind_mut()
-    {
-        *is_exposed = false;
-        *is_evictable = false;
-    }
-
-    graph.vtree.root = Some(root_s_id);
-
-    graph.plateau_after_bootstrap_split(g_id, left_id);
-
-    if tracing::enabled!(tracing::Level::DEBUG) {
-        graph.debug_assert_plateau_mirror_consistency("POST-BOOTSTRAP-SPLIT");
-    }
-}
-
-#[allow(clippy::too_many_lines)]
-fn catalytic_split<C: Coordinate, V: Accumulator + Inspectable, const N: u32>(
-    graph: &mut GvGraph<C, V, N>,
-    g_id: GNodeId,
-) {
-    let (lo, hi, entry_id) = {
-        let g = graph.gtree.nodes.get(g_id.index());
-        (
-            g.lo(),
-            g.hi(),
-            g.entry().expect("catalytic_split: g must have an entry"),
-        )
-    };
-    let mid = C::midpoint(lo, hi);
-    let _span =
-        tracing::debug_span!("catalytic_split", g_id = g_id.index(), ?lo, ?hi, ?mid,).entered();
-    let p_id = graph
-        .vtree
-        .nodes
-        .get(entry_id.index())
-        .parent()
-        .expect("catalytic_split: entry must have a parent");
-
-    // ── Phase 1: Allocate G-children and V-entry nodes ───────────────────
-    let (left_id, right_id) = graph.gtree.allocate_children(g_id);
-
-    let le_id = alloc_v_entry(&mut graph.vtree.nodes, &mut graph.gtree.nodes, left_id);
-    let re_id = alloc_v_entry(&mut graph.vtree.nodes, &mut graph.gtree.nodes, right_id);
-
-    // ── Phase 2: Allocate structural node ───────────────────────────────
-    let s = VNode::new_structural(
-        V::zero(),
-        Some(p_id),
-        Children::new_2((le_id, V::zero()), (re_id, V::zero())),
-        true,
-    );
-    let s_id = VNodeId::from_index(graph.vtree.nodes.alloc(s));
-    graph.vtree.nodes.get_mut(le_id.index()).set_parent(s_id);
-    graph.vtree.nodes.get_mut(re_id.index()).set_parent(s_id);
-
-    // ── Phase 4: Wire `s` into the parent's child list ───────────────────
-    let p = graph.vtree.nodes.get_mut(p_id.index());
-    if let VKind::Structural { children, .. } = p.kind_mut() {
-        children.add_child(s_id, V::zero());
-    }
-
-    if let VKind::Entry {
-        is_exposed,
-        is_evictable,
-        ..
-    } = graph.vtree.nodes.get_mut(entry_id.index()).kind_mut()
-    {
-        *is_exposed = false;
-        *is_evictable = false;
-    }
-
-    // ── Phase 5: Propagate evictable flags ────────────────────────────────
-    graph.vtree.propagate_evictable(p_id);
-
-    // ── Phase 6: Plateau state update ─────────────────────────────────────
-    graph.plateau_after_catalytic_split(g_id, left_id);
-
-    if tracing::enabled!(tracing::Level::DEBUG) {
-        graph.debug_assert_plateau_mirror_consistency("POST-CATALYTIC-SPLIT");
-    }
+struct SplitChildren {
+    left_id: GNodeId,
+    left_entry_id: VNodeId,
+    right_entry_id: VNodeId,
 }
 
 fn alloc_v_entry<C: Coordinate, V: Accumulator>(

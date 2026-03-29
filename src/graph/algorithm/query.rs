@@ -200,6 +200,7 @@ mod tests {
     // ── contour_range ────────────────────────────────────────────────────
     #[cfg(feature = "dynamic-contour-tracking")]
     mod contour_range_tests {
+        use crate::spatial::range::CoordinateRange;
         use crate::spatial::plateau::BasisEdge;
         use crate::traits::Coordinate;
 
@@ -344,7 +345,11 @@ mod tests {
             let g = fresh_graph();
             let mut basis = Vec::new();
             // Root interval is [0, 255), so [255, 255) has no overlap.
-            g.decompose_basis(g.gtree.root, 255u8, 255u8, &mut basis);
+            g.decompose_basis(
+                g.gtree.root,
+                CoordinateRange::new(255u8, 255u8),
+                &mut basis,
+            );
             assert!(basis.is_empty());
         }
 
@@ -374,7 +379,7 @@ mod tests {
             let mut basis = Vec::new();
             // Query spans both halves but is not full coverage -> hits the
             // asymmetric semi-internal fast-path in decompose_basis.
-            g.decompose_basis(root, 1u8, 254u8, &mut basis);
+            g.decompose_basis(root, CoordinateRange::new(1u8, 254u8), &mut basis);
             assert_eq!(basis.len(), 1);
             assert_eq!(basis[0].gnode_id, root);
             assert_eq!(basis[0].start, 1u8);

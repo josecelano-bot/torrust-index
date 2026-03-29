@@ -7,6 +7,7 @@ use crate::spatial::contour_range::{
     BasisElement, ContourRange, ContourRangeEnergy, compute_plateau_energy, validate_endpoints,
 };
 use crate::spatial::plateau::BasisEdge;
+use crate::spatial::range::CoordinateRange;
 use crate::traits::{Accumulator, DiscreteCoordinate, Inspectable, Proratable};
 use crate::tree::gtree::GTree;
 
@@ -46,19 +47,18 @@ impl<C: DiscreteCoordinate, V: Accumulator + Proratable, const N: u32> GvGraph<C
     pub(super) fn decompose_basis(
         &self,
         gid: GNodeId,
-        query_lo: C,
-        query_hi: C,
+        range: CoordinateRange<C>,
         basis: &mut Vec<BasisElement<C, V>>,
     ) {
         let g = self.gtree.nodes.get(gid.index());
 
         // Case 1: Out-of-range — the query interval does not overlap this node.
-        if query_lo >= g.hi() || query_hi <= g.lo() {
+        if !range.overlaps(g.lo(), g.hi()) {
             return;
         }
 
         // Case 2: Full-coverage fast path — the node is wholly inside the query.
-        if query_lo <= g.lo() && query_hi >= g.hi() {
+        if range.covers(g.lo(), g.hi()) {
             Self::push_full_element(gid, g, basis);
             return;
         }
@@ -70,12 +70,10 @@ impl<C: DiscreteCoordinate, V: Accumulator + Proratable, const N: u32> GvGraph<C
         // Case 3: Asymmetric pair — exactly one child is absent; the query may
         // span both halves, in which case we emit a single spanning thatch tile.
         if left_absent != right_absent {
-            let l_lo = if query_lo > g.lo() { query_lo } else { g.lo() };
-            let l_hi = if query_hi < mid { query_hi } else { mid };
-            let r_lo = if query_lo > mid { query_lo } else { mid };
-            let r_hi = if query_hi < g.hi() { query_hi } else { g.hi() };
-            if l_lo < l_hi && r_lo < r_hi {
-                Self::push_boundary_thatch_element(gid, g, l_lo, r_hi, basis);
+            let left_range = range.clip(g.lo(), mid);
+            let right_range = range.clip(mid, g.hi());
+            if !left_range.is_empty() && !right_range.is_empty() {
+                Self::push_boundary_thatch_element(gid, g, left_range.lo, right_range.hi, basis);
                 return;
             }
         }
@@ -83,27 +81,25 @@ impl<C: DiscreteCoordinate, V: Accumulator + Proratable, const N: u32> GvGraph<C
         // Case 4: Recursive descent — descend into present children; fill the
         // gap for each absent child with a boundary-thatch tile.
         if let Some(left_id) = g.left() {
-            self.decompose_basis(left_id, query_lo, query_hi, basis);
+            self.decompose_basis(left_id, range, basis);
         } else {
-            let tile_lo = if query_lo > g.lo() { query_lo } else { g.lo() };
-            let tile_hi = if query_hi < mid { query_hi } else { mid };
-            if tile_lo < tile_hi {
-                Self::push_boundary_thatch_element(gid, g, tile_lo, tile_hi, basis);
+            let left_range = range.clip(g.lo(), mid);
+            if !left_range.is_empty() {
+                Self::push_boundary_thatch_element(gid, g, left_range.lo, left_range.hi, basis);
                 return;
             }
         }
 
         if let Some(right_id) = g.right() {
-            self.decompose_basis(right_id, query_lo, query_hi, basis);
+            self.decompose_basis(right_id, range, basis);
         } else {
-            let tile_lo = if query_lo > mid { query_lo } else { mid };
-            let tile_hi = if query_hi < g.hi() { query_hi } else { g.hi() };
-            if tile_lo < tile_hi {
+            let right_range = range.clip(mid, g.hi());
+            if !right_range.is_empty() {
                 debug_assert!(
                     basis.last().is_none_or(|b| b.gnode_id != gid),
                     "double push for gnode {gid:?}",
                 );
-                Self::push_boundary_thatch_element(gid, g, tile_lo, tile_hi, basis);
+                Self::push_boundary_thatch_element(gid, g, right_range.lo, right_range.hi, basis);
             }
         }
     }
@@ -121,7 +117,11 @@ impl<C: DiscreteCoordinate, V: Accumulator + Proratable + Inspectable, const N: 
         let (plateau_energy, plateau_count) = compute_plateau_energy(&plateaus, start, end);
 
         let mut basis = Vec::new();
-        self.decompose_basis(self.gtree.root, start.0, end.0, &mut basis);
+        self.decompose_basis(
+            self.gtree.root,
+            CoordinateRange::new(start.0, end.0),
+            &mut basis,
+        );
 
         let energy = basis.iter().fold(V::zero(), |acc, b| V::add(acc, b.sum));
 

@@ -1,8 +1,8 @@
 # Refactoring Initiative: Master Progress Tracker
 
-**Status:** ⏳ NOT STARTED  
+**Status:** 🟡 IN PROGRESS  
 **Last Updated:** 2026-03-29  
-**Assigned To:** [TEAM]  
+**Assigned To:** [IN PROGRESS]  
 **Expected Completion:** [PENDING ESTIMATION]
 
 ---
@@ -11,8 +11,8 @@
 
 | Phase | Type | Status | Owner | Start | Est. End | Notes |
 |-------|------|--------|-------|-------|----------|-------|
-| **Phase 0: Prerequisites & Baseline** | Setup | ⭕ Not Started | — | — | — | Must complete before any refactoring |
-| **Phase 1: API Normalization** | Accidental Complexity | ⭕ Not Started | — | — | — | Establishes ownership boundaries |
+| **Phase 0: Prerequisites & Baseline** | Setup | ⚠️ Needs Review | — | 2026-03-29 | — | Build/test baseline captured; coverage/bench still pending |
+| **Phase 1: API Normalization** | Accidental Complexity | 🟡 In Progress | — | 2026-03-29 | — | Split helper ownership normalized; VTree migration still open |
 | **Phase 2: Abstractions** | Accidental Complexity | ⭕ Not Started | — | — | — | Depends on Phase 1 ✓ |
 | **Phase 3: Parameter Patterns (Optional)** | Refactoring Patterns | ⭕ Not Started | — | — | — | Only if ROI > 30%, after Phase 1 ✓ |
 | **Phase 4: Reorganization** | Accidental Complexity | ⭕ Not Started | — | — | — | Depends on Phase 1 ✓ |
@@ -25,19 +25,23 @@
 ## 📋 Current Active Work
 
 ### Active Phase
-- Phase: [NONE - Not Started]
-- Sub-task: [NONE]
-- Branch: [NONE]
-- Responsible: [UNASSIGNED]
+- Phase: [Phase 1 - API Normalization]
+- Sub-task: [P1.2 complete, P1.3 still open]
+- Branch: [CURRENT WORKTREE]
+- Responsible: [IN PROGRESS]
 
 ### Recent Activity
-- No activity yet
+- Established a green baseline with `cargo check --all-features` and `cargo test --all-features`
+- Converted split helpers to private `GvGraph` methods and kept `attempt_split` as the orchestrator
+- Introduced `EscalationContext` + `VTreeMutContext` to reduce rebalance escalation parameter count
+- Introduced `CoordinateRange` and migrated query range recursion to typed ranges
+- Decomposed split flow into named helper phases (candidate check, parent preprocess, child allocation, shared post-split cleanup)
 
 ### Test Status
-- **Gate A (cargo check):** [NOT RUN]
-- **Gate B (focused tests):** [NOT RUN]
-- **Gate C (full test suite):** [NOT RUN]
-- **Last successful full run:** [BASELINE NEEDED]
+- **Gate A (cargo check):** [PASS - 2026-03-29]
+- **Gate B (focused tests):** [PASS - split, rebalance, query]
+- **Gate C (full test suite):** [PASS - 2026-03-29]
+- **Last successful full run:** [2026-03-29]
 
 ### Metrics
 - **Test coverage:** [BASELINE NEEDED]
@@ -58,7 +62,7 @@
 **Purpose:** Establish measurable baseline and prepare environment
 - [ ] Read and understand PREREQUISITES.md
 - [ ] Read and understand INTEGRATION.md
-- [ ] Establish test baseline (`cargo test --all`)
+- [x] Establish test baseline (`cargo test --all`)
 - [ ] Measure code coverage (target: >95%)
 - [ ] Benchmark key functions (cargo bench)
 - [ ] Document initial metrics in metrics-baseline.txt
@@ -70,10 +74,10 @@
 **Purpose:** Normalize free functions vs methods, clarify ownership
 **Details:** See [phase-1-api-normalization.md](accidental-complexity-plan/phase-1-api-normalization.md)
 - [ ] P1.1: Inventory & classify free functions
-- [ ] P1.2: Convert bootstrap_split & catalytic_split to methods
+- [x] P1.2: Convert bootstrap_split & catalytic_split to methods
 - [ ] P1.3: Migrate VTree call sites away from Arena-first patterns
 - [ ] Review & merge PR
-- **Status:** ⭕ Blocked by Phase 0
+- **Status:** 🟡 In Progress
 
 ### Phase 2: Abstractions (Week 4)
 **Purpose:** Introduce focused mutation APIs and phase helpers
@@ -133,7 +137,9 @@
 
 | Date | Phase | Change | Status | Branch | PR | Notes |
 |------|-------|--------|--------|--------|----|----|
-| — | — | — | — | — | — | — |
+| 2026-03-29 | Phase 0 | Baseline build/test captured | ✅ | current worktree | — | `cargo check --all-features` + `cargo test --all-features` passed |
+| 2026-03-29 | Phase 1 | Split helpers converted to owner methods | ✅ | current worktree | — | `attempt_split` remains orchestration entrypoint |
+| 2026-03-29 | Phase 1 / Pattern Prep | Rebalance/query parameter grouping started | ✅ | current worktree | — | Added `EscalationContext`, `VTreeMutContext`, and `CoordinateRange` |
 
 ---
 
@@ -200,6 +206,6 @@
 
 ---
 
-**Last Updated:** 2026-03-29 (Initialization)  
-**Next Review:** Before Phase 0 begins
+**Last Updated:** 2026-03-29 (active implementation)  
+**Next Review:** Before resuming P1.3 VTree call-site migration
 
