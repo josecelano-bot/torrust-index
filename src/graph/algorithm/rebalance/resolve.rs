@@ -114,10 +114,10 @@ fn escalate_skip_promote<V: Accumulator>(
 }
 
 fn escalate_after_promote<V: Accumulator>(
-    vnodes: &mut Arena<VNode<V>>,
+    tree: &mut VTreeMutContext<'_, V>,
     p: VNodeId,
-    violations: &mut Vec<VNodeId>,
 ) {
+    let vnodes = &mut *tree.vnodes;
     // Phase 1: Identify heaviest child; early-return if no violation.
     let p_node = vnodes.get(p.index());
     if !p_node.is_structural_triple() {
@@ -144,6 +144,7 @@ fn escalate_after_promote<V: Accumulator>(
     )
     .entered();
 
+    let violations = &mut *tree.violations;
     let mut tree = VTreeMutContext { vnodes, violations };
     let mut ctx = EscalationContext::new(p, g, heaviest, h_direct);
 
@@ -295,7 +296,7 @@ pub fn resolve<C: Coordinate, V: Accumulator>(
         let mut queue = ViolationQueue::new(tree.violations);
         queue.push_side_effect(tree.vnodes, p);
         queue.push_promoted(tree.vnodes, p);
-        escalate_after_promote(tree.vnodes, p, tree.violations);
+        escalate_after_promote(tree, p);
         return None;
     }
 

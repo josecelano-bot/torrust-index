@@ -1,4 +1,4 @@
-# Refactoring Patterns – Quick Reference (Current)
+# Refactoring Patterns - Quick Reference (Current)
 
 Status-first summary of pattern work in this repository.
 
@@ -24,22 +24,15 @@ Status-first summary of pattern work in this repository.
 
 ### Pattern 4: Violation queue ownership
 
-- Status: In progress
-- Code: `src/graph/algorithm/violation_push.rs`, `src/graph/algorithm/rebalance/resolve.rs`
-- Remaining issue: orchestration still passes `&mut Vec<VNodeId>` through many helper boundaries
+- Status: Completed for orchestration call paths
+- Code: `src/graph/algorithm/violation_push.rs`, `src/graph/algorithm/rebalance/resolve.rs`, `src/graph/algorithm/split/helpers.rs`, `src/graph/algorithm/evict.rs`
+- Result: high-churn callers now use `ViolationQueue` methods; free-function wrappers remain for compatibility
 
 ### Pattern 5: Plateau signature flattening
 
 - Status: Deferred
 - Code: `src/graph/algorithm/plateau/dynamic_tracker/`
-- Note: helper-phase extraction has already reduced complexity; broader API redesign is optional
-
-## Next Slice (Recommended)
-
-1. Introduce thin `ViolationQueue` wrapper with method aliases to existing push helpers.
-2. Migrate rebalance resolve path first.
-3. Migrate split preprocessing path next.
-4. Preserve free-function compatibility until all high-value call sites move.
+- Note: helper-phase extraction already reduced accidental complexity in key hotspots
 
 ## Validation Commands
 
@@ -48,11 +41,8 @@ cargo check --all-features
 cargo test --all-features
 ```
 
-Add targeted tests for touched modules on each slice.
-
 ## Risk Focus
 
 - Violation propagation ordering must remain identical.
 - Queue semantics must stay LIFO-compatible with current rebalance behavior.
 - No additional residual violations after resolve loop.
-

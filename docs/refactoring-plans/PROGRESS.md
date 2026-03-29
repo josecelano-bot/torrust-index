@@ -14,7 +14,7 @@
 | **Phase 0: Prerequisites & Baseline** | Setup | ✅ Completed | — | 2026-03-29 | 2026-03-29 | Baseline docs/tests captured; branch/tag checklist entries not applicable in direct-push workflow |
 | **Phase 1: API Normalization** | Accidental Complexity | ✅ Completed | — | 2026-03-29 | 2026-03-29 | VTree call-site migration and wrapper cleanup complete |
 | **Phase 2: Abstractions** | Accidental Complexity | ✅ Completed | — | 2026-03-29 | 2026-03-29 | Owner-method mutation APIs and context migrations complete |
-| **Phase 3: Parameter Patterns (Optional)** | Refactoring Patterns | ✅ Completed (Selective) | — | 2026-03-29 | 2026-03-29 | Applied high-ROI patterns (EscalationContext, CoordinateRange); skipped further pattern work by ROI |
+| **Phase 3: Parameter Patterns (Optional)** | Refactoring Patterns | ✅ Completed (Selective) | — | 2026-03-29 | 2026-03-29 | Applied high-ROI patterns (EscalationContext, CoordinateRange, ViolationQueue migration in high-churn orchestration paths); deferred Pattern 5 by ROI |
 | **Phase 4: Reorganization** | Accidental Complexity | ✅ Completed | — | 2026-03-29 | 2026-03-29 | Split, VTree, and diagnostics organization steps completed |
 | **Phase 5: Stabilization** | Accidental Complexity | ✅ Completed | — | 2026-03-29 | 2026-03-29 | Metrics refresh, residual complexity map, and final validation complete |
 

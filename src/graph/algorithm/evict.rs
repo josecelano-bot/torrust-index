@@ -1,7 +1,7 @@
 use crate::arena::Arena;
 use crate::graph::GvGraph;
 use crate::graph::algorithm::rebalance;
-use crate::graph::algorithm::violation_push;
+use crate::graph::algorithm::violation_push::ViolationQueue;
 use crate::handle::VNodeId;
 use crate::nodes::gnode::GState;
 use crate::nodes::vnode::{VKind, VNode};
@@ -59,10 +59,10 @@ fn push_eviction_violations<V: Accumulator>(
     vnodes: &Arena<VNode<V>>,
     v_id: VNodeId,
     ctx: &LeafRemovalContext,
-    violations: &mut Vec<VNodeId>,
+    queue: &mut ViolationQueue<'_>,
 ) {
     if let Some(start) = ctx.change_point {
-        violation_push::push_leaf_removal_violations(vnodes, start, violations);
+        queue.push_leaf_removal(vnodes, start);
     }
     match ctx.child_count {
         2 => {
@@ -71,14 +71,14 @@ fn push_eviction_violations<V: Accumulator>(
                     sole = sole.index(),
                     "evict_tip: calling push_collapse_violations"
                 );
-                violation_push::push_collapse_violations(vnodes, sole, violations);
+                queue.push_collapse(vnodes, sole);
                 if let Some(grandparent) = ctx.change_point {
                     tracing::debug!(
                         sole = sole.index(),
                         grandparent = grandparent.index(),
                         "evict_tip: calling push_cousin_violations (source 9)",
                     );
-                    violation_push::push_cousin_violations(vnodes, sole, grandparent, violations);
+                    queue.push_cousin(vnodes, sole, grandparent);
                 }
             }
         }
@@ -88,7 +88,7 @@ fn push_eviction_violations<V: Accumulator>(
                     parent = p.index(),
                     "evict_tip: calling push_remaining_sibling_violations"
                 );
-                violation_push::push_remaining_sibling_violations(vnodes, p, v_id, violations);
+                queue.push_remaining_sibling(vnodes, p, v_id);
             }
         }
         _ => {}
@@ -228,12 +228,8 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
 
         self.vtree.remove_leaf(&mut self.gtree.nodes, v_id);
 
-        push_eviction_violations(
-            &self.vtree.nodes,
-            v_id,
-            &removal_ctx,
-            &mut self.vtree.violations,
-        );
+        let mut queue = ViolationQueue::new(&mut self.vtree.violations);
+        push_eviction_violations(&self.vtree.nodes, v_id, &removal_ctx, &mut queue);
 
         // ── Phase 7: Debug audit for missed violations ───────────────────────
         if tracing::enabled!(tracing::Level::ERROR) {
@@ -406,6 +402,7 @@ mod tests {
         use super::*;
         use super::super::classify_leaf_removal;
         use super::super::{LeafRemovalContext, push_eviction_violations};
+        use crate::graph::algorithm::violation_push::ViolationQueue;
 
         fn id(i: usize) -> VNodeId {
             VNodeId::from_index(i)
@@ -541,7 +538,8 @@ mod tests {
                 collapse_sibling: None,
             };
             let mut violations = Vec::new();
-            push_eviction_violations(&vnodes, target, &ctx, &mut violations);
+            let mut queue = ViolationQueue::new(&mut violations);
+            push_eviction_violations(&vnodes, target, &ctx, &mut queue);
             assert!(violations.is_empty());
         }
 
@@ -596,7 +594,8 @@ mod tests {
             };
 
             let mut violations = Vec::new();
-            push_eviction_violations(&vnodes, target, &ctx, &mut violations);
+            let mut queue = ViolationQueue::new(&mut violations);
+            push_eviction_violations(&vnodes, target, &ctx, &mut queue);
             assert!(!violations.is_empty());
         }
 
@@ -644,7 +643,8 @@ mod tests {
             };
 
             let mut violations = Vec::new();
-            push_eviction_violations(&vnodes, target, &ctx, &mut violations);
+            let mut queue = ViolationQueue::new(&mut violations);
+            push_eviction_violations(&vnodes, target, &ctx, &mut queue);
             // Branch execution is what we need here; depending on intensities
             // and topology, this path may or may not enqueue violations.
             assert!(violations.len() <= 3);

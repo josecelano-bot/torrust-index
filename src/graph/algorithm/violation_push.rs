@@ -60,6 +60,32 @@ impl<'a> ViolationQueue<'a> {
     pub fn push_source_10<V: Accumulator>(&mut self, vnodes: &Arena<VNode<V>>, node: VNodeId) {
         push_source_10_violations(vnodes, node, self.violations);
     }
+
+    pub fn push_leaf_removal<V: Accumulator>(&mut self, vnodes: &Arena<VNode<V>>, start: VNodeId) {
+        push_leaf_removal_violations(vnodes, start, self.violations);
+    }
+
+    pub fn push_collapse<V: Accumulator>(&mut self, vnodes: &Arena<VNode<V>>, sole: VNodeId) {
+        push_collapse_violations(vnodes, sole, self.violations);
+    }
+
+    pub fn push_remaining_sibling<V: Accumulator>(
+        &mut self,
+        vnodes: &Arena<VNode<V>>,
+        parent: VNodeId,
+        removed: VNodeId,
+    ) {
+        push_remaining_sibling_violations(vnodes, parent, removed, self.violations);
+    }
+
+    pub fn push_cousin<V: Accumulator>(
+        &mut self,
+        vnodes: &Arena<VNode<V>>,
+        sole: VNodeId,
+        grandparent: VNodeId,
+    ) {
+        push_cousin_violations(vnodes, sole, grandparent, self.violations);
+    }
 }
 
 // ── Plain wrappers (use all-enabled config) ──────────────────────────────────

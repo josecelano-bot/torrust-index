@@ -6,7 +6,7 @@ Last updated: 2026-03-29
 
 Notes:
 - This is intentionally hotspot-focused, not a full API dump.
-- Signatures below are aligned with the current codebase after Pattern 1-3 completion and Pattern 4 partial rollout.
+- Signatures below are aligned with the current codebase after Pattern 1-4 completion.
 
 ---
 
@@ -15,7 +15,7 @@ Notes:
 - Pattern 1 (Tell-Don't-Ask split ownership): Completed
 - Pattern 2 (Escalation context grouping): Completed
 - Pattern 3 (CoordinateRange adoption): Completed
-- Pattern 4 (Violation queue ownership): In progress
+- Pattern 4 (Violation queue ownership): Completed for orchestration paths
 - Pattern 5 (Plateau signature flattening): Deferred
 
 ---
@@ -63,25 +63,6 @@ pub struct VTreeMutContext<'a, V: Accumulator> {
 }
 ```
 
-Core resolve orchestration signatures:
-
-```rust
-fn escalate_contract_parent<V: Accumulator>(
-    tree: &mut VTreeMutContext<'_, V>,
-    ctx: &mut EscalationContext,
-) -> Option<VNodeId>
-
-fn escalate_try_contract_grandparent<V: Accumulator>(
-    tree: &mut VTreeMutContext<'_, V>,
-    ctx: &mut EscalationContext,
-) -> bool
-
-fn escalate_skip_promote<V: Accumulator>(
-    tree: &mut VTreeMutContext<'_, V>,
-    ctx: &EscalationContext,
-)
-```
-
 ---
 
 ## Query Range Signatures (Pattern 3)
@@ -122,11 +103,9 @@ pub(super) fn decompose_basis(
 
 ---
 
-## Violation Queue Signatures (Pattern 4, In Progress)
+## Violation Queue Signatures (Pattern 4)
 
 File: `src/graph/algorithm/violation_push.rs`
-
-New wrapper introduced:
 
 ```rust
 pub struct ViolationQueue<'a> {
@@ -144,28 +123,27 @@ impl<'a> ViolationQueue<'a> {
         skip: VNodeId,
     )
     pub fn push_source_10<V: Accumulator>(&mut self, vnodes: &Arena<VNode<V>>, node: VNodeId)
+    pub fn push_leaf_removal<V: Accumulator>(&mut self, vnodes: &Arena<VNode<V>>, start: VNodeId)
+    pub fn push_collapse<V: Accumulator>(&mut self, vnodes: &Arena<VNode<V>>, sole: VNodeId)
+    pub fn push_remaining_sibling<V: Accumulator>(
+        &mut self,
+        vnodes: &Arena<VNode<V>>,
+        parent: VNodeId,
+        removed: VNodeId,
+    )
+    pub fn push_cousin<V: Accumulator>(
+        &mut self,
+        vnodes: &Arena<VNode<V>>,
+        sole: VNodeId,
+        grandparent: VNodeId,
+    )
 }
 ```
 
-Compatibility layer retained (still present):
-
-```rust
-pub fn push_side_effect_violations<V: Accumulator>(...)
-pub fn push_promoted_violations<V: Accumulator>(...)
-pub fn push_contraction_child_violations<V: Accumulator>(...)
-pub fn push_source_10_violations<V: Accumulator>(...)
-```
-
-Already migrated callers:
+Migrated callers:
 - `src/graph/algorithm/rebalance/resolve.rs`
 - `src/graph/algorithm/split/helpers.rs`
+- `src/graph/algorithm/evict.rs`
 
----
-
-## Deferred/Optional Inventory Work
-
-Potential future updates for this inventory:
-
-1. Add plateau dynamic-tracker helper signature table only if Pattern 5 is re-opened.
-2. Add a generated full signature appendix if API-wide inventory is needed again.
-3. Track remaining raw `&mut Vec<VNodeId>` call chains until Pattern 4 is complete.
+Compatibility layer retained:
+- Existing `push_*_violations` free functions remain in `violation_push.rs`.
