@@ -45,7 +45,7 @@ use crate::nodes::vnode::{VKind, VNode};
 use crate::traits::{Accumulator, Coordinate};
 
 mod traversal;
-use traversal::{compute_has_evictable, is_ancestor};
+use traversal::compute_has_evictable;
 use traversal::v_depth;
 
 mod mutation;
@@ -159,10 +159,6 @@ impl<V: Accumulator> VTree<V> {
 
     pub(crate) fn depth(&self, id: VNodeId) -> u32 {
         v_depth(&self.nodes, id)
-    }
-
-    pub(crate) fn is_ancestor(&self, ancestor: VNodeId, descendant: VNodeId) -> bool {
-        is_ancestor(&self.nodes, ancestor, descendant)
     }
 
     // ── Evictable flags ───────────────────────────────────────────────────

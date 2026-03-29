@@ -9,20 +9,6 @@ pub(super) fn v_depth<V: Accumulator>(vnodes: &Arena<VNode<V>>, id: VNodeId) -> 
     node.parent().map_or(0, |p| v_depth(vnodes, p) + 1)
 }
 
-pub(super) fn is_ancestor<V: Accumulator>(
-    vnodes: &Arena<VNode<V>>,
-    ancestor: VNodeId,
-    mut descendant: VNodeId,
-) -> bool {
-    while let Some(p) = vnodes.get(descendant.index()).parent() {
-        if p == ancestor {
-            return true;
-        }
-        descendant = p;
-    }
-    false
-}
-
 pub(super) fn compute_has_evictable<V: Accumulator>(
     vnodes: &Arena<VNode<V>>,
     children: &Children<V>,
