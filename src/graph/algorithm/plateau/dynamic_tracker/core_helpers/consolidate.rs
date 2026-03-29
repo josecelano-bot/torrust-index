@@ -7,6 +7,77 @@ use crate::traits::{Accumulator, Coordinate};
 use crate::tree::gtree::{gnode_depth_from_interval, uniform_contour_depth_of};
 
 impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
+    fn basis_ids_snapshot(&self) -> Vec<GNodeId> {
+        self.plateau_basis.back_map().keys().copied().collect()
+    }
+
+    fn push_normalize_element(
+        &self,
+        gnodes: &Arena<GNode<C, V>>,
+        elems: &mut Vec<(GNodeId, BasisEdge<C>, u32, C, C, V)>,
+        nid: GNodeId,
+        depth: u32,
+    ) {
+        use crate::spatial::plateau::basis_edge_of;
+
+        let g = gnodes.get(nid.index());
+        elems.push((nid, basis_edge_of(g), depth, g.lo(), g.hi(), g.sum()));
+    }
+
+    fn process_normalize_node(
+        &self,
+        gnodes: &Arena<GNode<C, V>>,
+        nid: GNodeId,
+        elems: &mut Vec<(GNodeId, BasisEdge<C>, u32, C, C, V)>,
+        stack: &mut Vec<GNodeId>,
+    ) {
+        let g = gnodes.get(nid.index());
+        match g.state() {
+            GState::Terminal => {
+                let depth = gnode_depth_from_interval(g.lo(), g.hi(), self.n_bits);
+                self.push_normalize_element(gnodes, elems, nid, depth);
+            }
+            GState::SemiInternal => {
+                let depth = gnode_depth_from_interval(g.lo(), g.hi(), self.n_bits);
+                self.push_normalize_element(gnodes, elems, nid, depth);
+                if let Some(left) = g.left() {
+                    stack.push(left);
+                }
+                if let Some(right) = g.right() {
+                    stack.push(right);
+                }
+            }
+            GState::Internal => {
+                if let Some(ud) = uniform_contour_depth_of(gnodes, nid, self.n_bits) {
+                    self.push_normalize_element(gnodes, elems, nid, ud);
+                } else {
+                    if let Some(left) = g.left() {
+                        stack.push(left);
+                    }
+                    if let Some(right) = g.right() {
+                        stack.push(right);
+                    }
+                }
+            }
+        }
+    }
+
+    fn collect_from_basis_root(
+        &self,
+        gnodes: &Arena<GNode<C, V>>,
+        gid: GNodeId,
+        elems: &mut Vec<(GNodeId, BasisEdge<C>, u32, C, C, V)>,
+        seen: &mut std::collections::HashSet<GNodeId>,
+    ) {
+        let mut stack = vec![gid];
+        while let Some(nid) = stack.pop() {
+            if !seen.insert(nid) {
+                continue;
+            }
+            self.process_normalize_node(gnodes, nid, elems, &mut stack);
+        }
+    }
+
     pub(in super::super) fn collect_subtree_basis_elements(
         &self,
         gnodes: &Arena<GNode<C, V>>,
@@ -161,7 +232,7 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
     /// Iterates every basis element and attempts to merge sibling pairs into
     /// their parent via [`consolidate_basis_up`].
     pub(in super::super) fn consolidate_all_basis(&mut self, gnodes: &Arena<GNode<C, V>>) {
-        let basis_snapshot: Vec<GNodeId> = self.plateau_basis.back_map().keys().copied().collect();
+        let basis_snapshot = self.basis_ids_snapshot();
         let count = basis_snapshot.len();
         let mut merged = 0u32;
         for gid in basis_snapshot {
@@ -196,48 +267,12 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
         &self,
         gnodes: &Arena<GNode<C, V>>,
     ) -> Vec<(GNodeId, BasisEdge<C>, u32, C, C, V)> {
-        use crate::spatial::plateau::basis_edge_of;
-
         let mut elems: Vec<(GNodeId, BasisEdge<C>, u32, C, C, V)> = Vec::new();
         let mut seen = std::collections::HashSet::new();
-        let basis_ids: Vec<GNodeId> = self.plateau_basis.back_map().keys().copied().collect();
+        let basis_ids = self.basis_ids_snapshot();
 
         for gid in basis_ids {
-            let mut stack = vec![gid];
-            while let Some(nid) = stack.pop() {
-                if !seen.insert(nid) {
-                    continue;
-                }
-                let g = gnodes.get(nid.index());
-                match g.state() {
-                    GState::Terminal => {
-                        let depth = gnode_depth_from_interval(g.lo(), g.hi(), self.n_bits);
-                        elems.push((nid, basis_edge_of(g), depth, g.lo(), g.hi(), g.sum()));
-                    }
-                    GState::SemiInternal => {
-                        let depth = gnode_depth_from_interval(g.lo(), g.hi(), self.n_bits);
-                        elems.push((nid, basis_edge_of(g), depth, g.lo(), g.hi(), g.sum()));
-                        if let Some(left) = g.left() {
-                            stack.push(left);
-                        }
-                        if let Some(right) = g.right() {
-                            stack.push(right);
-                        }
-                    }
-                    GState::Internal => {
-                        if let Some(ud) = uniform_contour_depth_of(gnodes, nid, self.n_bits) {
-                            elems.push((nid, basis_edge_of(g), ud, g.lo(), g.hi(), g.sum()));
-                        } else {
-                            if let Some(left) = g.left() {
-                                stack.push(left);
-                            }
-                            if let Some(right) = g.right() {
-                                stack.push(right);
-                            }
-                        }
-                    }
-                }
-            }
+            self.collect_from_basis_root(gnodes, gid, &mut elems, &mut seen);
         }
 
         elems
