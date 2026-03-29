@@ -31,16 +31,16 @@ Improve cohesion and discoverability by keeping orchestrators thin and moving de
 
 ## Acceptance Criteria
 
-- [ ] Orchestrator files are shorter and phase-readable
-- [ ] Internal modules have single clear responsibility
-- [ ] No circular dependencies introduced
-- [ ] No behavior changes
+- [x] Orchestrator files are shorter and phase-readable
+- [x] Internal modules have single clear responsibility
+- [x] No circular dependencies introduced
+- [x] No behavior changes
 
 ## Test Checklist (per step)
 
-- [ ] Gate A: `cargo check --all-features`
-- [ ] Gate B: targeted tests for touched area
-- [ ] Gate C: `cargo test --all-features`
+- [x] Gate A: `cargo check --all-features`
+- [x] Gate B: targeted tests for touched area
+- [x] Gate C: `cargo test --all-features`
 
 ## Progress Log
 
@@ -73,7 +73,7 @@ Improve cohesion and discoverability by keeping orchestrators thin and moving de
 ### 2026-03-29
 
 - Step: P3.2 VTree decomposition (traversal extraction)
-- Status: [ ]
+- Status: [x]
 - Files: `src/tree/vtree.rs`, `src/tree/vtree/traversal.rs`
 - Commit: `2bcd99b`
 - Tests:
@@ -99,7 +99,7 @@ Improve cohesion and discoverability by keeping orchestrators thin and moving de
 ### 2026-03-29
 
 - Step: P3.3 diagnostics organization (collapse-sibling dedup)
-- Status: [ ]
+- Status: [x]
 - Files: `src/diagnostics/diagnostic/logging.rs`
 - Commit: `962bfda`
 - Tests:

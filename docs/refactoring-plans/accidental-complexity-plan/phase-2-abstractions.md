@@ -29,19 +29,19 @@ Introduce small, focused abstractions that reduce cognitive load and duplication
 ### P2.3 Signature simplification
 
 - [x] Introduce focused context struct only where it clearly reduces noise
-- [ ] Validate contexts do not become generic dumping containers
+- [x] Validate contexts do not become generic dumping containers
 
 ## Acceptance Criteria
 
-- [ ] At least three hotspot functions become clearer or less complex
-- [ ] Duplicated mutation or traversal snippets are reduced
-- [ ] No behavior changes
+- [x] At least three hotspot functions become clearer or less complex
+- [x] Duplicated mutation or traversal snippets are reduced
+- [x] No behavior changes
 
 ## Test Checklist (per step)
 
-- [ ] Gate A: `cargo check --all-features`
-- [ ] Gate B: targeted tests for touched area
-- [ ] Gate C: `cargo test --all-features`
+- [x] Gate A: `cargo check --all-features`
+- [x] Gate B: targeted tests for touched area
+- [x] Gate C: `cargo test --all-features`
 
 ## Progress Log
 
@@ -113,7 +113,7 @@ Introduce small, focused abstractions that reduce cognitive load and duplication
 ### 2026-03-29
 
 - Step: P2.2 VTree mutation mini-API (partial)
-- Status: [ ]
+- Status: [x]
 - Files: `src/tree/vtree.rs`, `src/graph/algorithm/promote.rs`, `src/graph/algorithm/split.rs`, `src/graph/algorithm/evict.rs`
 - Commit: [created]
 - Tests:
@@ -126,7 +126,7 @@ Introduce small, focused abstractions that reduce cognitive load and duplication
 ### 2026-03-29
 
 - Step: P2.2 VTree mutation mini-API (owner-method migration)
-- Status: [ ]
+- Status: [x]
 - Files: `src/tree/vtree.rs`, `src/graph/algorithm/split.rs`, `src/graph/algorithm/evict.rs`
 - Commit: `f2b2187`
 - Tests:
@@ -139,7 +139,7 @@ Introduce small, focused abstractions that reduce cognitive load and duplication
 ### 2026-03-29
 
 - Step: P2.2 VTree mutation mini-API (structural-child helpers)
-- Status: [ ]
+- Status: [x]
 - Files: `src/tree/vtree.rs`, `src/graph/algorithm/split.rs`
 - Commit: `d56e9ed`
 - Tests:
@@ -152,7 +152,7 @@ Introduce small, focused abstractions that reduce cognitive load and duplication
 ### 2026-03-29
 
 - Step: P2.2 VTree mutation mini-API (split owner-method wiring)
-- Status: [ ]
+- Status: [x]
 - Files: `src/tree/vtree.rs`, `src/graph/algorithm/split.rs`
 - Commit: `2d7b74b`
 - Tests:

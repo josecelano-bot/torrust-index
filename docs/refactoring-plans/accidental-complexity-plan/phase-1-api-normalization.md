@@ -39,9 +39,9 @@ Make ownership boundaries explicit by converting method-shaped free functions in
 
 ## Acceptance Criteria
 
-- [ ] No new method-shaped free functions introduced
-- [ ] Owner methods are used at most internal call sites
-- [ ] No behavior changes
+- [x] No new method-shaped free functions introduced
+- [x] Owner methods are used at most internal call sites
+- [x] No behavior changes
 
 ## Test Checklist (per step)
 
@@ -141,3 +141,16 @@ Make ownership boundaries explicit by converting method-shaped free functions in
   - [x] Gate C
 - Notes: `bootstrap_split` and `catalytic_split` now live on `GvGraph`; `attempt_split` remains the entrypoint.
 - Follow-up: Complete P1.1 inventory and P1.3 VTree migration before calling Phase 1 complete.
+
+### 2026-03-29
+
+- Step: Phase 1 completion review
+- Status: [x]
+- Files: `src/graph/algorithm/split.rs`, `src/tree/vtree.rs`, `src/graph/algorithm/rebalance/*`, `src/diagnostics/diagnostic/*`
+- Commit: aggregated across Phase 1 slices
+- Tests:
+  - [x] Gate A
+  - [x] Gate B
+  - [x] Gate C
+- Notes: P1.1-P1.3 complete; API normalization goals met with owner-method boundary consistency and no behavioral regressions.
+- Follow-up: Keep future helper additions aligned with owner-first API boundaries.
