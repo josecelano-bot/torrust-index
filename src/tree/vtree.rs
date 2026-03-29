@@ -111,6 +111,20 @@ impl<V: Accumulator> VTree<V> {
         propagate_evictable_flags(&mut self.nodes, id);
     }
 
+    pub(crate) fn set_entry_flags(
+        &mut self,
+        entry_id: VNodeId,
+        is_exposed_value: bool,
+        is_evictable_value: bool,
+    ) {
+        set_entry_flags(
+            &mut self.nodes,
+            entry_id,
+            is_exposed_value,
+            is_evictable_value,
+        );
+    }
+
     // ── Eviction candidate scan ───────────────────────────────────────────
 
     /// Returns all V-entry nodes eligible for eviction.

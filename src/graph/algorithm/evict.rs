@@ -6,7 +6,6 @@ use crate::handle::VNodeId;
 use crate::nodes::gnode::GState;
 use crate::nodes::vnode::{VKind, VNode};
 use crate::traits::{Accumulator, Coordinate, Inspectable};
-use crate::tree::vtree::set_entry_flags;
 
 /// Topology of the V-node being evicted, captured before the leaf is removed.
 struct LeafRemovalContext {
@@ -218,12 +217,8 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
             let p_entry_id = p
                 .entry()
                 .expect("evict_tip: parent must have V-entry (has dependents)");
-            set_entry_flags(
-                &mut self.vtree.nodes,
-                p_entry_id,
-                parent_is_exposed,
-                parent_is_evictable,
-            );
+            self.vtree
+                .set_entry_flags(p_entry_id, parent_is_exposed, parent_is_evictable);
             self.vtree.propagate_evictable(p_entry_id);
         }
 
