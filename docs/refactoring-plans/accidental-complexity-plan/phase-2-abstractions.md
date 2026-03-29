@@ -122,3 +122,16 @@ Introduce small, focused abstractions that reduce cognitive load and duplication
   - [x] Gate C
 - Notes: Introduced `recompute_and_sync_parent_slot` and `set_entry_flags`, then migrated promote/split/evict call sites.
 - Follow-up: Standardize `replace_child` and `remove_child` operations to complete P2.2.
+
+### 2026-03-29
+
+- Step: P2.2 VTree mutation mini-API (owner-method migration)
+- Status: [ ]
+- Files: `src/tree/vtree.rs`, `src/graph/algorithm/split.rs`, `src/graph/algorithm/evict.rs`
+- Commit: `f2b2187`
+- Tests:
+  - [x] Gate A
+  - [x] Gate B
+  - [x] Gate C
+- Notes: Added `VTree::set_entry_flags` owner method and migrated split/evict call sites away from direct `set_entry_flags(&mut self.vtree.nodes, ...)` helper calls.
+- Follow-up: Finish P2.2 by standardizing replace/remove-child operations behind the same owner-first style.
