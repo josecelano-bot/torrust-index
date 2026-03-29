@@ -174,6 +174,42 @@ find metrics-output -name "*.json" | xargs -I{} sh -c '
 - The current scope still includes every `.rs` file under `src/`, including
   in-tree test modules such as `src/diagnostics/diagnostic/tests.rs`.
 
+## Stabilization Refresh (2026-03-29, post-reorganization)
+
+> Recomputed after the Phase 4 reorganization/dedup passes.
+>
+> Fresh snapshot path: `metrics-output/recheck-2026-03-29-stabilization/`
+
+### Package-Wide Delta vs previous recheck
+
+| Metric | Previous | Current | Delta |
+| --- | ---: | ---: | ---: |
+| Analyzed files under `src` | 98 | 102 | +4 |
+| Total functions/closures | 1101 | 1133 | +32 |
+| Total CC (sum) | 2359 | 2383 | +24 |
+| Total Cognitive (sum) | 1494 | 1460 | -34 |
+| Total SLOC | 17838 | 18131 | +293 |
+| Functions with CC > 10 | 29 | 27 | -2 |
+| Functions with CC > 20 | 0 | 0 | 0 |
+| Max function CC | 20 | 17 | -3 |
+
+### Current Top Function Hotspots (CC > 10)
+
+| CC | Cognitive | SLOC | Function | File |
+| ---: | ---: | ---: | --- | --- |
+| 17 | 39 | 75 | `build_plateaus` | `src/graph/algorithm/plateau/read_api.rs` |
+| 17 | 23 | 110 | `observe` | `src/graph/algorithm/observe.rs` |
+| 16 | 49 | 71 | `evict_ancestor_key` | `src/graph/algorithm/plateau/dynamic_tracker/core_helpers/fixup.rs` |
+| 15 | 18 | 75 | `evacuate_adjacent_plateaus` | `src/graph/algorithm/plateau/dynamic_tracker/core_helpers/fixup.rs` |
+| 15 | 17 | 85 | `fixup_plateau` | `src/graph/algorithm/plateau/dynamic_tracker/core_helpers/fixup.rs` |
+| 15 | 14 | 105 | `normalize_impl` | `src/graph/algorithm/plateau/dynamic_tracker/normalize.rs` |
+
+### Notes
+
+- Acceptance criterion remains satisfied: no functions above CC 20.
+- The previous top-CC hotspot (`decompose_basis`, CC=20) is no longer the max.
+- Remaining pressure is now mostly cognitive (not McCabe), centered in plateau dynamic-tracker helpers.
+
 ### Suggested Next Refactor Targets
 
 1. `evict_ancestor_key` (Cog=49): split nested control flow into phase helpers.
