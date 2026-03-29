@@ -2,7 +2,7 @@ use crate::arena::Arena;
 use crate::graph::GvGraph;
 use crate::graph::algorithm::rebalance::{Nd, contract};
 use crate::graph::algorithm::violation_push::{
-    push_promoted_violations, push_side_effect_violations,
+    ViolationQueue,
 };
 use crate::handle::{GNodeId, VNodeId};
 use crate::nodes::gnode::GNode;
@@ -40,9 +40,10 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
         )
         .entered();
         let merged = contract(&mut self.vtree.nodes, p_id);
-        push_side_effect_violations(&self.vtree.nodes, p_id, &mut self.vtree.violations);
-        push_side_effect_violations(&self.vtree.nodes, merged, &mut self.vtree.violations);
-        push_promoted_violations(&self.vtree.nodes, p_id, &mut self.vtree.violations);
+        let mut queue = ViolationQueue::new(&mut self.vtree.violations);
+        queue.push_side_effect(&self.vtree.nodes, p_id);
+        queue.push_side_effect(&self.vtree.nodes, merged);
+        queue.push_promoted(&self.vtree.nodes, p_id);
     }
 
     pub(super) fn allocate_split_children(&mut self, g_id: GNodeId) -> SplitChildren {

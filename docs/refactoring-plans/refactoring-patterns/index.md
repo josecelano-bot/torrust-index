@@ -1,263 +1,52 @@
-# Refactoring Patterns – Complete Documentation Index
+# Refactoring Patterns – Documentation Index (Current State)
 
-This directory (`docs/refactoring-plans/refactoring-patterns/`) contains a comprehensive guide for reducing parameter complexity in the torrust-index algorithm codebase.
+This directory tracks pattern-driven complexity reduction in the algorithm layer.
 
-> 🔗 **Part of unified refactoring initiative.** Start here: [../index.md](../index.md)
-> 
-> **When to use patterns:** Read [../INTEGRATION.md](../INTEGRATION.md) — patterns apply ONLY after Accidental Complexity Phase 1 is complete.
+This page is intentionally status-first: it reflects what is already done in code and what is still worth implementing.
 
----
+## Status Snapshot
 
-## 📚 Document Overview
+| Pattern | Status | Evidence in Code | Notes |
+|---|---|---|---|
+| Pattern 1: Tell-Don't-Ask for split operations | Completed | `src/graph/algorithm/split.rs` | `bootstrap_split` and `catalytic_split` are methods on `GvGraph` |
+| Pattern 2: Escalation context grouping | Completed | `src/graph/algorithm/rebalance/context.rs`, `src/graph/algorithm/rebalance/resolve.rs` | `EscalationContext` and `VTreeMutContext` in active use |
+| Pattern 3: Coordinate range type | Completed | `src/spatial/range.rs`, `src/graph/algorithm/query/range_sum.rs`, `src/graph/algorithm/query/contour.rs` | `CoordinateRange<C>` replaced raw lo/hi pairs in query path |
+| Pattern 4: Violation queue ownership | In Progress | `src/graph/algorithm/violation_push.rs` | Remaining major gap: raw `&mut Vec<VNodeId>` still passed widely |
+| Pattern 5: Plateau context flattening | Deferred | `src/graph/algorithm/plateau/dynamic_tracker/` | Recent helper-phase decomposition reduced complexity; broader signature redesign postponed |
 
-### Quick Navigation
+## What Changed Since Original Plan
 
-| Document | Purpose | Audience | Time to Read |
-|----------|---------|----------|--------------|
-| [quick-reference.md](refactoring-patterns-quick-reference.md) | 1-page overview, prioritization matrix | Everyone | 5 min |
-| [analysis.md](refactoring-patterns-analysis.md) | Deep technical analysis with Rust examples | Engineers | 30 min |
-| [execution-checklist.md](refactoring-patterns-execution-checklist.md) | Step-by-step implementation for each pattern | Refactoring lead | 45 min |
-| [metrics.md](refactoring-patterns-metrics.md) | Before/after measurement & validation | QA/Devops | 20 min |
-| [roadmap.md](refactoring-patterns-roadmap.md) | 6-phase implementation timeline | Project manager | 30 min |
-| [function-signature-inventory.md](function-signature-inventory.md) | API surface analysis + refactoring opportunities | Everyone | 15 min |
+- The original docs assumed a greenfield 6-7 week rollout.
+- In reality, Patterns 1-3 are already integrated.
+- Current planning should focus on finishing Pattern 4 safely and treating Pattern 5 as optional/ROI-based.
 
----
+## Reading Order
 
-## 🎯 Key Patterns (At-a-Glance)
+1. [refactoring-patterns-quick-reference.md](refactoring-patterns-quick-reference.md)
+2. [refactoring-patterns-analysis.md](refactoring-patterns-analysis.md)
+3. [refactoring-patterns-execution-checklist.md](refactoring-patterns-execution-checklist.md)
+4. [refactoring-patterns-metrics.md](refactoring-patterns-metrics.md)
+5. [refactoring-patterns-roadmap.md](refactoring-patterns-roadmap.md)
+6. [function-signature-inventory.md](function-signature-inventory.md)
 
-### Pattern 1: Tell-Don't-Ask (Ownership)
-**Problem:** Free functions take `&mut GvGraph` → tight coupling
-**Solution:** Move to `GvGraph` methods
-**Impact:** 2 functions, ~3 call sites each
-**Effort:** 2 days
+## Current Execution Focus
 
-### Pattern 2: Escalation Context (Parameter Grouping)
-**Problem:** Escalation functions have 5-7 parameters across 3 functions
-**Solution:** Create `EscalationContext` struct to group related parameters
-**Impact:** Reduce average from 6 params → 3 params per function (-50%)
-**Effort:** 4 days + testing
+1. Complete Pattern 4 with a thin `ViolationQueue` wrapper while preserving behavior.
+2. Migrate highest-churn call sites first (`rebalance/resolve.rs`, split helpers).
+3. Keep free-function compatibility during migration; remove only after all call sites are converted.
+4. Re-run full validation gates after each small slice.
 
-### Pattern 3: Coordinate Range (Type Safety)
-**Problem:** `(query_lo, query_hi)` pairs scattered across 40+ call sites
-**Solution:** Create `CoordinateRange` type
-**Impact:** Type safety + eliminate invalid states (-100% lo/hi pair bugs)
-**Effort:** 3 days (mostly refactoring call sites)
+## Validation Gates
 
-### Pattern 4: Violation Queue (Mutation Centralization)
-**Problem:** 15+ functions take `&mut Vec<VNodeId>` parameter
-**Solution:** Create `ViolationQueue` struct centralizing all mutation
-**Impact:** Reduce 4 params → 2 params, clearer control flow
-**Effort:** 5 days + integration testing
+- `cargo check --all-features`
+- Targeted tests for touched area
+- `cargo test --all-features`
 
----
+## Red Flags
 
-## 🚀 Getting Started
-
-### For Decision Makers: Read in This Order
-1. [quick-reference.md](refactoring-patterns-quick-reference.md) (5 min)
-2. [roadmap.md](refactoring-patterns-roadmap.md#phase-overview) sections (10 min)
-3. [function-signature-inventory.md](function-signature-inventory.md) sections (5 min)
-3. Prioritization matrix in quick-reference (2 min)
-
-**Decision:** Which patterns to implement? Check roadmap phases.
-
-### For Engineers Implementing: Read in This Order
-1. [quick-reference.md](refactoring-patterns-quick-reference.md) (5 min) – Context
-2. [analysis.md](refactoring-patterns-analysis.md) (30 min) – Deep dive on chosen pattern
-3. [execution-checklist.md](refactoring-patterns-execution-checklist.md) (15 min) – Your specific pattern
-4. [roadmap.md](refactoring-patterns-roadmap.md#phase-n) (10 min) – Your phase details
-5. [metrics.md](refactoring-patterns-metrics.md) (5 min) – Success validation
-6. [function-signature-inventory.md](function-signature-inventory.md) – Identify opportunities
-
-**Action:** Pick one pattern → follow execution checklist → validate with metrics.
-
-### For QA/Testing: Read This
-1. [metrics.md](refactoring-patterns-metrics.md) (20 min)
-2. [execution-checklist.md](refactoring-patterns-execution-checklist.md#validation) (15 min)
-
-**Task:** Write baseline measurements, execute validation steps after refactoring.
-
----
-
-## 📊 Recommended Reading Path
-
-```
-Start Here
-    ↓
-Quick Reference (5 min)
-    ↓
-Consult: Function Signature Inventory
-    ↓
-Choose: You are...
-    ├─ Making go/no-go decision → Roadmap Overview
-    ├─ Implementing right now → Analysis + Checklist + Inventory
-    ├─ Testing afterward → Metrics
-    └─ Managing the project → Roadmap (all phases)
-    ↓
-Deep Dive Document (15-45 min)
-    ↓
-Action Items + Checklist
-    ↓
-Measure + Validate
-    ↓
-Complete!
-```
-
----
-
-## 🔍 Target Hotspots & Priority
-
-### Priority 1: Highest Impact (Start Here)
-**Pattern 2: Escalation Context**
-- Current: 3 functions × (5-7 params) = 18 total parameter slots
-- Target: 3 functions × 3 params = 9 total parameter slots
-- ROI: -50% parameter count
-- Effort: 4 days
-- Risk: Medium (central to rebalance logic)
-
-### Priority 2: Type Safety Wins (Next)
-**Pattern 3: Coordinate Range**
-- Current: 40+ call sites with lo/hi pair logic
-- Target: 1 type enforces invariants
-- ROI: Eliminate invalid state bugs
-- Effort: 3 days
-- Risk: Low (mostly search-replace)
-
-### Priority 3: Control Flow Clarity (Then)
-**Pattern 4: Violation Queue**
-- Current: 15+ functions each taking violations vector
-- Target: Centralized queue state
-- ROI: -40% parameter count across affected functions
-- Effort: 5 days
-- Risk: Medium (affects mutation patterns)
-
-### Priority 4: Clean Architecture (Last)
-**Pattern 1: Tell-Don't-Ask**
-- Current: 2 free functions taking &mut graphs
-- Target: Methods on owning structs
-- ROI: Architectural improvement
-- Effort: 2 days
-- Risk: Low (few call sites)
-
----
-
-## 📈 Expected Improvements
-
-### Before Starting:
-```
-Average function params (hotspots): 4.2
-Function params range: 1-7
-Tell-Don't-Ask violations: 2
-Parameter pairs (lo/hi): 40+ occurrences
-Total complexity score (approx): 8.5/10
-```
-
-### After All Patterns:
-```
-Average function params (hotspots): 2.5-2.8 ✓ (-40%)
-Function params range: 1-4 ✓
-Tell-Don't-Ask violations: 0 ✓
-Parameter pairs: 0 (~eliminated) ✓
-Total complexity score (approx): 5.0/10 ✓ (-40%)
-```
-
-### Validation:
-- ✅ All tests pass (same suite)
-- ✅ Coverage maintained > 95%
-- ✅ Performance: ±2% vs. baseline
-- ✅ Build time: ±5% vs. baseline
-
----
-
-## 🛠️ Implementation Timeline
-
-### Week 1-2: Foundation
-- Test baseline
-- Create branches
-- Map current violations
-
-### Week 2-3: Phase 1 - Tell-Don't-Ask
-- bootstrap_split → method
-- catalytic_split → method
-- 3 tests, validation
-
-### Week 3-4: Phase 2 - Escalation Context
-- Create EscalationContext struct
-- Refactor 3 escalation functions
-- Integration testing
-
-### Week 4-5: Phase 3 - Coordinate Range
-- Create CoordinateRange type
-- Update decompose_basis, range_sum_inner
-- 40+ call sites
-
-### Week 5-6: Phase 4 - Violation Queue
-- Create ViolationQueue
-- Consolidate 15+ functions
-- Mutation pattern testing
-
-### Week 6-7: Integration & Cleanup
-- E2E tests
-- Remove deprecated code
-- Performance validation
-
-**Total: 6-7 weeks** (can be parallelized)
-
----
-
-## ✅ Checklist Before You Start
-
-- [ ] Read: Quick Reference (5 min)
-- [ ] Read: Analysis for your chosen pattern (30 min)
-- [ ] Understand: Each pattern's goal & trade-offs
-- [ ] Have: ~6-7 weeks available (or phase separately)
-- [ ] Setup: Git branch practice, testing discipline
-- [ ] Team: Code review process established
-- [ ] Tooling: `cargo test`, `cargo bench`, metrics collection ready
-
----
-
-## 🚨 Red Flags (Stop & Re-Plan)
-
-❌ Cyclomatic Complexity increases by >10%
-❌ Test coverage drops below 90%
-❌ New compiler warnings appear
-❌ Performance regression > 5%
-❌ Parameter counts increase in any hotspot
-
-**If any red flag:** Pause refactoring, review approach, adjust plan.
-
----
-
-## 📝 Document Guides
-
-### 0. Function Signature Inventory
-**Use this to:**
-- Get a complete listing of all module, type, and function signatures
-- Identify API surface complexity and opportunities
-- Find functions with suspicious signatures (too many params, unclear ownership)
-- Spot candidates for pattern application
-- Track which functions are best targets for optimization
-
-**Length:** ~20 pages (reference manual)
-
-**When to use:** Before starting refactoring to understand what you're working with.
-
-### 1. Quick Reference
-**Use this to:**
-- Understand what each pattern does in 1 minute
-- See the prioritization matrix
-- Get code snippets showing before/after
-- Decide which patterns to implement
-
-**Length:** ~4 pages (quick read)
-
-### 2. Analysis Document
-**Use this to:**
-- Understand why each pattern works
-- See detailed Rust code examples
-- Understand trade-offs & constraints
-- Learn the underlying principles
+- Any behavior change in violation propagation ordering.
+- Any increase in residual violations after rebalance.
+- Any complexity regression in already-stabilized plateau helpers.
 
 **Length:** ~20 pages (deep read)
 

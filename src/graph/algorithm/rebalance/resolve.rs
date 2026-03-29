@@ -6,8 +6,7 @@ use crate::traits::{Accumulator, Coordinate};
 
 use super::super::promote::{legacy_promote, skip_promote, standard_promote};
 use super::super::violation_push::{
-    push_contraction_child_violations, push_promoted_violations, push_side_effect_violations,
-    push_source_10_violations,
+    ViolationQueue,
 };
 use super::{contract, is_violated, Ctx, EscalationContext, Nd, VTreeMutContext};
 
@@ -44,9 +43,10 @@ fn escalate_contract_parent<V: Accumulator>(
 ) -> Option<VNodeId> {
     let (vnodes, violations) = (&mut *tree.vnodes, &mut *tree.violations);
     let merged = contract(vnodes, ctx.parent_id);
-    push_side_effect_violations(vnodes, ctx.parent_id, violations);
-    push_side_effect_violations(vnodes, merged, violations);
-    push_contraction_child_violations(vnodes, ctx.parent_id, ctx.heaviest_id, violations);
+    let mut queue = ViolationQueue::new(violations);
+    queue.push_side_effect(vnodes, ctx.parent_id);
+    queue.push_side_effect(vnodes, merged);
+    queue.push_contraction_child(vnodes, ctx.parent_id, ctx.heaviest_id);
     ctx.merged_id = Some(merged);
 
     let needs_skip = if ctx.heaviest_is_direct_child {
@@ -74,9 +74,10 @@ fn escalate_try_contract_grandparent<V: Accumulator>(
     let (vnodes, violations) = (&mut *tree.vnodes, &mut *tree.violations);
     if structural_child_count(vnodes, ctx.grandparent_id) == 3 {
         let g_merged = contract(vnodes, ctx.grandparent_id);
-        push_side_effect_violations(vnodes, ctx.grandparent_id, violations);
-        push_side_effect_violations(vnodes, g_merged, violations);
-        push_promoted_violations(vnodes, ctx.grandparent_id, violations);
+        let mut queue = ViolationQueue::new(violations);
+        queue.push_side_effect(vnodes, ctx.grandparent_id);
+        queue.push_side_effect(vnodes, g_merged);
+        queue.push_promoted(vnodes, ctx.grandparent_id);
         ctx.grandparent_merged_id = Some(g_merged);
 
         let merged = ctx
@@ -102,11 +103,12 @@ fn escalate_skip_promote<V: Accumulator>(
     let (vnodes, violations) = (&mut *tree.vnodes, &mut *tree.violations);
     if let Some(g_id) = vnodes.get(ctx.parent_id.index()).parent() {
         skip_promote(vnodes, ctx.heaviest_id);
-        push_side_effect_violations(vnodes, g_id, violations);
-        push_promoted_violations(vnodes, g_id, violations);
+        let mut queue = ViolationQueue::new(violations);
+        queue.push_side_effect(vnodes, g_id);
+        queue.push_promoted(vnodes, g_id);
 
         if let Some(gm) = ctx.grandparent_merged_id {
-            push_source_10_violations(vnodes, gm, violations);
+            queue.push_source_10(vnodes, gm);
         }
     }
 }
@@ -171,9 +173,10 @@ fn resolve_try_contract_parent<V: Accumulator>(
     if structural_child_count(vnodes, p) == 3 {
         tracing::debug!(p = %Nd(vnodes, p), "phase 1: contracting 3-node parent");
         let merged = contract(vnodes, p);
-        push_side_effect_violations(vnodes, p, violations);
-        push_side_effect_violations(vnodes, merged, violations);
-        push_contraction_child_violations(vnodes, p, c, violations);
+        let mut queue = ViolationQueue::new(violations);
+        queue.push_side_effect(vnodes, p);
+        queue.push_side_effect(vnodes, merged);
+        queue.push_contraction_child(vnodes, p, c);
         if !is_violated(vnodes, c) {
             tracing::debug!("phase 1: resolved by contraction");
             return true;
@@ -199,9 +202,10 @@ fn resolve_path_b<C: Coordinate, V: Accumulator>(
     // Optional grandparent contraction before the promote attempt.
     let g_merged = if structural_child_count(vnodes, g) == 3 {
         let merged = contract(vnodes, g);
-        push_side_effect_violations(vnodes, g, violations);
-        push_side_effect_violations(vnodes, merged, violations);
-        push_promoted_violations(vnodes, g, violations);
+        let mut queue = ViolationQueue::new(violations);
+        queue.push_side_effect(vnodes, g);
+        queue.push_side_effect(vnodes, merged);
+        queue.push_promoted(vnodes, g);
         if !is_violated(vnodes, c) {
             tracing::debug!("phase 2: resolved by g-contraction");
             return None;
@@ -228,17 +232,19 @@ fn resolve_path_b<C: Coordinate, V: Accumulator>(
     let result = if is_semi && v_depth_local(vnodes, c) <= depth_evict {
         tracing::debug!("phase 2: legacy promote (semi-internal entry)");
         let new_g = legacy_promote(vnodes, gnodes, c);
-        push_side_effect_violations(vnodes, p, violations);
+        let mut queue = ViolationQueue::new(violations);
+        queue.push_side_effect(vnodes, p);
         Some(new_g)
     } else {
         skip_promote(vnodes, c);
         None
     };
 
-    push_side_effect_violations(vnodes, g_id, violations);
-    push_promoted_violations(vnodes, g_id, violations);
+    let mut queue = ViolationQueue::new(violations);
+    queue.push_side_effect(vnodes, g_id);
+    queue.push_promoted(vnodes, g_id);
     if let Some(merged) = g_merged {
-        push_source_10_violations(vnodes, merged, violations);
+        queue.push_source_10(vnodes, merged);
     }
 
     result
@@ -286,8 +292,9 @@ pub fn resolve<C: Coordinate, V: Accumulator>(
     if tree.vnodes.get(c.index()).is_structural_pair() {
         tracing::debug!("phase 2: standard promote");
         standard_promote(tree.vnodes, c);
-        push_side_effect_violations(tree.vnodes, p, tree.violations);
-        push_promoted_violations(tree.vnodes, p, tree.violations);
+        let mut queue = ViolationQueue::new(tree.violations);
+        queue.push_side_effect(tree.vnodes, p);
+        queue.push_promoted(tree.vnodes, p);
         escalate_after_promote(tree.vnodes, p, tree.violations);
         return None;
     }

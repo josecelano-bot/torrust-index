@@ -30,6 +30,38 @@ use crate::traits::Accumulator;
 use super::rebalance::{Nd, is_violated};
 use super::violation_sources::ViolationSources;
 
+pub struct ViolationQueue<'a> {
+    violations: &'a mut Vec<VNodeId>,
+}
+
+impl<'a> ViolationQueue<'a> {
+    #[must_use]
+    pub fn new(violations: &'a mut Vec<VNodeId>) -> Self {
+        Self { violations }
+    }
+
+    pub fn push_side_effect<V: Accumulator>(&mut self, vnodes: &Arena<VNode<V>>, node: VNodeId) {
+        push_side_effect_violations(vnodes, node, self.violations);
+    }
+
+    pub fn push_promoted<V: Accumulator>(&mut self, vnodes: &Arena<VNode<V>>, node: VNodeId) {
+        push_promoted_violations(vnodes, node, self.violations);
+    }
+
+    pub fn push_contraction_child<V: Accumulator>(
+        &mut self,
+        vnodes: &Arena<VNode<V>>,
+        node: VNodeId,
+        skip: VNodeId,
+    ) {
+        push_contraction_child_violations(vnodes, node, skip, self.violations);
+    }
+
+    pub fn push_source_10<V: Accumulator>(&mut self, vnodes: &Arena<VNode<V>>, node: VNodeId) {
+        push_source_10_violations(vnodes, node, self.violations);
+    }
+}
+
 // ── Plain wrappers (use all-enabled config) ──────────────────────────────────
 
 pub fn push_side_effect_violations<V: Accumulator>(

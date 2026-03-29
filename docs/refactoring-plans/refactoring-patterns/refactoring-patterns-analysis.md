@@ -1,323 +1,105 @@
-# Refactoring Patterns Analysis
-
-Systematic analysis of accidental complexity patterns in the torrust-index codebase.
-
----
-
-## Pattern 1: "Tell Don't Ask" – Functions Taking Data They Should Query
-
-### Anti-Pattern Description
-Functions accept mutable references to complex data structures and perform operations that should be methods on those structures.
-
-### High-Priority Examples
-
-#### 1.1 Split Operations
-**Files:** `src/graph/algorithm/split.rs`
-
-```rust
-// CURRENT (Tell-Don't-Ask Anti-Pattern)
-fn bootstrap_split<C, V, const N: u32>(graph: &mut GvGraph<C, V, N>, g_id: GNodeId) { ... }
-fn catalytic_split<C, V, const N: u32>(graph: &mut GvGraph<C, V, N>, g_id: GNodeId) { ... }
-```
-
-**Why It's An Anti-Pattern:**
-- Function asks GvGraph for detailed data (`graph.gtree.nodes`, `graph.vtree.nodes`, etc.)
-- Should be telling GvGraph: "split yourself at g_id"
-- Tight coupling to internal GvGraph structure
-
-**Refactoring Target:**
-```rust
-// FUTURE (Method on GvGraph)
-impl<C, V, const N: u32> GvGraph<C, V, N> {
-    pub(crate) fn bootstrap_split(&mut self, g_id: GNodeId) { ... }
-    pub(crate) fn catalytic_split(&mut self, g_id: GNodeId) { ... }
-}
-```
-
-**Impact:**
-- Reduces 2 free functions → 2 GvGraph methods
-- Encapsulates split logic within GvGraph
-- Improves "tell don't ask" principle
-
----
-
-#### 1.2 Plateau Tracking Operations
-**Files:** `src/graph/algorithm/plateau/dynamic_tracker/`
-
-```rust
-// CURRENT (Multiple Arena operations scattered)
-pub(super) fn on_observe_impl(
-    &mut self, 
-    gnodes: &Arena<GNode<C, V>>,  // <-- asking for data
-    g_id: GNodeId, 
-    value: V
-) { ... }
-
-pub(super) fn on_bootstrap_split_impl(
-    &mut self, 
-    gnodes: &Arena<GNode<C, V>>,  // <-- asking for data
-    g_id: GNodeId
-) { ... }
-```
-
-**Why It's An Anti-Pattern:**
-- Tracker should not ask for `gnodes` Arena references
-- GvGraph owns both the tracker and gnodes
-- Forces coupling between tracker and node management
-
-**Refactoring Target:**
-```rust
-// FUTURE (Tracker methods on GvGraph coordinate transfers)
-impl<C, V, N, T> GvGraph<C, V, N, T> {
-    pub(crate) fn on_observe(&mut self, g_id: GNodeId, value: V) {
-        // Pass filtered references or use callbacks
-        self.tracker.on_observe(&self.gtree.nodes, g_id, value);
-    }
-}
-```
-
----
-
-### Medium-Priority Examples
-
-#### 1.3 V-Tree Helpers Taking Both Mutable and Immutable Trees
-**Files:** `src/tree/vtree.rs`
-
-```rust
-// CURRENT
-pub fn propagate_v_sums<V: Accumulator>(
-    vnodes: &mut Arena<VNode<V>>,  // <-- asking for mutable nodes
-    start: VNodeId
-) { ... }
-
-pub fn sync_intensity_in_parent<V: Accumulator>(
-    vnodes: &mut Arena<VNode<V>>,  // <-- asking for mutable nodes
-    id: VNodeId, 
-    new_intensity: V
-) { ... }
-```
-
-**Why It's An Anti-Pattern:**
-- These are VTree operations but live as free functions
-- Currently accessed via `graph.vtree.propagate_sums(id)`
-- Should be methods on a VTree type wrapper
-
-**Refactoring Target:**
-```rust
-// FUTURE (Methods on VTree)
-struct VTree<V> { 
-    nodes: Arena<VNode<V>>,
-    // ...
-}
-
-impl<V> VTree<V> {
-    pub fn propagate_sums(&mut self, start: VNodeId) { ... }
-    pub fn sync_intensity_in_parent(&mut self, id: VNodeId, new_intensity: V) { ... }
-}
-```
-
----
-
-## Pattern 2: Many Parameters – Missing Abstraction
-
-### Anti-Pattern Description
-Functions accept multiple parameters that form natural groupings. The grouping itself implies a missing type abstraction.
-
-### High-Priority Examples
-
-#### 2.1 Escalate Operations with Multiple Context Parameters
-**Files:** `src/graph/algorithm/rebalance/resolve.rs`
-
-```rust
-// CURRENT (5-7 parameters with implicit structure)
-fn escalate_contract_parent<V: Accumulator>(
-    vnodes: &mut Arena<VNode<V>>,    // Cluster A: Tree context
-    p: VNodeId,                        //
-    heaviest: VNodeId,                 // Cluster B: Node references
-    h_direct: bool,                    // Cluster C: Flags/state
-    violations: &mut Vec<VNodeId>,     // Cluster D: Work queue
-) -> Option<VNodeId> { ... }
-
-fn escalate_try_contract_grandparent<V: Accumulator>(
-    vnodes: &mut Arena<VNode<V>>,      // Cluster A
-    g: VNodeId,                         // Cluster B
-    heaviest: VNodeId,                  // Cluster B
-    merged: VNodeId,                    // Cluster B
-    h_direct: bool,                     // Cluster C
-    violations: &mut Vec<VNodeId>,      // Cluster D
-) -> (Option<VNodeId>, bool) { ... }
-
-fn escalate_skip_promote<V: Accumulator>(
-    vnodes: &mut Arena<VNode<V>>,       // Cluster A
-    p: VNodeId,                         // Cluster B
-    heaviest: VNodeId,                  // Cluster B
-    g_merged: Option<VNodeId>,          // Cluster B
-    violations: &mut Vec<VNodeId>,      // Cluster D
-) { ... }
-```
-
-**Parameter Cluster Analysis:**
-
-| Cluster | Parameters | Abstraction Name | Purpose |
-|---------|-----------|------------------|---------|
-| A | `vnodes: &mut Arena<VNode<V>>` | `VTreeMut` | Tree structure access |
-| B | `p`, `heaviest`, `merged`, `g_merged` | `EscalationContext` | Node references being processed |
-| C | `h_direct: bool` | (embedded in context) | Processing flags |
-| D | `violations: &mut Vec<VNodeId>` | `ViolationQueue` | Work queue to populate |
-
-**Refactoring Target:**
-
-```rust
-// NEW: Contextual grouping
-pub struct EscalationContext {
-    pub parent_id: VNodeId,
-    pub heaviest_id: VNodeId,
-    pub merged_id: Option<VNodeId>,
-    pub h_direct: bool,
-}
-
-pub struct VTreeMutContext<'a, V: Accumulator> {
-    pub vnodes: &'a mut Arena<VNode<V>>,
-    pub violations: &'a mut Vec<VNodeId>,
-}
-
-// REFACTORED
-fn escalate_contract_parent<V: Accumulator>(
-    tree: &mut VTreeMutContext<V>,
-    ctx: &EscalationContext,
-) -> Option<VNodeId> { ... }
-```
-
-**Impact:**
-- Reduces 5-7 parameter functions → 2-parameter functions
-- Groups conceptually related node IDs
-- Makes work queue explicit
-- Improves readability by naming cluster intent
-
----
-
-#### 2.2 Plateau Placing with Multiple Adjacent-Search Parameters
-**Files:** `src/graph/algorithm/plateau/dynamic_tracker/core_helpers/place.rs`
-
-```rust
-// CURRENT (Multiple coordinate/depth parameters)
-pub(in super::super) fn place_basis_element(
-    &mut self,
-    gnodes: &Arena<GNode<C, V>>,
-    gnode: GNodeId,
-    depth: u32,
-) { ... }
-
-pub(in super::super) fn find_adjacent_left_key(
-    &self,
-    key: BasisEdge<C>,                 // Current key
-    lo: C,                              // Current node's lo boundary
-    depth: u32,                         // Current node's depth
-) -> Option<BasisEdge<C>> { ... }
-
-pub(in super::super) fn find_adjacent_right_key(
-    &self,
-    key: BasisEdge<C>,                 // Current key
-    hi: C,                              // Current node's hi boundary
-    depth: u32,                         // Current node's depth
-) -> Option<BasisEdge<C>> { ... }
-```
-
-**Parameter Grouping:**
-
-| Grouped As | Parameters | Missing Type Name |
-|-----------|-----------|-------------------|
-| Element Identity | `gnode, depth, lo, hi` | `BasisElement` |
-| Search Context | `key, lo/hi, depth` | `PlacementContext` |
-
-**Refactoring Target:**
-
-```rust
-// NEW: Basis element context
-pub struct BasisElementInfo<C: Coordinate> {
-    pub gnode: GNodeId,
-    pub key: BasisEdge<C>,
-    pub lo: C,
-    pub hi: C,
-    pub depth: u32,
-}
-
-impl<C, V> DynamicPlateauTracker<C, V> {
-    pub(in super::super) fn place_element(&mut self, elem: BasisElementInfo<C>) { ... }
-    pub(in super::super) fn find_adjacent_keys(&self, elem: &BasisElementInfo<C>) 
-        -> (Option<BasisEdge<C>>, Option<BasisEdge<C>>) { ... }
-}
-```
-
-**Impact:**
-- Groups `(key, lo, hi, depth)` → semantic unit
-- Eliminates redundant parameter passing
-- Reduces chance of parameter order bugs
-
----
-
-### Medium-Priority Examples
-
-#### 2.3 Query Operations with Coordinate Range Parameters
-**Files:** `src/graph/algorithm/query/`
-
-```rust
-// CURRENT (Coordinate ranges passed separately)
-fn decompose_basis(
-    &self,
-    gid: GNodeId,
-    query_lo: C,                // Coordinate range
-    query_hi: C,                // split across 2 params
-    basis: &mut Vec<BasisElement<C, V>>,
-) { ... }
-
-fn range_sum_inner(
-    &self, 
-    gid: GNodeId, 
-    query_lo: C,                // Same pattern
-    query_hi: C,                // repeated everywhere
-) -> V { ... }
-```
-
-**Grouping Analysis:**
-- `query_lo`, `query_hi` always appear together
-- Represent a coordinate range query
-- Passed to every recursive call
-
-**Refactoring Target:**
-
-```rust
-// NEW: Query range abstraction
-pub struct CoordinateRange<C: Coordinate> {
-    pub lo: C,
-    pub hi: C,
-}
-
-// REFACTORED
-fn decompose_basis(
-    &self,
-    gid: GNodeId,
-    range: CoordinateRange<C>,
-    basis: &mut Vec<BasisElement<C, V>>,
-) { ... }
-```
-
----
-
-## Pattern 3: Functions Taking Mutable Collections Should Be Methods
-
-### Anti-Pattern Description
-Free functions that mutate collections (particularly `&mut Vec` or `&mut HashMap`) should be methods on the collection owner.
-
-### High-Priority Examples
-
-#### 3.1 Violation Queue Management
-**Files:** `src/graph/algorithm/violation_push.rs`
-
-```rust
-// CURRENT (Free functions mutating violations vector)
-pub fn push_contraction_child_violations<V: Accumulator>(
-    vnodes: &Arena<VNode<V>>,
+# Refactoring Patterns Analysis (Current)
+
+This analysis captures what is already solved and where accidental complexity remains.
+
+## Completed Pattern Outcomes
+
+### Pattern 1: Tell-Don't-Ask for split operations
+
+Result:
+
+- Split behavior is owned by `GvGraph` methods.
+- Call sites use `self.bootstrap_split(...)` and `self.catalytic_split(...)`.
+
+Primary evidence:
+
+- `src/graph/algorithm/split.rs`
+
+Why this matters:
+
+- Split orchestration now lives where graph ownership already exists.
+- Parameter passing overhead for split entry points is removed.
+
+### Pattern 2: Context grouping for escalation path
+
+Result:
+
+- Escalation helper flow uses explicit context structs.
+- Multi-parameter orchestration signatures are replaced by named contexts.
+
+Primary evidence:
+
+- `src/graph/algorithm/rebalance/context.rs`
+- `src/graph/algorithm/rebalance/resolve.rs`
+
+Why this matters:
+
+- Function intent is clearer.
+- State transitions are easier to trace across escalation phases.
+
+### Pattern 3: Coordinate range abstraction
+
+Result:
+
+- Query internals use `CoordinateRange<C>` in recursive paths.
+- Loose lo/hi parameter pairing in core query recursion is eliminated.
+
+Primary evidence:
+
+- `src/spatial/range.rs`
+- `src/graph/algorithm/query/range_sum.rs`
+- `src/graph/algorithm/query/contour.rs`
+
+Why this matters:
+
+- Range semantics are explicit and reusable.
+- Range invariants are centralized on one type.
+
+## Remaining High-Value Gap
+
+### Pattern 4: Violation queue ownership is still split
+
+Current state:
+
+- Violation push logic is well centralized in `violation_push.rs`.
+- Orchestration still passes raw `&mut Vec<VNodeId>` in multiple helpers.
+
+Primary hotspots:
+
+- `src/graph/algorithm/rebalance/resolve.rs`
+- `src/graph/algorithm/split/helpers.rs`
+- `src/graph/algorithm/evict.rs`
+
+Risk profile:
+
+- Medium risk if queue semantics change.
+- Low risk if migration is a pure wrapper + call-site rewrite.
+
+Recommended implementation strategy:
+
+1. Introduce a thin `ViolationQueue` wrapper that delegates to existing push helpers.
+2. Migrate call sites incrementally by module.
+3. Keep old free functions during migration for compatibility.
+4. Remove old plumbing only after all high-value sites are migrated.
+
+## Deferred Pattern
+
+### Pattern 5: Plateau context flattening
+
+Current state:
+
+- Plateau dynamic-tracker hotspots have already been decomposed into helper phases.
+- Remaining signatures that pass `gnodes` are explicit and currently stable.
+
+Recommendation:
+
+- Defer larger plateau API redesign unless fresh metrics show clear complexity ROI.
+
+## Success Conditions For Remaining Work
+
+- No behavior changes in violation propagation order.
+- Rebalance leaves no residual violations under existing debug audits.
+- Complexity does not regress in recently stabilized modules.
     p: VNodeId,
     heaviest: VNodeId,
     violations: &mut Vec<VNodeId>,           // <-- mutating external vector
