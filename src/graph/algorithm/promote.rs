@@ -18,8 +18,8 @@ use crate::nodes::gnode::GNode;
 use crate::nodes::vnode::{Children, VKind, VNode};
 use crate::traits::{Accumulator, Coordinate};
 use crate::tree::vtree::{
-    propagate_evictable_flags, recompute_structural_intensity,
-    replace_child_in_parent, sync_intensity_in_parent,
+    propagate_evictable_flags, recompute_and_sync_parent_slot,
+    replace_child_in_parent,
 };
 
 use super::rebalance::{Ch, Nd, node_has_evictable};
@@ -262,9 +262,7 @@ pub fn legacy_promote<C: Coordinate, V: Accumulator>(
         *is_evictable = false;
     }
 
-    recompute_structural_intensity(vnodes, p);
-    let new_p_int = vnodes.get(p.index()).intensity();
-    sync_intensity_in_parent(vnodes, p, new_p_int);
+    recompute_and_sync_parent_slot(vnodes, p);
 
     propagate_evictable_flags(vnodes, p);
     propagate_evictable_flags(vnodes, g);

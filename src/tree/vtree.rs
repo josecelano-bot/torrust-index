@@ -384,10 +384,19 @@ pub fn recompute_structural_intensity<V: Accumulator>(vnodes: &mut Arena<VNode<V
     }
 }
 
+/// Recomputes the structural intensity of `child_id` and immediately updates
+/// the cached intensity slot in its parent (if any).
+pub fn recompute_and_sync_parent_slot<V: Accumulator>(
+    vnodes: &mut Arena<VNode<V>>,
+    child_id: VNodeId,
+) {
+    recompute_structural_intensity(vnodes, child_id);
+    let new_int = vnodes.get(child_id.index()).intensity();
+    sync_intensity_in_parent(vnodes, child_id, new_int);
+}
+
 fn recompute_and_propagate_v_sums<V: Accumulator>(vnodes: &mut Arena<VNode<V>>, start: VNodeId) {
-    recompute_structural_intensity(vnodes, start);
-    let new_int = vnodes.get(start.index()).intensity();
-    sync_intensity_in_parent(vnodes, start, new_int);
+    recompute_and_sync_parent_slot(vnodes, start);
     propagate_v_sums(vnodes, start);
 }
 
