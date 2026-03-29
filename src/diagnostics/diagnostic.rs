@@ -8,6 +8,7 @@ use crate::graph::algorithm::rebalance::{self, Ctx};
 use crate::handle::VNodeId;
 use crate::nodes::vnode::VNode;
 use crate::traits::{Accumulator, Inspectable};
+use crate::tree::vtree::VTree;
 
 mod logging;
 use logging::{diagnose_collapse_sibling, log_vtree_ancestry};
@@ -46,6 +47,14 @@ pub fn diagnose_missed_violation<V: Accumulator + Inspectable>(
     context: &MissedViolationContext,
 ) {
     diagnose::diagnose_missed_violation_impl(vnodes, violated, context);
+}
+
+pub fn diagnose_missed_violation_in_tree<V: Accumulator + Inspectable>(
+    vtree: &VTree<V>,
+    violated: VNodeId,
+    context: &MissedViolationContext,
+) {
+    diagnose::diagnose_missed_violation_impl(&vtree.nodes, violated, context);
 }
 
 #[cfg(test)]

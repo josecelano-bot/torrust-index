@@ -252,8 +252,8 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
                 self.vtree.violations.iter().map(|v| v.index()).collect();
             for v in all_violated {
                 if !queued.contains(&v.index()) {
-                    crate::diagnostics::diagnostic::diagnose_missed_violation(
-                        &self.vtree.nodes,
+                    crate::diagnostics::diagnostic::diagnose_missed_violation_in_tree(
+                        &self.vtree,
                         v,
                         &ctx,
                     );
