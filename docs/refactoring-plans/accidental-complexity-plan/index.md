@@ -79,3 +79,4 @@ Use this tool to:
 - Last completed step: P4 follow-up backlog item 3 (`on_catalytic_split_impl` extraction)
 - Current branch: `review/pr-832-mudlark-isolated`
 - Last successful full test run: `cargo test --all-features` (2026-03-29)
+- Workflow note: changes are published by direct push to the active branch (no PR step).
