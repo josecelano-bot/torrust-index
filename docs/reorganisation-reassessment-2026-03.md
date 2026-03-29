@@ -165,59 +165,59 @@ executed and tracked incrementally.
 
 #### S1 — `rebalance.rs` decomposition (High)
 
-- [ ] Create `rebalance/context.rs` and move `Nd`/`Ctx` + display helpers.
-- [ ] Create `rebalance/violation_scan.rs` and move discovery logic.
-- [ ] Create `rebalance/resolve.rs` and move resolve/collapse flow.
-- [ ] Reduce `rebalance.rs` to orchestration + public entrypoints.
-- [ ] Run `cargo test` and verify no behavior changes.
-- [ ] Update docs if call semantics changed.
+- [x] Create `rebalance/context.rs` and move `Nd`/`Ctx` + display helpers.
+- [x] Create `rebalance/violation_scan.rs` and move discovery logic.
+- [x] Create `rebalance/resolve.rs` and move resolve/collapse flow.
+- [x] Reduce `rebalance.rs` to orchestration + public entrypoints.
+- [x] Run `cargo test` and verify no behavior changes.
+- [x] Update docs if call semantics changed.
 
 #### S2 — `invariants.rs` decomposition (High)
 
-- [ ] Create `invariants/graph_consistency.rs`.
-- [ ] Create `invariants/vtree_consistency.rs`.
-- [ ] Create `invariants/budget_checks.rs`.
-- [ ] Create `invariants/reporting.rs`.
-- [ ] Keep a single `check_all_invariants` composition point.
-- [ ] Run `cargo test` and verify diagnostics behavior unchanged.
+- [x] Create `invariants/graph_consistency.rs`.
+- [x] Create `invariants/vtree_consistency.rs`.
+- [x] Create `invariants/budget_checks.rs`.
+- [x] Create `invariants/reporting.rs`.
+- [x] Keep a single `check_all_invariants` composition point.
+- [x] Run `cargo test` and verify diagnostics behavior unchanged.
 
 #### S3 — `plateau/mod.rs` role split (Medium)
 
-- [ ] Create `plateau/read_api.rs` (`plateaus`, `build_plateaus`, `select_plateaus`).
-- [ ] Create `plateau/update_wrappers.rs` (`plateau_after_*` wrappers).
-- [ ] Create `plateau/debug_api.rs` tracker-specific debug helpers.
-- [ ] Keep `plateau/mod.rs` as thin router + re-exports.
-- [ ] Run `cargo test` and verify feature-gated builds still pass.
+- [x] Create `plateau/read_api.rs` (`plateaus`, `build_plateaus`, `select_plateaus`).
+- [x] Create `plateau/update_wrappers.rs` (`plateau_after_*` wrappers).
+- [x] Create `plateau/debug_api.rs` tracker-specific debug helpers.
+- [x] Keep `plateau/mod.rs` as thin router + re-exports.
+- [x] Run `cargo test` and verify feature-gated builds still pass.
 
 #### S4 — `query.rs` decomposition (Medium)
 
-- [ ] Create `query/get.rs`.
-- [ ] Create `query/range_sum.rs`.
-- [ ] Create `query/contour.rs`.
-- [ ] Create `query/sample.rs`.
-- [ ] Keep `query.rs` as facade module.
-- [ ] Run `cargo test` and snapshot tests.
+- [x] Create `query/get.rs`.
+- [x] Create `query/range_sum.rs`.
+- [x] Create `query/contour.rs`.
+- [x] Create `query/sample.rs`.
+- [x] Keep `query.rs` as facade module.
+- [x] Run `cargo test` and snapshot tests.
 
 #### S5 — `dynamic_tracker/core_helpers.rs` decomposition (Medium)
 
-- [ ] Create `dynamic_tracker/place.rs`.
-- [ ] Create `dynamic_tracker/fixup.rs`.
-- [ ] Create `dynamic_tracker/consolidate.rs`.
-- [ ] Ensure helper visibility is `pub(super)` where sibling modules call into helpers.
-- [ ] Run `cargo test` and targeted coverage check.
+- [x] Create `dynamic_tracker/core_helpers/place.rs`.
+- [x] Create `dynamic_tracker/core_helpers/fixup.rs`.
+- [x] Create `dynamic_tracker/core_helpers/consolidate.rs`.
+- [x] Ensure helper visibility preserves sibling access from `dynamic_tracker`.
+- [x] Run `cargo test` and targeted coverage check.
 
 #### S6 — Optional follow-up (Low)
 
-- [ ] Re-evaluate `spatial/pewei/core.rs` after S1-S5.
-- [ ] Re-evaluate `nodes/vnode.rs` after S1-S5.
+- [x] Re-evaluate `spatial/pewei/core.rs` after S1-S5.
+- [x] Re-evaluate `nodes/vnode.rs` after S1-S5.
 
 ### Milestones
 
-- [ ] M1: S1 complete and merged.
-- [ ] M2: S2 complete and merged.
-- [ ] M3: S3 + S4 complete and merged.
-- [ ] M4: S5 complete and merged.
-- [ ] M5: Final architecture/doc sync and closeout.
+- [x] M1: S1 complete and merged.
+- [x] M2: S2 complete and merged.
+- [x] M3: S3 + S4 complete and merged.
+- [x] M4: S5 complete and merged.
+- [x] M5: Final architecture/doc sync and closeout.
 
 ### Quantitative KPIs
 
@@ -253,6 +253,30 @@ Docs updated: yes/no
 Risks / follow-ups:
 ```
 
+### Progress log
+
+Date: 2026-03-29
+Stream: S3 + S4 + S5
+Status: [x]
+PR/Commit: local workspace changes
+Scope moved: plateau role split into `read_api.rs` / `update_wrappers.rs` / `debug_api.rs`; `query.rs` split into `get.rs` / `range_sum.rs` / `contour.rs` / `sample.rs`; dynamic tracker helpers split into `core_helpers/place.rs` / `core_helpers/fixup.rs` / `core_helpers/consolidate.rs`
+Largest file before/after: `src/graph/algorithm/query.rs` 715 -> 384; current top files remain `rebalance.rs` (956) and `invariants.rs` (922)
+Tests: `cargo test` passed (unit + integration + snapshot + doc tests)
+Coverage notes: targeted coverage check deferred (full test suite green)
+Docs updated: yes (this tracking document)
+Risks / follow-ups: complete S1 and S2 to reduce remaining >700-line concentration points
+
+Date: 2026-03-29
+Stream: S1 + S2 + S6
+Status: [x]
+PR/Commit: local workspace changes
+Scope moved: `rebalance.rs` split with new `rebalance/context.rs`, `rebalance/violation_scan.rs`, and `rebalance/resolve.rs`; `invariants.rs` split with new `invariants/graph_consistency.rs`, `invariants/vtree_consistency.rs`, `invariants/budget_checks.rs`, and `invariants/reporting.rs`
+Largest file before/after: `src/graph/algorithm/rebalance.rs` 956 -> 645; `src/diagnostics/invariants.rs` 922 -> 825
+Tests: `cargo test -q` passed (509 unit, 10 integration, 4 snapshot, 0 doc)
+Coverage notes: no dedicated coverage run; behavioral parity validated via full test suite
+Docs updated: yes (tracking status, milestones, and closeout)
+Risks / follow-ups: optional deep decomposition remains possible for `spatial/pewei/core.rs` and `nodes/vnode.rs` if future complexity pressure increases
+
 ### Governance and guardrails
 
 - No behavioral changes bundled with structural moves unless explicitly scoped.
@@ -265,7 +289,7 @@ Risks / follow-ups:
 ### Current overall status
 
 - [x] Reassessment defined.
-- [-] Execution plan defined and ready to start.
-- [ ] S1 started.
-- [ ] S1-S5 completed.
-- [ ] Final closeout.
+- [x] Execution plan completed.
+- [x] S1 started.
+- [x] S1-S5 completed.
+- [x] Final closeout.
