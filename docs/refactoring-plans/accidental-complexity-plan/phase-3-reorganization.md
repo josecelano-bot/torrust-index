@@ -95,3 +95,16 @@ Improve cohesion and discoverability by keeping orchestrators thin and moving de
   - [x] Gate C
 - Notes: Extracted structural-mutation helpers (add/replace/remove child, entry flags, evictable setter) into `tree/vtree/mutation.rs` and kept crate-visible API compatibility through controlled re-exports.
 - Follow-up: Continue P3.3 diagnostics organization by consolidating duplicated read-only traversal/check patterns.
+
+### 2026-03-29
+
+- Step: P3.3 diagnostics organization (collapse-sibling dedup)
+- Status: [ ]
+- Files: `src/diagnostics/diagnostic/logging.rs`
+- Commit: `962bfda`
+- Tests:
+  - [x] Gate A
+  - [x] Gate B
+  - [x] Gate C
+- Notes: Removed duplicated in-tree collapse-sibling diagnostic body and routed it through the shared arena-based implementation.
+- Follow-up: Continue P3.3 by extracting additional read-only helpers only where reuse is clear.

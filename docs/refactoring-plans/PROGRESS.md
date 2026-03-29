@@ -48,6 +48,7 @@
 - Decomposed split mechanics into `split/helpers.rs` while keeping `split.rs` as orchestrator facade
 - Started VTree decomposition by extracting traversal internals into `tree/vtree/traversal.rs`
 - Completed VTree decomposition by extracting mutation helpers into `tree/vtree/mutation.rs`
+- Deduplicated diagnostics collapse-sibling path by routing in-tree flow through shared read-only implementation
 
 ### Test Status
 - **Gate A (cargo check):** [PASS - 2026-03-29]
@@ -166,6 +167,7 @@
 | 2026-03-29 | Phase 4 | Split module decomposition | ✅ | current worktree | — | Moved split mechanics to `split/helpers.rs`; kept orchestrator entry module concise (`dc2aed7`) |
 | 2026-03-29 | Phase 4 | VTree traversal decomposition start | ✅ | current worktree | — | Extracted traversal internals to `tree/vtree/traversal.rs` (`2bcd99b`) |
 | 2026-03-29 | Phase 4 | VTree mutation decomposition completion | ✅ | current worktree | — | Extracted mutation helpers to `tree/vtree/mutation.rs` with API-compatible re-exports (`bfe44b1`) |
+| 2026-03-29 | Phase 4 | Diagnostics deduplication start | ✅ | current worktree | — | Removed duplicated collapse-sibling logging path in favor of shared implementation (`962bfda`) |
 
 ---
 
