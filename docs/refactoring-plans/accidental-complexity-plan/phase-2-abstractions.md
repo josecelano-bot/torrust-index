@@ -23,7 +23,7 @@ Introduce small, focused abstractions that reduce cognitive load and duplication
 
 - [ ] Add or standardize `replace_child` style operation
 - [ ] Add or standardize `remove_child` style operation
-- [ ] Add or standardize recompute+propagate helper
+- [x] Add or standardize recompute+propagate helper
 - [ ] Replace repeated mutation snippets with named operations
 
 ### P2.3 Signature simplification
@@ -83,3 +83,16 @@ Introduce small, focused abstractions that reduce cognitive load and duplication
   - [x] Gate C
 - Notes: Added `EscalationContext`, `VTreeMutContext`, and `CoordinateRange` to remove repeated parameter groupings in rebalance and query code.
 - Follow-up: Measure whether additional grouping is still warranted before expanding this pattern further.
+
+### 2026-03-29
+
+- Step: P2.2 VTree mutation mini-API (partial)
+- Status: [ ]
+- Files: `src/tree/vtree.rs`, `src/graph/algorithm/promote.rs`, `src/graph/algorithm/split.rs`, `src/graph/algorithm/evict.rs`
+- Commit: [created]
+- Tests:
+  - [x] Gate A
+  - [x] Gate B
+  - [x] Gate C
+- Notes: Introduced `recompute_and_sync_parent_slot` and `set_entry_flags`, then migrated promote/split/evict call sites.
+- Follow-up: Standardize `replace_child` and `remove_child` operations to complete P2.2.
