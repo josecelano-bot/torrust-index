@@ -214,7 +214,8 @@ pub fn rebalance<C: Coordinate, V: Accumulator + Inspectable>(
             node = %Ctx(vnodes, c),
             "resolving violation",
         );
-        if let Some(gid) = resolve(vnodes, gnodes, c, violations, depth_evict) {
+        let mut tree = VTreeMutContext { vnodes, violations };
+        if let Some(gid) = resolve(&mut tree, gnodes, c, depth_evict) {
             new_gnodes.push(gid);
         }
 
@@ -553,7 +554,9 @@ mod tests {
     mod rebalance_fn {
         use super::*;
         use crate::arena::Arena;
-        use crate::graph::algorithm::rebalance::{handle_iteration_limit, rebalance, resolve};
+        use crate::graph::algorithm::rebalance::{
+            VTreeMutContext, handle_iteration_limit, rebalance, resolve,
+        };
         use crate::nodes::vnode::VNode;
 
         #[test]
@@ -583,11 +586,14 @@ mod tests {
             g.observe(64u8, 2u32); // no split: root entry has no parent
             let c = g.v_root().expect("v_root must exist");
             let mut violations = Vec::new();
+            let mut tree = VTreeMutContext {
+                vnodes: &mut g.vtree.nodes,
+                violations: &mut violations,
+            };
             let result = resolve(
-                &mut g.vtree.nodes,
+                &mut tree,
                 &mut g.gtree.nodes,
                 c,
-                &mut violations,
                 g.gtree.live_depth_evict,
             );
             assert!(result.is_none());

@@ -260,14 +260,11 @@ fn resolve_path_b<C: Coordinate, V: Accumulator>(
 ///
 /// Returns `Some(new_g)` only when a legacy promote created a new G-node.
 pub fn resolve<C: Coordinate, V: Accumulator>(
-    vnodes: &mut Arena<VNode<V>>,
+    tree: &mut VTreeMutContext<'_, V>,
     gnodes: &mut Arena<GNode<C, V>>,
     c: VNodeId,
-    violations: &mut Vec<VNodeId>,
     depth_evict: u32,
 ) -> Option<GNodeId> {
-    let mut tree = VTreeMutContext { vnodes, violations };
-
     let _span = tracing::debug_span!("resolve", node = c.index()).entered();
     tracing::debug!(ctx = %Ctx(tree.vnodes, c), "begin");
 
@@ -277,7 +274,7 @@ pub fn resolve<C: Coordinate, V: Accumulator>(
     };
 
     // Phase 1: optional parent contraction.
-    if resolve_try_contract_parent(&mut tree, p, c) {
+    if resolve_try_contract_parent(tree, p, c) {
         return None;
     }
 
@@ -298,7 +295,7 @@ pub fn resolve<C: Coordinate, V: Accumulator>(
         return None;
     };
 
-    let result = resolve_path_b(&mut tree, gnodes, c, p, g, depth_evict);
+    let result = resolve_path_b(tree, gnodes, c, p, g, depth_evict);
 
     if tree.vnodes.is_occupied(c.index()) && is_violated(tree.vnodes, c) {
         tracing::warn!(
