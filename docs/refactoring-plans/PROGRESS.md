@@ -27,11 +27,12 @@
 
 ### Active Phase
 - Phase: [Phase 6 - Quality Sustainment]
-- Sub-task: [Q6.1 Tracker initialization]
+- Sub-task: [Q6.2 Promote-path deduplication]
 - Branch: [CURRENT WORKTREE]
 - Responsible: [active]
 
 ### Recent Activity
+- Completed Q6.2 promote-path deduplication by reusing shared sibling lookup helper in standard/skip promote flows
 - Initialized Phase 6 execution plan and tracker hooks for post-stabilization small-step refactors
 - Established a green baseline with `cargo check --all-features` and `cargo test --all-features`
 - Converted split helpers to private `GvGraph` methods and kept `attempt_split` as the orchestrator
@@ -195,6 +196,7 @@
 | 2026-03-29 | Phase 0 | Baseline documentation closure | ✅ | current worktree | — | Added `docs/refactoring-plans/metrics-baseline.txt` and synced tracker checklist statuses |
 | 2026-03-29 | Phase 3 (Optional) | Parameter patterns decision closure | ✅ | current worktree | — | Measured ROI signals and closed optional phase as selective-complete |
 | 2026-03-29 | Phase 6 | Tracker initialization | ✅ | current worktree | — | Added `phase-6-quality-sustainability.md` and linked it from refactoring index |
+| 2026-03-29 | Phase 6 | Promote-path deduplication | ✅ | current worktree | — | Reused `sibling_of` in promote flow to remove duplicated sibling scans; focused tests passed |
 
 ---
 

@@ -24,8 +24,8 @@ This phase is intentionally incremental: small changes, tests after each change,
 
 ## Step Checklist
 
-- [ ] Q6.1 Establish tracker docs and progress hooks
-- [ ] Q6.2 Promote-path helper extraction (remove duplicated sibling scans)
+- [x] Q6.1 Establish tracker docs and progress hooks
+- [x] Q6.2 Promote-path helper extraction (remove duplicated sibling scans)
 - [ ] Q6.3 Add focused regression tests for promote helper behavior
 - [ ] Q6.4 Diagnostics error-message consistency cleanup (`unwrap` -> `expect` where applicable)
 - [ ] Q6.5 Run full validation gates and close phase
@@ -43,15 +43,15 @@ This phase is intentionally incremental: small changes, tests after each change,
 
 - Date: 2026-03-29
 - Change: Initialized Phase 6 plan and linked it from tracker docs.
-- Tests: pending
-- Commit: pending
+- Tests: `cargo test --test integration`
+- Commit: `cc8b99e`
 
 ### Q6.2
 
-- Date:
-- Change:
-- Tests:
-- Commit:
+- Date: 2026-03-29
+- Change: Reused `sibling_of` in `standard_promote` and `skip_promote` to remove duplicated sibling/uncle scans.
+- Tests: `cargo test promote --all-features && cargo test --test integration`
+- Commit: pending
 
 ### Q6.3
 

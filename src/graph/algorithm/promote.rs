@@ -49,23 +49,7 @@ pub fn standard_promote<V: Accumulator>(vnodes: &mut Arena<VNode<V>>, c: VNodeId
         }
     };
 
-    let sibling_id = {
-        let p_node = vnodes.get(p.index());
-        match &p_node.kind() {
-            VKind::Structural { children, .. } => {
-                let mut sib = None;
-                for i in 0..children.len() {
-                    let (id, _) = children.get(i);
-                    if id != c {
-                        sib = Some(children.get(i));
-                        break;
-                    }
-                }
-                sib.expect("standard_promote: sibling not found")
-            }
-            VKind::Entry { .. } => panic!("standard_promote: parent must be structural"),
-        }
-    };
+    let sibling_id = sibling_of(vnodes, p, c);
 
     let sib_terminal = node_has_evictable(vnodes, sibling_id.0);
     let c1_terminal = node_has_evictable(vnodes, c1_id);
@@ -108,43 +92,11 @@ pub fn skip_promote<V: Accumulator>(vnodes: &mut Arena<VNode<V>>, c: VNodeId) ->
     )
     .entered();
 
-    let (s_id, s_int) = {
-        let p_node = vnodes.get(p.index());
-        match &p_node.kind() {
-            VKind::Structural { children, .. } => {
-                let mut sib = None;
-                for i in 0..children.len() {
-                    let (id, int) = children.get(i);
-                    if id != c {
-                        sib = Some((id, int));
-                        break;
-                    }
-                }
-                sib.expect("skip_promote: sibling not found")
-            }
-            VKind::Entry { .. } => panic!("skip_promote: parent must be structural"),
-        }
-    };
+    let (s_id, s_int) = sibling_of(vnodes, p, c);
 
     let c_int = vnodes.get(c.index()).intensity();
 
-    let (u_id, u_int) = {
-        let g_node = vnodes.get(g.index());
-        match &g_node.kind() {
-            VKind::Structural { children, .. } => {
-                let mut uncle = None;
-                for i in 0..children.len() {
-                    let (id, int) = children.get(i);
-                    if id != p {
-                        uncle = Some((id, int));
-                        break;
-                    }
-                }
-                uncle.expect("skip_promote: uncle not found")
-            }
-            VKind::Entry { .. } => panic!("skip_promote: grandparent must be structural"),
-        }
-    };
+    let (u_id, u_int) = sibling_of(vnodes, g, p);
 
     let c_terminal = node_has_evictable(vnodes, c);
     let s_terminal = node_has_evictable(vnodes, s_id);
