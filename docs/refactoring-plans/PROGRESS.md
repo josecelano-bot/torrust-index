@@ -37,6 +37,7 @@
 - Introduced `CoordinateRange` and migrated query range recursion to typed ranges
 - Decomposed split flow into named helper phases (candidate check, parent preprocess, child allocation, shared post-split cleanup)
 - Added VTree mutation helpers (`recompute_and_sync_parent_slot`, `set_entry_flags`) and migrated promote/split/evict sites
+- Added `VTree::is_ancestor` and migrated eviction diagnostics to an in-tree owner API path
 
 ### Test Status
 - **Gate A (cargo check):** [PASS - 2026-03-29]
@@ -142,6 +143,7 @@
 | 2026-03-29 | Phase 1 | Split helpers converted to owner methods | ✅ | current worktree | — | `attempt_split` remains orchestration entrypoint |
 | 2026-03-29 | Phase 1 / Pattern Prep | Rebalance/query parameter grouping started | ✅ | current worktree | — | Added `EscalationContext`, `VTreeMutContext`, and `CoordinateRange` |
 | 2026-03-29 | Phase 2 | VTree mutation helper extraction | ✅ | current worktree | — | Added recompute+sync and entry-flag helpers; migrated call sites |
+| 2026-03-29 | Phase 1 | VTree ancestry owner-API migration | ✅ | current worktree | — | Eviction diagnostics now route through in-tree owner entrypoint |
 
 ---
 

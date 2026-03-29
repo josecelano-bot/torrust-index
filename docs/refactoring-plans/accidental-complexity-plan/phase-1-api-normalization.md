@@ -30,11 +30,11 @@ Make ownership boundaries explicit by converting method-shaped free functions in
 
 ### P1.3 VTree call-site migration
 
-- [ ] Migrate to `VTree::propagate_sums`
-- [ ] Migrate to `VTree::sync_intensity`
-- [ ] Migrate to `VTree::recompute_all_intensities`
-- [ ] Migrate to `VTree::depth`
-- [ ] Migrate to `VTree::is_ancestor` or add and then migrate
+- [x] Migrate to `VTree::propagate_sums`
+- [x] Migrate to `VTree::sync_intensity`
+- [x] Migrate to `VTree::recompute_all_intensities`
+- [x] Migrate to `VTree::depth`
+- [x] Migrate to `VTree::is_ancestor` or add and then migrate
 - [ ] Remove wrappers after all call sites are migrated
 
 ## Acceptance Criteria
@@ -63,6 +63,19 @@ Make ownership boundaries explicit by converting method-shaped free functions in
   - [ ] Gate C
 - Notes:
 - Follow-up:
+
+### 2026-03-29
+
+- Step: P1.3 VTree call-site migration (partial)
+- Status: [x]
+- Files: `src/tree/vtree.rs`, `src/diagnostics/diagnostic.rs`, `src/diagnostics/diagnostic/diagnose.rs`, `src/diagnostics/diagnostic/logging.rs`, `src/graph/algorithm/evict.rs`
+- Commit: [created]
+- Tests:
+  - [x] Gate A
+  - [x] Gate B
+  - [x] Gate C
+- Notes: Added `VTree::is_ancestor` and routed eviction-time missed-violation diagnostics through an in-tree owner API.
+- Follow-up: Continue reducing direct arena helper exposure where owner APIs are practical.
 
 ### 2026-03-29
 
