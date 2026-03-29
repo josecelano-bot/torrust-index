@@ -46,7 +46,7 @@ This directory contains a **cohesive, executable plan for improving code quality
 | **[INTEGRATION.md](INTEGRATION.md)** | Decision tree, when patterns apply | Tech lead | 15 min | ⭕ Reference |
 | **[ROLLBACK.md](ROLLBACK.md)** | Stop conditions, recovery procedures | Engineers | 15 min | ⭕ Reference |
 
-### Accidental Complexity Plan (Phases 1-5)
+### Accidental Complexity Plan (Phases 1-6)
 
 | Phase | Document | Purpose | Effort | Blocker |
 |-------|----------|---------|--------|---------|
@@ -56,6 +56,7 @@ This directory contains a **cohesive, executable plan for improving code quality
 | **Phase 3a** | [refactoring-patterns/index.md](refactoring-patterns/index.md) | **Optional** parameter optimization | 2-3 weeks | Phase 1 ✓ + ROI > 30% |
 | **Phase 4** | [accidental-complexity-plan/phase-3-reorganization.md](accidental-complexity-plan/phase-3-reorganization.md) | Module reorganization | 1 week | Phase 1 ✓ |
 | **Phase 5** | [accidental-complexity-plan/phase-4-stabilization.md](accidental-complexity-plan/phase-4-stabilization.md) | Final metrics & stabilization | 1 week | Phase 4 ✓ |
+| **Phase 6** | [phase-6-quality-sustainability.md](phase-6-quality-sustainability.md) | Incremental quality/testability/sustainability pass | 1-2 days | Phase 5 ✓ |
 
 ### Refactoring Patterns (Optional, Phase 3a)
 
@@ -177,9 +178,16 @@ Week 7: PHASE 5 (Stabilization)
   ├─ Generate reports
   ├─ Gates A+B+C pass: ✓ Yes
   └─ Merge to main: ✓ FINAL
+
+Week 8: PHASE 6 (Quality Sustainment)
+  ├─ Owner executes: phase-6-quality-sustainability.md
+  ├─ Small focused refactors (one concern per commit)
+  ├─ Targeted tests after each change
+  ├─ Update tracker after every step
+  └─ Final validation gates + closeout
   
 ✅ INITIATIVE COMPLETE
-  └─ Timeline: 7 weeks total
+  └─ Timeline: 7 weeks + optional sustainment pass
 ```
 
 ---
