@@ -26,8 +26,8 @@ Improve cohesion and discoverability by keeping orchestrators thin and moving de
 
 ### P3.3 Diagnostics organization
 
-- [ ] Identify duplicated check/traversal patterns
-- [ ] Extract shared read-only helpers where reuse is real
+- [x] Identify duplicated check/traversal patterns
+- [x] Extract shared read-only helpers where reuse is real
 
 ## Acceptance Criteria
 
@@ -108,3 +108,16 @@ Improve cohesion and discoverability by keeping orchestrators thin and moving de
   - [x] Gate C
 - Notes: Removed duplicated in-tree collapse-sibling diagnostic body and routed it through the shared arena-based implementation.
 - Follow-up: Continue P3.3 by extracting additional read-only helpers only where reuse is clear.
+
+### 2026-03-29
+
+- Step: P3.3 diagnostics organization (eviction audit dedup)
+- Status: [x]
+- Files: `src/graph/algorithm/evict.rs`
+- Commit: `6b115b0`
+- Tests:
+  - [x] Gate A
+  - [x] Gate B
+  - [x] Gate C
+- Notes: Replaced duplicated queue-diff logic in eviction diagnostics with shared `diagnostics::audit_violations` helper and retained context-specific diagnosis on missed nodes.
+- Follow-up: Reorganization phase steps are now complete; continue with stabilization/metrics tasks.

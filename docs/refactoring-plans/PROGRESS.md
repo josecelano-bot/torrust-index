@@ -15,7 +15,7 @@
 | **Phase 1: API Normalization** | Accidental Complexity | ✅ Completed | — | 2026-03-29 | 2026-03-29 | VTree call-site migration and wrapper cleanup complete |
 | **Phase 2: Abstractions** | Accidental Complexity | 🟡 In Progress | — | 2026-03-29 | — | Running in parallel with late Phase 1 migration |
 | **Phase 3: Parameter Patterns (Optional)** | Refactoring Patterns | ⭕ Not Started | — | — | — | Only if ROI > 30%, after Phase 1 ✓ |
-| **Phase 4: Reorganization** | Accidental Complexity | 🟡 In Progress | — | 2026-03-29 | — | P3.1 split decomposition completed |
+| **Phase 4: Reorganization** | Accidental Complexity | ✅ Completed | — | 2026-03-29 | 2026-03-29 | Split, VTree, and diagnostics organization steps completed |
 | **Phase 5: Stabilization** | Accidental Complexity | ⭕ Not Started | — | — | — | Final integration & cleanup |
 
 **Legend:** ⭕ Not Started | 🟡 In Progress | ✅ Completed | ❌ Blocked | ⚠️ Needs Review
@@ -49,6 +49,7 @@
 - Started VTree decomposition by extracting traversal internals into `tree/vtree/traversal.rs`
 - Completed VTree decomposition by extracting mutation helpers into `tree/vtree/mutation.rs`
 - Deduplicated diagnostics collapse-sibling path by routing in-tree flow through shared read-only implementation
+- Reused shared diagnostics audit helper in eviction path and removed duplicated queue-diff logic
 
 ### Test Status
 - **Gate A (cargo check):** [PASS - 2026-03-29]
@@ -168,6 +169,7 @@
 | 2026-03-29 | Phase 4 | VTree traversal decomposition start | ✅ | current worktree | — | Extracted traversal internals to `tree/vtree/traversal.rs` (`2bcd99b`) |
 | 2026-03-29 | Phase 4 | VTree mutation decomposition completion | ✅ | current worktree | — | Extracted mutation helpers to `tree/vtree/mutation.rs` with API-compatible re-exports (`bfe44b1`) |
 | 2026-03-29 | Phase 4 | Diagnostics deduplication start | ✅ | current worktree | — | Removed duplicated collapse-sibling logging path in favor of shared implementation (`962bfda`) |
+| 2026-03-29 | Phase 4 | Diagnostics audit deduplication completion | ✅ | current worktree | — | Reused shared `audit_violations` in eviction diagnostics path (`6b115b0`) |
 
 ---
 
