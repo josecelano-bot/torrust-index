@@ -125,6 +125,10 @@ impl<V: Accumulator> VTree<V> {
         );
     }
 
+    pub(crate) fn add_structural_child(&mut self, parent: VNodeId, child: VNodeId, intensity: V) {
+        add_child_to_structural(&mut self.nodes, parent, child, intensity);
+    }
+
     // ── Eviction candidate scan ───────────────────────────────────────────
 
     /// Returns all V-entry nodes eligible for eviction.
