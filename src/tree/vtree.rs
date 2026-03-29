@@ -76,7 +76,57 @@ impl<V: Accumulator> VTree<V> {
         gnodes: &mut Arena<GNode<C, V>>,
         v_id: VNodeId,
     ) {
-        self.root = vtree_remove_leaf(&mut self.nodes, gnodes, v_id, self.root);
+        let span = tracing::debug_span!(
+            "vtree_remove_leaf",
+            v_id = v_id.index(),
+            case = tracing::field::Empty,
+        )
+        .entered();
+
+        if let VKind::Entry { gnode, .. } = self.nodes.get(v_id.index()).kind() {
+            gnodes.get_mut(gnode.index()).clear_entry();
+        }
+
+        let parent = self.nodes.get(v_id.index()).parent();
+
+        let Some(p_id) = parent else {
+            span.record("case", "root");
+            self.nodes.dealloc(v_id.index());
+            self.root = None;
+            return;
+        };
+
+        let p = self.nodes.get(p_id.index());
+        let p_child_count = match &p.kind() {
+            VKind::Structural { children, .. } => children.len(),
+            VKind::Entry { .. } => unreachable!("parent of entry should be structural"),
+        };
+
+        if p_child_count == 3 {
+            span.record("case", "shrink");
+            self.remove_structural_child(p_id, v_id);
+            recompute_and_propagate_v_sums(&mut self.nodes, p_id);
+            self.propagate_evictable(p_id);
+            self.nodes.dealloc(v_id.index());
+            return;
+        }
+
+        span.record("case", "collapse");
+        let sole_id = sole_sibling(&self.nodes, p_id, v_id);
+        let grandparent = self.nodes.get(p_id.index()).parent();
+
+        self.nodes.get_mut(sole_id.index()).set_parent_opt(grandparent);
+
+        self.root = grandparent.map_or(Some(sole_id), |g_id| {
+            let sole_int = self.nodes.get(sole_id.index()).intensity();
+            self.replace_structural_child(g_id, p_id, sole_id, sole_int);
+            recompute_and_propagate_v_sums(&mut self.nodes, g_id);
+            self.propagate_evictable(g_id);
+            self.root
+        });
+
+        self.nodes.dealloc(p_id.index());
+        self.nodes.dealloc(v_id.index());
     }
 
     // ── Sum / intensity propagation ───────────────────────────────────────
@@ -127,6 +177,20 @@ impl<V: Accumulator> VTree<V> {
 
     pub(crate) fn add_structural_child(&mut self, parent: VNodeId, child: VNodeId, intensity: V) {
         add_child_to_structural(&mut self.nodes, parent, child, intensity);
+    }
+
+    pub(crate) fn replace_structural_child(
+        &mut self,
+        parent: VNodeId,
+        old_child: VNodeId,
+        new_child: VNodeId,
+        new_intensity: V,
+    ) {
+        replace_child_in_parent(&mut self.nodes, parent, old_child, new_child, new_intensity);
+    }
+
+    pub(crate) fn remove_structural_child(&mut self, parent: VNodeId, child: VNodeId) {
+        remove_child_from_structural(&mut self.nodes, parent, child);
     }
 
     // ── Eviction candidate scan ───────────────────────────────────────────
@@ -182,65 +246,6 @@ impl<V: Accumulator> VTree<V> {
             }
         }
     }
-}
-
-fn vtree_remove_leaf<C: Coordinate, V: Accumulator>(
-    vnodes: &mut Arena<VNode<V>>,
-    gnodes: &mut Arena<GNode<C, V>>,
-    v_id: VNodeId,
-    v_root: Option<VNodeId>,
-) -> Option<VNodeId> {
-    let span = tracing::debug_span!(
-        "vtree_remove_leaf",
-        v_id = v_id.index(),
-        case = tracing::field::Empty,
-    )
-    .entered();
-
-    if let VKind::Entry { gnode, .. } = vnodes.get(v_id.index()).kind() {
-        gnodes.get_mut(gnode.index()).clear_entry();
-    }
-
-    let parent = vnodes.get(v_id.index()).parent();
-
-    let Some(p_id) = parent else {
-        span.record("case", "root");
-        vnodes.dealloc(v_id.index());
-        return None;
-    };
-
-    let p = vnodes.get(p_id.index());
-    let p_child_count = match &p.kind() {
-        VKind::Structural { children, .. } => children.len(),
-        VKind::Entry { .. } => unreachable!("parent of entry should be structural"),
-    };
-
-    if p_child_count == 3 {
-        span.record("case", "shrink");
-        remove_child_from_structural(vnodes, p_id, v_id);
-        recompute_and_propagate_v_sums(vnodes, p_id);
-        propagate_evictable_flags(vnodes, p_id);
-        vnodes.dealloc(v_id.index());
-        return v_root;
-    }
-
-    span.record("case", "collapse");
-    let sole_id = sole_sibling(vnodes, p_id, v_id);
-    let grandparent = vnodes.get(p_id.index()).parent();
-
-    vnodes.get_mut(sole_id.index()).set_parent_opt(grandparent);
-
-    let new_root = grandparent.map_or(Some(sole_id), |g_id| {
-        let sole_int = vnodes.get(sole_id.index()).intensity();
-        replace_child_in_parent(vnodes, g_id, p_id, sole_id, sole_int);
-        recompute_and_propagate_v_sums(vnodes, g_id);
-        propagate_evictable_flags(vnodes, g_id);
-        v_root
-    });
-
-    vnodes.dealloc(p_id.index());
-    vnodes.dealloc(v_id.index());
-    new_root
 }
 
 /// Walks ancestors of `start` (exclusive — `start` itself is not recomputed)
@@ -495,7 +500,7 @@ pub(crate) fn is_ancestor<V: Accumulator>(
 #[cfg(test)]
 mod tests {
 
-    use super::{propagate_v_sums, v_depth, vtree_remove_leaf};
+    use super::{VTree, propagate_v_sums, v_depth};
     use crate::arena::Arena;
     use crate::handle::{GNodeId, VNodeId};
     use crate::nodes::vnode::{Children, VKind, VNode};
@@ -595,9 +600,14 @@ mod tests {
             let mut vnodes: Arena<VNode<u32>> = Arena::new();
             let mut gnodes = gnodes_with_one_node();
             let v_root = VNodeId::from_index(vnodes.alloc(entry_vnode(10, None)));
-            let result = vtree_remove_leaf(&mut vnodes, &mut gnodes, v_root, Some(v_root));
-            assert!(result.is_none());
-            assert!(!vnodes.is_occupied(v_root.index()));
+            let mut vtree = VTree {
+                nodes: vnodes,
+                root: Some(v_root),
+                violations: Vec::new(),
+            };
+            vtree.remove_leaf(&mut gnodes, v_root);
+            assert!(vtree.root.is_none());
+            assert!(!vtree.nodes.is_occupied(v_root.index()));
         }
 
         // Shrink case: parent has 3 children → remove one, parent shrinks to 2.
@@ -621,10 +631,16 @@ mod tests {
             vnodes.get_mut(child_b.index()).set_parent(parent_id);
             vnodes.get_mut(child_c.index()).set_parent(parent_id);
 
-            let result = vtree_remove_leaf(&mut vnodes, &mut gnodes, child_c, Some(parent_id));
-            assert_eq!(result, Some(parent_id)); // parent remains root
-            assert!(!vnodes.is_occupied(child_c.index())); // target removed
-            match &vnodes.get(parent_id.index()).kind() {
+            let mut vtree = VTree {
+                nodes: vnodes,
+                root: Some(parent_id),
+                violations: Vec::new(),
+            };
+
+            vtree.remove_leaf(&mut gnodes, child_c);
+            assert_eq!(vtree.root, Some(parent_id)); // parent remains root
+            assert!(!vtree.nodes.is_occupied(child_c.index())); // target removed
+            match &vtree.nodes.get(parent_id.index()).kind() {
                 VKind::Structural { children, .. } => assert_eq!(children.len(), 2),
                 _ => panic!("expected Structural"),
             }
@@ -649,11 +665,17 @@ mod tests {
             vnodes.get_mut(target.index()).set_parent(parent_id);
             vnodes.get_mut(sibling.index()).set_parent(parent_id);
 
-            let result = vtree_remove_leaf(&mut vnodes, &mut gnodes, target, Some(parent_id));
-            assert_eq!(result, Some(sibling)); // sibling is new root
-            assert!(!vnodes.is_occupied(target.index()));
-            assert!(!vnodes.is_occupied(parent_id.index())); // parent collapsed
-            assert!(vnodes.get(sibling.index()).parent().is_none());
+            let mut vtree = VTree {
+                nodes: vnodes,
+                root: Some(parent_id),
+                violations: Vec::new(),
+            };
+
+            vtree.remove_leaf(&mut gnodes, target);
+            assert_eq!(vtree.root, Some(sibling)); // sibling is new root
+            assert!(!vtree.nodes.is_occupied(target.index()));
+            assert!(!vtree.nodes.is_occupied(parent_id.index())); // parent collapsed
+            assert!(vtree.nodes.get(sibling.index()).parent().is_none());
         }
     }
 }
