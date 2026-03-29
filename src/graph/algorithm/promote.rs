@@ -19,7 +19,7 @@ use crate::nodes::vnode::{Children, VKind, VNode};
 use crate::traits::{Accumulator, Coordinate};
 use crate::tree::vtree::{
     propagate_evictable_flags, recompute_and_sync_parent_slot,
-    replace_child_in_parent,
+    replace_child_in_parent, set_entry_flags,
 };
 
 use super::rebalance::{Ch, Nd, node_has_evictable};
@@ -252,15 +252,7 @@ pub fn legacy_promote<C: Coordinate, V: Accumulator>(
 
     vnodes.get_mut(c.index()).set_parent(g);
 
-    if let VKind::Entry {
-        is_exposed,
-        is_evictable,
-        ..
-    } = vnodes.get_mut(c.index()).kind_mut()
-    {
-        *is_exposed = false;
-        *is_evictable = false;
-    }
+    set_entry_flags(vnodes, c, false, false);
 
     recompute_and_sync_parent_slot(vnodes, p);
 

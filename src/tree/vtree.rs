@@ -343,6 +343,23 @@ pub fn replace_child_in_parent<V: Accumulator>(
     }
 }
 
+pub fn set_entry_flags<V: Accumulator>(
+    vnodes: &mut Arena<VNode<V>>,
+    entry_id: VNodeId,
+    is_exposed_value: bool,
+    is_evictable_value: bool,
+) {
+    if let VKind::Entry {
+        is_exposed,
+        is_evictable,
+        ..
+    } = vnodes.get_mut(entry_id.index()).kind_mut()
+    {
+        *is_exposed = is_exposed_value;
+        *is_evictable = is_evictable_value;
+    }
+}
+
 fn remove_child_from_structural<V: Accumulator>(
     vnodes: &mut Arena<VNode<V>>,
     parent: VNodeId,

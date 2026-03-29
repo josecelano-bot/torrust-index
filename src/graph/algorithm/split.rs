@@ -8,6 +8,7 @@ use crate::handle::{GNodeId, VNodeId};
 use crate::nodes::gnode::GNode;
 use crate::nodes::vnode::{Children, VKind, VNode};
 use crate::traits::{Accumulator, Coordinate, Inspectable};
+use crate::tree::vtree::set_entry_flags;
 
 impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N> {
     pub(crate) fn attempt_split(&mut self, g_id: GNodeId) {
@@ -60,7 +61,7 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
         self.vtree.nodes.get_mut(entry_id.index()).set_parent(root_s_id);
         self.vtree.nodes.get_mut(cs_id.index()).set_parent(root_s_id);
 
-        self.hide_entry_from_parent(entry_id);
+        set_entry_flags(&mut self.vtree.nodes, entry_id, false, false);
 
         self.vtree.root = Some(root_s_id);
 
@@ -116,7 +117,7 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
             children.add_child(s_id, V::zero());
         }
 
-        self.hide_entry_from_parent(entry_id);
+        set_entry_flags(&mut self.vtree.nodes, entry_id, false, false);
 
         // ── Phase 5: Propagate evictable flags ────────────────────────────────
         self.vtree.propagate_evictable(p_id);
@@ -170,18 +171,6 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
             left_id,
             left_entry_id,
             right_entry_id,
-        }
-    }
-
-    fn hide_entry_from_parent(&mut self, entry_id: VNodeId) {
-        if let VKind::Entry {
-            is_exposed,
-            is_evictable,
-            ..
-        } = self.vtree.nodes.get_mut(entry_id.index()).kind_mut()
-        {
-            *is_exposed = false;
-            *is_evictable = false;
         }
     }
 
