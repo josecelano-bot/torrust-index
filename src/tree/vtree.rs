@@ -180,7 +180,7 @@ impl<V: Accumulator> VTree<V> {
     }
 }
 
-pub fn vtree_remove_leaf<C: Coordinate, V: Accumulator>(
+fn vtree_remove_leaf<C: Coordinate, V: Accumulator>(
     vnodes: &mut Arena<VNode<V>>,
     gnodes: &mut Arena<GNode<C, V>>,
     v_id: VNodeId,
