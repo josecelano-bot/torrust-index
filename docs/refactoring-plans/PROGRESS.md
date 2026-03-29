@@ -42,6 +42,7 @@
 - Migrated the `resolve` entrypoint to accept `VTreeMutContext` directly and updated rebalance call wiring
 - Tightened `src/tree/vtree.rs` helper visibility to reduce arena-first API exposure after owner-method migrations
 - Added `VTree::set_entry_flags` and migrated split/evict call sites to owner-method mutation entrypoints
+- Internalized `vtree_remove_leaf` after migrating usage through `VTree::remove_leaf`
 
 ### Test Status
 - **Gate A (cargo check):** [PASS - 2026-03-29]
@@ -152,6 +153,7 @@
 | 2026-03-29 | Phase 2 | Rebalance resolve context entrypoint migration | ✅ | current worktree | — | `resolve` now takes `&mut VTreeMutContext` directly; rebalance caller updated |
 | 2026-03-29 | Phase 1 | VTree helper visibility cleanup | ✅ | current worktree | — | Reduced exposure of arena-first helpers after owner-method migration (`ebbee4a`) |
 | 2026-03-29 | Phase 2 | VTree entry-flag owner-method migration | ✅ | current worktree | — | Added `VTree::set_entry_flags` and migrated split/evict call sites (`f2b2187`) |
+| 2026-03-29 | Phase 1 | VTree leaf-removal wrapper internalization | ✅ | current worktree | — | `vtree_remove_leaf` reduced to module-private after owner-method migration (`a01d354`) |
 
 ---
 

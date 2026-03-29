@@ -92,6 +92,19 @@ Make ownership boundaries explicit by converting method-shaped free functions in
 
 ### 2026-03-29
 
+- Step: P1.3 wrapper exposure cleanup (vtree leaf removal)
+- Status: [x]
+- Files: `src/tree/vtree.rs`
+- Commit: `a01d354`
+- Tests:
+  - [x] Gate A
+  - [x] Gate B
+  - [x] Gate C
+- Notes: `vtree_remove_leaf` is now module-internal since all external use is already routed through `VTree::remove_leaf`.
+- Follow-up: Continue reducing remaining non-owner helper exposure where call-site migration is complete.
+
+### 2026-03-29
+
 - Step: P1.1 inventory and classification
 - Status: [x]
 - Files: `docs/refactoring-plans/accidental-complexity-plan/phase-1-inventory-2026-03-29.md`
