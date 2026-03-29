@@ -146,6 +146,9 @@ impl<C: Coordinate, V: Accumulator> PlateauTracking<C, V> for DynamicPlateauTrac
     }
 
     fn recompute_sums(&mut self, gnodes: &Arena<GNode<C, V>>, label: &str) {
+        #[cfg(not(debug_assertions))]
+        let _ = label;
+
         for (&key, plateau) in &mut self.plateaus {
             plateau.sum = self
                 .plateau_basis
