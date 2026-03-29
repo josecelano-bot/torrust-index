@@ -26,7 +26,7 @@ This phase is intentionally incremental: small changes, tests after each change,
 
 - [x] Q6.1 Establish tracker docs and progress hooks
 - [x] Q6.2 Promote-path helper extraction (remove duplicated sibling scans)
-- [ ] Q6.3 Add focused regression tests for promote helper behavior
+- [x] Q6.3 Add focused regression tests for promote helper behavior
 - [ ] Q6.4 Diagnostics error-message consistency cleanup (`unwrap` -> `expect` where applicable)
 - [ ] Q6.5 Run full validation gates and close phase
 
@@ -55,10 +55,10 @@ This phase is intentionally incremental: small changes, tests after each change,
 
 ### Q6.3
 
-- Date:
-- Change:
-- Tests:
-- Commit:
+- Date: 2026-03-29
+- Change: Added focused unit tests for `standard_promote` and `skip_promote` transformation behavior.
+- Tests: `cargo test promote::tests --all-features && cargo test --test integration`
+- Commit: pending
 
 ### Q6.4
 

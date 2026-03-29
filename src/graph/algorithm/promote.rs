@@ -239,3 +239,134 @@ fn sibling_of<V: Accumulator>(
         VKind::Entry { .. } => panic!("sibling_of: parent must be structural"),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{skip_promote, standard_promote};
+    use crate::arena::Arena;
+    use crate::handle::{GNodeId, VNodeId};
+    use crate::nodes::vnode::{Children, VKind, VNode};
+
+    #[test]
+    fn standard_promote_replaces_child_pair_with_grandchildren() {
+        let mut vnodes: Arena<VNode<u64>> = Arena::new();
+
+        let e1 = VNodeId::from_index(vnodes.alloc(VNode::new_entry(
+            2,
+            None,
+            GNodeId::from_index(0),
+            false,
+            true,
+        )));
+        let e2 = VNodeId::from_index(vnodes.alloc(VNode::new_entry(
+            3,
+            None,
+            GNodeId::from_index(1),
+            false,
+            false,
+        )));
+        let s = VNodeId::from_index(vnodes.alloc(VNode::new_entry(
+            5,
+            None,
+            GNodeId::from_index(2),
+            false,
+            true,
+        )));
+
+        let c = VNodeId::from_index(vnodes.alloc(VNode::new_structural(
+            5,
+            None,
+            Children::new_2((e1, 2), (e2, 3)),
+            true,
+        )));
+        vnodes.get_mut(e1.index()).set_parent(c);
+        vnodes.get_mut(e2.index()).set_parent(c);
+
+        let p = VNodeId::from_index(vnodes.alloc(VNode::new_structural(
+            10,
+            None,
+            Children::new_2((c, 5), (s, 5)),
+            true,
+        )));
+        vnodes.get_mut(c.index()).set_parent(p);
+        vnodes.get_mut(s.index()).set_parent(p);
+
+        standard_promote(&mut vnodes, c);
+
+        let p_node = vnodes.get(p.index());
+        match p_node.kind() {
+            VKind::Structural { children, .. } => {
+                assert_eq!(children.get(0).0, e1);
+                assert_eq!(children.get(1).0, e2);
+                assert_eq!(children.get(2).0, s);
+            }
+            VKind::Entry { .. } => panic!("parent should remain structural"),
+        }
+
+        assert_eq!(vnodes.get(e1.index()).parent(), Some(p));
+        assert_eq!(vnodes.get(e2.index()).parent(), Some(p));
+        assert!(!vnodes.is_occupied(c.index()));
+    }
+
+    #[test]
+    fn skip_promote_lifts_child_and_sibling_to_grandparent() {
+        let mut vnodes: Arena<VNode<u64>> = Arena::new();
+
+        let c = VNodeId::from_index(vnodes.alloc(VNode::new_entry(
+            4,
+            None,
+            GNodeId::from_index(10),
+            false,
+            true,
+        )));
+        let s = VNodeId::from_index(vnodes.alloc(VNode::new_entry(
+            3,
+            None,
+            GNodeId::from_index(11),
+            false,
+            false,
+        )));
+        let u = VNodeId::from_index(vnodes.alloc(VNode::new_entry(
+            8,
+            None,
+            GNodeId::from_index(12),
+            false,
+            true,
+        )));
+
+        let p = VNodeId::from_index(vnodes.alloc(VNode::new_structural(
+            7,
+            None,
+            Children::new_2((c, 4), (s, 3)),
+            true,
+        )));
+        vnodes.get_mut(c.index()).set_parent(p);
+        vnodes.get_mut(s.index()).set_parent(p);
+
+        let g = VNodeId::from_index(vnodes.alloc(VNode::new_structural(
+            15,
+            None,
+            Children::new_2((p, 7), (u, 8)),
+            true,
+        )));
+        vnodes.get_mut(p.index()).set_parent(g);
+        vnodes.get_mut(u.index()).set_parent(g);
+
+        let new_g = skip_promote(&mut vnodes, c);
+        assert!(new_g.is_none());
+
+        let g_node = vnodes.get(g.index());
+        match g_node.kind() {
+            VKind::Structural { children, .. } => {
+                assert_eq!(children.get(0).0, c);
+                assert_eq!(children.get(1).0, s);
+                assert_eq!(children.get(2).0, u);
+            }
+            VKind::Entry { .. } => panic!("grandparent should remain structural"),
+        }
+
+        assert_eq!(vnodes.get(c.index()).parent(), Some(g));
+        assert_eq!(vnodes.get(s.index()).parent(), Some(g));
+        assert!(!vnodes.is_occupied(p.index()));
+    }
+}
