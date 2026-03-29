@@ -135,3 +135,16 @@ Introduce small, focused abstractions that reduce cognitive load and duplication
   - [x] Gate C
 - Notes: Added `VTree::set_entry_flags` owner method and migrated split/evict call sites away from direct `set_entry_flags(&mut self.vtree.nodes, ...)` helper calls.
 - Follow-up: Finish P2.2 by standardizing replace/remove-child operations behind the same owner-first style.
+
+### 2026-03-29
+
+- Step: P2.2 VTree mutation mini-API (structural-child helpers)
+- Status: [ ]
+- Files: `src/tree/vtree.rs`, `src/graph/algorithm/split.rs`
+- Commit: `d56e9ed`
+- Tests:
+  - [x] Gate A
+  - [x] Gate B
+  - [x] Gate C
+- Notes: Added named helper `add_child_to_structural`, promoted `remove_child_from_structural` to crate-visible helper scope, and migrated split's inline structural child mutation to the helper entrypoint.
+- Follow-up: Complete P2.2 by migrating remaining replace/remove-child helper usage to owner-facing API where practical.
