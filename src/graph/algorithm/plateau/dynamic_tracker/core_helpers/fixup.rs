@@ -220,64 +220,81 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
         let parent_key = basis_edge_of(gnodes.get(parent_id.index()));
         let mut path: Vec<GNodeId> = vec![parent_id];
         let mut cur = gnodes.get(parent_id.index()).parent();
-        let mut found = None;
-
         while let Some(anc) = cur {
-            if let Some(&anc_key) = self.plateau_basis.plateau_key(anc).as_ref() {
-                let next_key = self
-                    .plateaus
-                    .range((
-                        std::ops::Bound::Excluded(anc_key),
-                        std::ops::Bound::Unbounded,
-                    ))
-                    .next()
-                    .map(|(&k, _)| k);
-                let tile_covers = parent_key >= anc_key && next_key.is_none_or(|nk| parent_key < nk);
-
-                if tile_covers {
-                    self.plateau_basis.remove(anc);
-
-                    if parent_state_after == GState::SemiInternal {
-                        let g = gnodes.get(parent_id.index());
-                        if let Some(sib) = g.left().or_else(|| g.right()) {
-                            if let Some(ok) = self.plateau_basis.remove(sib) {
-                                self.fixup_plateau(gnodes, ok);
-                            }
-                            displaced.push(sib);
-                        }
-                    }
-
-                    for &path_node in &path {
-                        let par = gnodes
-                            .get(path_node.index())
-                            .parent()
-                            .expect("path node must have a parent");
-                        let pg = gnodes.get(par.index());
-                        let sibling = if pg.left() == Some(path_node) {
-                            pg.right()
-                        } else {
-                            pg.left()
-                        };
-                        if let Some(sib_id) = sibling {
-                            if displaced.contains(&sib_id) {
-                                continue;
-                            }
-                            if let Some(ok) = self.plateau_basis.remove(sib_id) {
-                                self.fixup_plateau(gnodes, ok);
-                            }
-                            displaced.push(sib_id);
-                        }
-                    }
-
-                    found = Some(anc_key);
-                    break;
-                }
+            if let Some(anc_key) = self.covering_ancestor_key(anc, parent_key) {
+                self.plateau_basis.remove(anc);
+                self.displace_semi_internal_survivor(gnodes, parent_id, parent_state_after, displaced);
+                self.displace_path_siblings(gnodes, &path, displaced);
+                return Some(anc_key);
             }
             path.push(anc);
             cur = gnodes.get(anc.index()).parent();
         }
 
-        found
+        None
+    }
+
+    fn covering_ancestor_key(&self, anc: GNodeId, parent_key: BasisEdge<C>) -> Option<BasisEdge<C>> {
+        let anc_key = self.plateau_basis.plateau_key(anc)?;
+        let next_key = self
+            .plateaus
+            .range((
+                std::ops::Bound::Excluded(anc_key),
+                std::ops::Bound::Unbounded,
+            ))
+            .next()
+            .map(|(&k, _)| k);
+        let tile_covers = parent_key >= anc_key && next_key.is_none_or(|nk| parent_key < nk);
+        tile_covers.then_some(anc_key)
+    }
+
+    fn displace_semi_internal_survivor(
+        &mut self,
+        gnodes: &Arena<GNode<C, V>>,
+        parent_id: GNodeId,
+        parent_state_after: GState,
+        displaced: &mut Vec<GNodeId>,
+    ) {
+        if parent_state_after != GState::SemiInternal {
+            return;
+        }
+
+        let g = gnodes.get(parent_id.index());
+        if let Some(sib) = g.left().or_else(|| g.right()) {
+            if let Some(ok) = self.plateau_basis.remove(sib) {
+                self.fixup_plateau(gnodes, ok);
+            }
+            displaced.push(sib);
+        }
+    }
+
+    fn displace_path_siblings(
+        &mut self,
+        gnodes: &Arena<GNode<C, V>>,
+        path: &[GNodeId],
+        displaced: &mut Vec<GNodeId>,
+    ) {
+        for &path_node in path {
+            let par = gnodes
+                .get(path_node.index())
+                .parent()
+                .expect("path node must have a parent");
+            let pg = gnodes.get(par.index());
+            let sibling = if pg.left() == Some(path_node) {
+                pg.right()
+            } else {
+                pg.left()
+            };
+            if let Some(sib_id) = sibling {
+                if displaced.contains(&sib_id) {
+                    continue;
+                }
+                if let Some(ok) = self.plateau_basis.remove(sib_id) {
+                    self.fixup_plateau(gnodes, ok);
+                }
+                displaced.push(sib_id);
+            }
+        }
     }
 
     /// Evacuates right-adjacent and left-adjacent same-depth plateaus bordering
