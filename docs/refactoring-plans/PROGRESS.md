@@ -73,7 +73,7 @@
 ### Phase 1: API Normalization (Weeks 2-3)
 **Purpose:** Normalize free functions vs methods, clarify ownership
 **Details:** See [phase-1-api-normalization.md](accidental-complexity-plan/phase-1-api-normalization.md)
-- [ ] P1.1: Inventory & classify free functions
+- [x] P1.1: Inventory & classify free functions
 - [x] P1.2: Convert bootstrap_split & catalytic_split to methods
 - [ ] P1.3: Migrate VTree call sites away from Arena-first patterns
 - [ ] Review & merge PR

@@ -17,9 +17,9 @@ Make ownership boundaries explicit by converting method-shaped free functions in
 
 ### P1.1 Inventory and classification
 
-- [ ] List symbols taking `&mut GvGraph`, `&GvGraph`, `&Arena<GNode<_>>`, `&Arena<VNode<_>>`
-- [ ] Classify each symbol
-- [ ] Record migration decision per symbol
+- [x] List symbols taking `&mut GvGraph`, `&GvGraph`, `&Arena<GNode<_>>`, `&Arena<VNode<_>>`
+- [x] Classify each symbol
+- [x] Record migration decision per symbol
 
 ### P1.2 Split helper method conversion
 
@@ -63,6 +63,19 @@ Make ownership boundaries explicit by converting method-shaped free functions in
   - [ ] Gate C
 - Notes:
 - Follow-up:
+
+### 2026-03-29
+
+- Step: P1.1 inventory and classification
+- Status: [x]
+- Files: `docs/refactoring-plans/accidental-complexity-plan/phase-1-inventory-2026-03-29.md`
+- Commit: [pending]
+- Tests:
+  - [x] Gate A
+  - [x] Gate B
+  - [x] Gate C
+- Notes: Inventory completed and classified by owner-local, helper, orchestrator, and trait-boundary roles.
+- Follow-up: Continue P1.3 call-site migration where an owner API is clearly available.
 
 ### 2026-03-29
 
