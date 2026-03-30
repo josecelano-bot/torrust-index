@@ -1,4 +1,5 @@
 target/
 docs/snapshots/svg/
 metrics-output/
+.coverage/
 repomix-output.xml
