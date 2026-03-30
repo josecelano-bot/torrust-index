@@ -14,9 +14,9 @@
 
 use crate::arena::Arena;
 use crate::handle::{GNodeId, VNodeId};
-use crate::nodes::gnode::GNode;
 use crate::nodes::vnode::{Children, VKind, VNode};
 use crate::traits::{Accumulator, Coordinate};
+use crate::tree::gtree::GTree;
 use crate::tree::vtree::VTree;
 
 use super::rebalance::{Ch, Nd, node_has_evictable};
@@ -125,9 +125,9 @@ pub fn skip_promote<V: Accumulator>(vtree: &mut VTree<V>, c: VNodeId) -> Option<
 }
 
 #[allow(clippy::too_many_lines)]
-pub fn legacy_promote<C: Coordinate, V: Accumulator>(
+pub fn legacy_promote<C: Coordinate, V: Accumulator, const N: u32>(
     vtree: &mut VTree<V>,
-    gnodes: &mut Arena<GNode<C, V>>,
+    gtree: &mut GTree<C, V, N>,
     c: VNodeId,
 ) -> GNodeId {
     let p = vtree
@@ -147,7 +147,7 @@ pub fn legacy_promote<C: Coordinate, V: Accumulator>(
     };
 
     debug_assert!(
-        gnodes.get(gnode_id.index()).is_semi_internal(),
+        gtree.nodes.get(gnode_id.index()).is_semi_internal(),
         "legacy_promote: backing G-node must be semi-internal"
     );
 
@@ -160,29 +160,11 @@ pub fn legacy_promote<C: Coordinate, V: Accumulator>(
     )
     .entered();
 
-    let gn = gnodes.get(gnode_id.index());
-    let (new_lo, new_hi) = gn
-        .uncovered_range()
-        .expect("legacy_promote: semi-internal must have uncovered range");
-    let new_child = GNode::new_leaf(new_lo, new_hi, V::zero(), Some(gnode_id));
-    let new_child_id = GNodeId::from_index(gnodes.alloc(new_child));
-
-    {
-        let gn = gnodes.get_mut(gnode_id.index());
-        if gn.left().is_none() {
-            gn.link_left(new_child_id);
-        } else {
-            debug_assert!(
-                gn.right().is_none(),
-                "legacy_promote: expected empty right slot"
-            );
-            gn.link_right(new_child_id);
-        }
-    }
+    let new_child_id = gtree.allocate_missing_child(gnode_id);
 
     let ne = VNode::new_entry(V::zero(), Some(p), new_child_id, true, true);
     let ne_id = VNodeId::from_index(vtree.nodes.alloc(ne));
-    gnodes.get_mut(new_child_id.index()).assign_entry(ne_id);
+    gtree.assign_entry(new_child_id, ne_id);
 
     let c_int = vtree.nodes.get(c.index()).intensity();
     vtree.replace_structural_child(p, c, ne_id, V::zero());

@@ -226,7 +226,7 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
         // Topology must be captured before removal; violations are pushed after.
         let removal_ctx = classify_leaf_removal(&self.vtree.nodes, v_id);
 
-        self.vtree.remove_leaf(&mut self.gtree.nodes, v_id);
+        self.vtree.remove_leaf(&mut self.gtree, v_id);
 
         let mut queue = ViolationQueue::new(&mut self.vtree.violations);
         push_eviction_violations(&self.vtree.nodes, v_id, &removal_ctx, &mut queue);

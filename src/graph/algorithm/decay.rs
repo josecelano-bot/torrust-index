@@ -225,10 +225,11 @@ impl<C: Coordinate, V: Accumulator + Attenuatable + Inspectable, const N: u32> G
 
     fn post_decay_repair(&mut self, label: &str) {
         self.vtree.violations = rebalance::find_violated_nodes(&self.vtree.nodes);
+        let depth_evict = self.gtree.live_depth_evict;
         let new_gnodes = rebalance::rebalance(
             &mut self.vtree,
-            &mut self.gtree.nodes,
-            self.gtree.live_depth_evict,
+            &mut self.gtree,
+            depth_evict,
         );
         if !new_gnodes.is_empty() {
             self.handle_legacy_promotes(&new_gnodes);

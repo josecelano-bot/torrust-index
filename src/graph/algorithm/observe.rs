@@ -62,10 +62,11 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
             self.debug_assert_plateau_mirror_consistency("POST-SPLIT");
         }
 
+        let depth_evict = self.gtree.live_depth_evict;
         let new_gnodes = rebalance::rebalance(
             &mut self.vtree,
-            &mut self.gtree.nodes,
-            self.gtree.live_depth_evict,
+            &mut self.gtree,
+            depth_evict,
         );
         if !new_gnodes.is_empty() {
             self.handle_legacy_promotes(&new_gnodes);

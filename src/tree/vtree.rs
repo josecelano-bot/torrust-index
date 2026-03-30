@@ -40,8 +40,8 @@
 //! `is_violated` predicate and the `resolve` function that repairs violations.
 use crate::arena::Arena;
 use crate::handle::{GNodeId, VNodeId};
-use crate::nodes::gnode::GNode;
 use crate::nodes::vnode::{Children, VKind, VNode};
+use crate::tree::gtree::GTree;
 use crate::traits::{Accumulator, Coordinate};
 
 mod traversal;
@@ -76,9 +76,9 @@ impl<V: Accumulator> VTree<V> {
     // ── Structural modifications ──────────────────────────────────────────
 
     /// Removes leaf `v_id` from the tree and updates `self.root` in place.
-    pub(crate) fn remove_leaf<C: Coordinate>(
+    pub(crate) fn remove_leaf<C: Coordinate, const N: u32>(
         &mut self,
-        gnodes: &mut Arena<GNode<C, V>>,
+        gtree: &mut GTree<C, V, N>,
         v_id: VNodeId,
     ) {
         let span = tracing::debug_span!(
@@ -89,7 +89,7 @@ impl<V: Accumulator> VTree<V> {
         .entered();
 
         if let VKind::Entry { gnode, .. } = self.nodes.get(v_id.index()).kind() {
-            gnodes.get_mut(gnode.index()).clear_entry();
+            gtree.clear_entry(*gnode);
         }
 
         let parent = self.nodes.get(v_id.index()).parent();
@@ -526,26 +526,37 @@ mod tests {
     mod vtree_remove_leaf_fn {
         use super::*;
         use crate::nodes::gnode::GNode;
+        use crate::tree::gtree::GTree;
 
-        /// Minimal gnodes arena with one Terminal `GNode` at index 0.
-        fn gnodes_with_one_node() -> Arena<GNode<u8, u32>> {
+        /// Minimal G-tree with one Terminal `GNode` at index 0.
+        fn gtree_with_one_node() -> GTree<u8, u32, 8> {
             let mut gnodes: Arena<GNode<u8, u32>> = Arena::new();
-            gnodes.alloc(GNode::new_leaf(0u8, 255u8, 0u32, None));
-            gnodes
+            let root = GNodeId::from_index(gnodes.alloc(GNode::new_leaf(0u8, 255u8, 0u32, None)));
+            GTree {
+                nodes: gnodes,
+                root,
+                node_count: 1,
+                terminal_count: 1,
+                live_depth_evict: 5,
+                live_depth_create: 3,
+                depth_buffer: 2,
+                headroom: 1,
+                soft_limit: None,
+            }
         }
 
         // Root-removal: node has no parent → returns None.
         #[test]
         fn root_removal_returns_none() {
             let mut vnodes: Arena<VNode<u32>> = Arena::new();
-            let mut gnodes = gnodes_with_one_node();
+            let mut gtree = gtree_with_one_node();
             let v_root = VNodeId::from_index(vnodes.alloc(entry_vnode(10, None)));
             let mut vtree = VTree {
                 nodes: vnodes,
                 root: Some(v_root),
                 violations: Vec::new(),
             };
-            vtree.remove_leaf(&mut gnodes, v_root);
+            vtree.remove_leaf(&mut gtree, v_root);
             assert!(vtree.root.is_none());
             assert!(!vtree.nodes.is_occupied(v_root.index()));
         }
@@ -554,7 +565,7 @@ mod tests {
         #[test]
         fn shrink_removes_child_from_three_child_parent() {
             let mut vnodes: Arena<VNode<u32>> = Arena::new();
-            let mut gnodes = gnodes_with_one_node();
+            let mut gtree = gtree_with_one_node();
 
             let child_a = VNodeId::from_index(vnodes.alloc(entry_vnode(5, None)));
             let child_b = VNodeId::from_index(vnodes.alloc(entry_vnode(5, None)));
@@ -577,7 +588,7 @@ mod tests {
                 violations: Vec::new(),
             };
 
-            vtree.remove_leaf(&mut gnodes, child_c);
+            vtree.remove_leaf(&mut gtree, child_c);
             assert_eq!(vtree.root, Some(parent_id)); // parent remains root
             assert!(!vtree.nodes.is_occupied(child_c.index())); // target removed
             match &vtree.nodes.get(parent_id.index()).kind() {
@@ -590,7 +601,7 @@ mod tests {
         #[test]
         fn collapse_no_grandparent_sole_sibling_becomes_root() {
             let mut vnodes: Arena<VNode<u32>> = Arena::new();
-            let mut gnodes = gnodes_with_one_node();
+            let mut gtree = gtree_with_one_node();
 
             let target = VNodeId::from_index(vnodes.alloc(entry_vnode(5, None)));
             let sibling = VNodeId::from_index(vnodes.alloc(entry_vnode(5, None)));
@@ -611,7 +622,7 @@ mod tests {
                 violations: Vec::new(),
             };
 
-            vtree.remove_leaf(&mut gnodes, target);
+            vtree.remove_leaf(&mut gtree, target);
             assert_eq!(vtree.root, Some(sibling)); // sibling is new root
             assert!(!vtree.nodes.is_occupied(target.index()));
             assert!(!vtree.nodes.is_occupied(parent_id.index())); // parent collapsed

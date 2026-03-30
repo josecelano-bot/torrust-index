@@ -1,8 +1,8 @@
 use crate::arena::Arena;
 use crate::handle::{GNodeId, VNodeId};
-use crate::nodes::gnode::GNode;
 use crate::nodes::vnode::{VKind, VNode};
 use crate::traits::{Accumulator, Coordinate};
+use crate::tree::gtree::GTree;
 
 use super::super::promote::{legacy_promote, skip_promote, standard_promote};
 use super::super::violation_push::{
@@ -199,9 +199,9 @@ fn resolve_try_contract_parent<V: Accumulator>(
 /// Attempts a grandparent contraction first, then either legacy-promotes (when
 /// `c` is a semi-internal entry at or above `depth_evict`) or skip-promotes.
 /// Returns `Some(new_g)` only when a legacy promote created a new G-node.
-fn resolve_path_b<C: Coordinate, V: Accumulator>(
+fn resolve_path_b<C: Coordinate, V: Accumulator, const N: u32>(
     tree: &mut VTreeMutContext<'_, V>,
-    gnodes: &mut Arena<GNode<C, V>>,
+    gtree: &mut GTree<C, V, N>,
     c: VNodeId,
     p: VNodeId,
     g: VNodeId,
@@ -237,12 +237,12 @@ fn resolve_path_b<C: Coordinate, V: Accumulator>(
     let is_semi = matches!(
         &tree.vtree.nodes.get(c.index()).kind(),
         VKind::Entry { gnode, .. }
-            if gnodes.get(gnode.index()).is_semi_internal()
+            if gtree.nodes.get(gnode.index()).is_semi_internal()
     );
 
     let result = if is_semi && v_depth_local(&tree.vtree.nodes, c) <= depth_evict {
         tracing::debug!("phase 2: legacy promote (semi-internal entry)");
-        let new_g = legacy_promote(tree.vtree, gnodes, c);
+        let new_g = legacy_promote(tree.vtree, gtree, c);
         {
             let (vnodes, violations) = (&tree.vtree.nodes, &mut tree.vtree.violations);
             let mut queue = ViolationQueue::new(violations);
@@ -286,9 +286,9 @@ fn resolve_path_b<C: Coordinate, V: Accumulator>(
 /// before the main dispatch.
 ///
 /// Returns `Some(new_g)` only when a legacy promote created a new G-node.
-pub fn resolve<C: Coordinate, V: Accumulator>(
+pub fn resolve<C: Coordinate, V: Accumulator, const N: u32>(
     tree: &mut VTreeMutContext<'_, V>,
-    gnodes: &mut Arena<GNode<C, V>>,
+    gtree: &mut GTree<C, V, N>,
     c: VNodeId,
     depth_evict: u32,
 ) -> Option<GNodeId> {
@@ -323,7 +323,7 @@ pub fn resolve<C: Coordinate, V: Accumulator>(
         return None;
     };
 
-    let result = resolve_path_b(tree, gnodes, c, p, g, depth_evict);
+    let result = resolve_path_b(tree, gtree, c, p, g, depth_evict);
 
     if tree.vtree.nodes.is_occupied(c.index()) && is_violated(&tree.vtree.nodes, c) {
         tracing::warn!(

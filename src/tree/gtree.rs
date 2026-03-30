@@ -1,6 +1,7 @@
 use crate::arena::Arena;
 use crate::handle::GNodeId;
 use crate::nodes::gnode::GNode;
+use crate::handle::VNodeId;
 use crate::traits::{Accumulator, Coordinate};
 
 // ── GTree ────────────────────────────────────────────────────────────────────
@@ -145,6 +146,42 @@ impl<C: Coordinate, V: Accumulator, const N: u32> GTree<C, V, N> {
         // added, the parent terminal is lost: net change = +2 − 1 = +1.
         self.terminal_count += 1;
         (left_id, right_id)
+    }
+
+    /// Allocates the missing child of a semi-internal node and links it into
+    /// the vacant slot.
+    ///
+    /// This helper intentionally does not update `node_count` or
+    /// `terminal_count`; legacy-promote batching accounts for that separately.
+    pub(crate) fn allocate_missing_child(&mut self, parent_id: GNodeId) -> GNodeId {
+        let (new_lo, new_hi) = self
+            .nodes
+            .get(parent_id.index())
+            .uncovered_range()
+            .expect("allocate_missing_child: parent must have uncovered range");
+        let new_child = GNode::new_leaf(new_lo, new_hi, V::zero(), Some(parent_id));
+        let new_child_id = GNodeId::from_index(self.nodes.alloc(new_child));
+
+        let parent = self.nodes.get_mut(parent_id.index());
+        if parent.left().is_none() {
+            parent.link_left(new_child_id);
+        } else {
+            debug_assert!(
+                parent.right().is_none(),
+                "allocate_missing_child: expected empty right slot"
+            );
+            parent.link_right(new_child_id);
+        }
+
+        new_child_id
+    }
+
+    pub(crate) fn assign_entry(&mut self, gnode_id: GNodeId, entry_id: VNodeId) {
+        self.nodes.get_mut(gnode_id.index()).assign_entry(entry_id);
+    }
+
+    pub(crate) fn clear_entry(&mut self, gnode_id: GNodeId) {
+        self.nodes.get_mut(gnode_id.index()).clear_entry();
     }
 
     /// Absorbs `child_id`'s accumulated sum into its parent's own weight,
