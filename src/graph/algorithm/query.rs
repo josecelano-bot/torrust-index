@@ -61,6 +61,65 @@ mod tests {
             let cell = g.get(u8::domain_max(8));
             assert_eq!(cell.intensity, 0u32);
         }
+
+        #[test]
+        fn get_on_semi_internal_with_left_absent_returns_left_half_cell() {
+            // After a split: root [0,255) → left [0,127) + right [127,255).
+            // Evicting the left child makes the root SemiInternal (right only).
+            // get(10) where 10 ∈ [0,127) exercises trimmed_interval's
+            // SemiInternal path where left is absent → returns (lo, mid).
+            let mut g = fresh_graph();
+            g.observe(64u8, 3u32); // delta > split_threshold=2 → triggers split
+
+            let root = g.gtree.nodes.root;
+            let left_child = g
+                .gtree
+                .nodes
+                .get(root.index())
+                .left()
+                .expect("root must have left child after split");
+            let left_entry = g
+                .gtree
+                .nodes
+                .get(left_child.index())
+                .entry()
+                .expect("left child must have a VEntry");
+            g.evict_tip(left_entry);
+
+            // coord 10 is in the uncovered [0,127) half of the semi-internal root.
+            let cell = g.get(10u8);
+            assert_eq!(cell.start, 0u8);
+            assert_eq!(cell.end, 127u8); // mid = 0 + (255-0)/2 = 127
+        }
+
+        #[test]
+        fn get_on_semi_internal_with_right_absent_returns_right_half_cell() {
+            // After a split, evict the right child → root is SemiInternal (left only).
+            // get(200) where 200 ∈ [127,255) exercises the SemiInternal path
+            // where left is present → returns (mid, hi).
+            let mut g = fresh_graph();
+            g.observe(64u8, 3u32);
+
+            let root = g.gtree.nodes.root;
+            let right_child = g
+                .gtree
+                .nodes
+                .get(root.index())
+                .right()
+                .expect("root must have right child after split");
+            let right_entry = g
+                .gtree
+                .nodes
+                .get(right_child.index())
+                .entry()
+                .expect("right child must have a VEntry");
+            g.evict_tip(right_entry);
+
+            // coord 200 is in the uncovered [127,255) half of the semi-internal root.
+            let cell = g.get(200u8);
+            assert_eq!(cell.start, 127u8);
+            assert_eq!(cell.end, 255u8);
+        }
     }
 
     // ── range_sum ────────────────────────────────────────────────────────
@@ -143,6 +202,32 @@ mod tests {
             // lo >= hi after bounds processing → returns 0
             let r = g.range_sum(100u8..50u8);
             assert_eq!(r, 0u32);
+        }
+
+        #[test]
+        fn split_tree_range_misses_right_child() {
+            let mut g = fresh_graph();
+            // delta=5 > split_threshold=2 → forces the root [0,256) to split into
+            // a left child [0,128) and a right child [128,256).
+            g.observe(10u8, 5u32);
+            // Range [0,100) partially overlaps root → range_sum_inner recurses into
+            // both children.  Left child [0,128) overlaps the range; right child
+            // [128,256) does NOT overlap → exercises the early "return V::zero()"
+            // path inside a non-root node.
+            let r = g.range_sum(0u8..100u8);
+            assert!(r > 0u32);
+            assert!(r <= g.total_sum());
+        }
+
+        #[test]
+        fn split_tree_range_covers_left_child_entirely() {
+            let mut g = fresh_graph();
+            g.observe(10u8, 5u32);
+            // Range [0,200) covers the left child [0,128) entirely →
+            // exercises the "range.covers(node_lo, node_hi)" fast path in a child.
+            let r = g.range_sum(0u8..200u8);
+            assert!(r > 0u32);
+            assert!(r <= g.total_sum());
         }
     }
 
@@ -351,6 +436,43 @@ mod tests {
                 &mut basis,
             );
             assert!(basis.is_empty());
+        }
+
+        #[test]
+        fn decompose_basis_terminal_left_range_emits_boundary_thatch() {
+            // Fresh graph: root is a terminal with no children.
+            // A partial range [0,100) partially overlaps the left half [0,128).
+            // Case 4 else-left: left_range=[0,100) is non-empty → push boundary thatch +
+            // early return (right never reached).
+            let g = fresh_graph();
+            let mut basis = Vec::new();
+            g.decompose_basis(
+                g.gtree.nodes.root,
+                CoordinateRange::new(0u8, 100u8),
+                &mut basis,
+            );
+            assert_eq!(basis.len(), 1);
+            assert_eq!(basis[0].start, 0u8);
+            assert_eq!(basis[0].end, 100u8);
+            assert!(basis[0].is_boundary_thatch);
+        }
+
+        #[test]
+        fn decompose_basis_terminal_right_range_emits_boundary_thatch() {
+            // Fresh graph: root is a terminal with no children.
+            // Range [128,200): left_range = clip(0,128) = [128,128) = empty → no push/return
+            // for left; right_range = clip(128,256) = [128,200) → push boundary thatch.
+            let g = fresh_graph();
+            let mut basis = Vec::new();
+            g.decompose_basis(
+                g.gtree.nodes.root,
+                CoordinateRange::new(128u8, 200u8),
+                &mut basis,
+            );
+            assert_eq!(basis.len(), 1);
+            assert_eq!(basis[0].start, 128u8);
+            assert_eq!(basis[0].end, 200u8);
+            assert!(basis[0].is_boundary_thatch);
         }
 
         #[test]

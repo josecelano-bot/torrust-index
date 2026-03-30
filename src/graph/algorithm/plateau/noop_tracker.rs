@@ -73,3 +73,66 @@ impl<C: Coordinate, V: Accumulator> PlateauTracking<C, V> for NoopPlateauTracker
         Cow::Owned(BTreeMap::new())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::arena::Arena;
+    use crate::nodes::gnode::GNode;
+    use crate::tree::gtree::GNodeTree;
+
+    fn empty_gnodes() -> GNodeTree<u8, u32> {
+        let mut nodes: Arena<GNode<u8, u32>> = Arena::new();
+        let root_idx = nodes.alloc(GNode::new_leaf(0u8, 255u8, 0u32, None));
+        GNodeTree {
+            nodes,
+            root: GNodeId::from_index(root_idx),
+            node_count: 1,
+            terminal_count: 1,
+        }
+    }
+
+    fn exercise_tracker(tracker: &mut NoopPlateauTracker, gnodes: &GNodeTree<u8, u32>) {
+        let root = gnodes.root;
+        tracker.on_observe(gnodes, root, 0u32);
+        tracker.on_bootstrap_split(gnodes, root, root);
+        tracker.on_catalytic_split(gnodes, root, root);
+        tracker.on_evict(
+            gnodes,
+            root,
+            root,
+            crate::nodes::gnode::GState::Terminal,
+            0u8,
+            255u8,
+        );
+        tracker.on_legacy_promotes_batched(gnodes, &[]);
+        tracker.normalize(gnodes);
+        tracker.repair_p_i4(gnodes);
+        tracker.recompute_sums(gnodes, "test");
+        <NoopPlateauTracker as PlateauTracking<u8, u32>>::set_dirty(tracker);
+        let p = <NoopPlateauTracker as PlateauTracking<u8, u32>>::plateaus(tracker);
+        assert!(p.is_empty(), "NoopPlateauTracker must return empty plateau map");
+    }
+
+    #[test]
+    fn all_methods_run_without_panicking() {
+        let gnodes = empty_gnodes();
+        let mut tracker = NoopPlateauTracker;
+        exercise_tracker(&mut tracker, &gnodes);
+    }
+
+    #[test]
+    fn debug_assert_mirror_consistency_default_does_not_panic() {
+        use crate::spatial::plateau::{BasisEdge, Plateau};
+        use std::collections::BTreeMap;
+
+        let gnodes = empty_gnodes();
+        let tracker = NoopPlateauTracker;
+        let fresh: BTreeMap<BasisEdge<u8>, Plateau<u8, u32>> = BTreeMap::new();
+
+        // The default impl is a no-op; calling it must not panic.
+        <NoopPlateauTracker as PlateauTracking<u8, u32>>::debug_assert_mirror_consistency(
+            &tracker, &gnodes, &fresh, "test",
+        );
+    }
+}

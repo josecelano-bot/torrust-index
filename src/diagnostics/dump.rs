@@ -269,4 +269,111 @@ mod tests {
             assert!(s.contains("great-grandparent"), "got: {s}");
         }
     }
+
+    mod fmt_optional_gnode_fn {
+        use crate::handle::GNodeId;
+        #[test]
+        fn none_returns_fallback() {
+            let s = super::super::fmt_optional_gnode(None, "None");
+            assert_eq!(s, "None");
+        }
+
+        #[test]
+        fn some_returns_index() {
+            let id = GNodeId::from_index(7);
+            let s = super::super::fmt_optional_gnode(Some(id), "None");
+            assert_eq!(s, "7");
+        }
+    }
+
+    mod dump_gtree_fn {
+        use crate::graph::{Config, GvGraph, StructuralConfig};
+
+        fn make_config() -> Config<u32> {
+            Config {
+                split_threshold: 2,
+                structural: StructuralConfig {
+                    depth_create: 3,
+                    depth_evict: 5,
+                    budget: None,
+                    alpha_relax: 0.5,
+                    bounded_eviction: false,
+                },
+            }
+        }
+
+        #[test]
+        fn dump_gtree_fresh_graph_contains_header() {
+            let g = GvGraph::<u8, u32, 8>::new(make_config());
+            let out = super::super::dump_gtree(&g);
+            assert!(out.contains("G-Tree dump"), "missing header: {out}");
+        }
+
+        #[test]
+        fn dump_gtree_after_observation_shows_state() {
+            let mut g = GvGraph::<u8, u32, 8>::new(make_config());
+            g.observe(64u8, 5u32);
+            let out = super::super::dump_gtree(&g);
+            assert!(out.contains('T') || out.contains('I') || out.contains('S'), "expected state label: {out}");
+        }
+
+        #[test]
+        fn dump_gtree_after_split_shows_multiple_nodes() {
+            let mut g = GvGraph::<u8, u32, 8>::new(make_config());
+            for _ in 0..4 {
+                g.observe(64u8, 5u32);
+            }
+            let out = super::super::dump_gtree(&g);
+            // At least two G-node entries in the output means multiple lines.
+            let node_count = out.lines().filter(|l| l.trim_start().starts_with("G(")).count();
+            assert!(node_count >= 2, "expected multiple G-nodes after splits: {out}");
+        }
+    }
+
+    #[cfg(feature = "dynamic-contour-tracking")]
+    mod dump_plateaus_fn {
+        use crate::graph::{Config, GvGraph, StructuralConfig};
+
+        fn make_config() -> Config<u32> {
+            Config {
+                split_threshold: 2,
+                structural: StructuralConfig {
+                    depth_create: 3,
+                    depth_evict: 5,
+                    budget: None,
+                    alpha_relax: 0.5,
+                    bounded_eviction: false,
+                },
+            }
+        }
+
+        #[test]
+        fn dump_plateaus_fresh_graph_contains_header() {
+            let g = GvGraph::<u8, u32, 8>::new(make_config());
+            let out = super::super::dump_plateaus(&g);
+            assert!(out.contains("Plateau dump"), "missing header: {out}");
+        }
+
+        #[test]
+        fn dump_plateaus_after_observation_includes_plateau_entry() {
+            let mut g = GvGraph::<u8, u32, 8>::new(make_config());
+            g.observe(64u8, 5u32);
+            let out = super::super::dump_plateaus(&g);
+            assert!(out.contains("Plateau dump"), "missing header: {out}");
+            // After at least one observation there should be at least one plateau.
+            assert!(out.contains("Plateau "), "expected at least one plateau entry: {out}");
+        }
+
+        #[test]
+        fn dump_plateaus_after_multiple_observations_includes_back_map() {
+            let mut g = GvGraph::<u8, u32, 8>::new(make_config());
+            for _ in 0..4 {
+                g.observe(64u8, 5u32);
+            }
+            let out = super::super::dump_plateaus(&g);
+            // The back map section should be present.
+            assert!(out.contains("Back map"), "expected back map section: {out}");
+        }
+    }
 }
+

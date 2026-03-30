@@ -224,3 +224,87 @@ pub fn dump_vtree_dot<C: Coordinate, V: Accumulator + Inspectable, const N: u32>
     writeln!(out, "}}").expect("writing DOT output failed");
     out
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::graph::{Config, GvGraph, StructuralConfig};
+
+    type G = GvGraph<u8, u32, 8>;
+
+    fn make_config() -> Config<u32> {
+        Config {
+            split_threshold: 2,
+            structural: StructuralConfig {
+                depth_create: 3,
+                depth_evict: 5,
+                budget: None,
+                alpha_relax: 0.5,
+                bounded_eviction: false,
+            },
+        }
+    }
+
+    #[test]
+    fn dump_gtree_dot_on_fresh_graph_produces_valid_dot() {
+        let g: G = GvGraph::new(make_config());
+        let dot = super::dump_gtree_dot(&g, "fresh");
+        assert!(dot.contains("digraph gtree"), "missing header: {dot}");
+        assert!(dot.contains("label=\"fresh\""), "missing label: {dot}");
+        // Fresh graph has a single Terminal node with a VEntry → green fill.
+        assert!(dot.contains("#c8e6c9"), "expected green for terminal-with-entry: {dot}");
+    }
+
+    #[test]
+    fn dump_gtree_dot_after_observation_includes_entry_node() {
+        let mut g: G = GvGraph::new(make_config());
+        g.observe(64u8, 5u32);
+        let dot = super::dump_gtree_dot(&g, "obs1");
+        // After one observation the root Terminal has a VEntry → green fill.
+        assert!(dot.contains("#c8e6c9"), "expected green for terminal-with-entry: {dot}");
+    }
+
+    #[test]
+    fn dump_gtree_dot_after_split_includes_internal_nodes() {
+        let mut g: G = GvGraph::new(make_config());
+        // Trigger splits by repeating an observation (split_threshold = 2).
+        for _ in 0..4 {
+            g.observe(64u8, 5u32);
+        }
+        let dot = super::dump_gtree_dot(&g, "after_split");
+        // After splits there should be Internal nodes (yellow) or SemiInternal (orange).
+        let has_internal = dot.contains("#fff9c4") || dot.contains("#ffe0b2");
+        assert!(has_internal, "expected yellow or orange fill after splits: {dot}");
+    }
+
+    #[test]
+    fn dump_vtree_dot_on_fresh_graph_produces_empty_body() {
+        let g: G = GvGraph::new(make_config());
+        // No observations → no v_root → empty-graph body.
+        let dot = super::dump_vtree_dot(&g, "empty");
+        assert!(dot.contains("digraph vtree"), "missing header: {dot}");
+        assert!(dot.contains("empty"), "expected empty placeholder: {dot}");
+    }
+
+    #[test]
+    fn dump_vtree_dot_after_observation_includes_entry_node() {
+        let mut g: G = GvGraph::new(make_config());
+        g.observe(64u8, 5u32);
+        let dot = super::dump_vtree_dot(&g, "obs1");
+        assert!(dot.contains("digraph vtree"), "missing header: {dot}");
+        // Should contain at least one VEntry node (blue box).
+        assert!(dot.contains("#bbdefb"), "expected blue entry node: {dot}");
+    }
+
+    #[test]
+    fn dump_vtree_dot_after_split_includes_structural_node() {
+        let mut g: G = GvGraph::new(make_config());
+        for _ in 0..4 {
+            g.observe(64u8, 5u32);
+        }
+        let dot = super::dump_vtree_dot(&g, "after_split");
+        // Structural nodes are rendered as purple ellipses.
+        assert!(dot.contains("#e1bee7"), "expected purple structural node: {dot}");
+        // Edges between structural and entry nodes should exist.
+        assert!(dot.contains("->"), "expected edge arrows: {dot}");
+    }
+}

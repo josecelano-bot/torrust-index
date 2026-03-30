@@ -117,7 +117,38 @@ mod tests {
     }
 
     #[cfg(feature = "dynamic-contour-tracking")]
-    mod pl_display_fn {
+        mod gn_display_fn_extra {
+            use super::*;
+            use crate::diagnostics::display::Gn;
+            use crate::handle::GNodeId;
+
+            #[test]
+            fn terminal_gnode_shows_t_in_state() {
+                let mut g: G = GvGraph::new(make_config());
+                g.observe(64u8, 3u32);
+                // After a split, gnode[1] is a Terminal left child.
+                let display = format!("{}", Gn(&g.gtree.nodes, GNodeId::from_index(1)));
+                assert!(display.contains("T,"), "expected 'T,' in terminal display: {display}");
+            }
+
+            #[test]
+            fn semi_internal_gnode_shows_s_in_state() {
+                let mut g: G = GvGraph::new(make_config());
+                g.observe(64u8, 3u32);
+                // Evict the left child so root [gnode 0] becomes semi-internal.
+                let root = g.gtree.nodes.root;
+                let left_child = g.gtree.nodes.get(root.index()).left()
+                    .expect("root must have left child after split");
+                let left_entry = g.gtree.nodes.get(left_child.index()).entry()
+                    .expect("left child must have a VEntry");
+                g.evict_tip(left_entry);
+                let display = format!("{}", Gn(&g.gtree.nodes, GNodeId::from_index(0)));
+                assert!(display.contains("S,"), "expected 'S,' in semi-internal display: {display}");
+            }
+        }
+
+        #[cfg(feature = "dynamic-contour-tracking")]
+        mod pl_display_fn {
         use super::*;
         use crate::diagnostics::display::Pl;
         use crate::handle::GNodeId;

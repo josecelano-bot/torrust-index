@@ -518,7 +518,52 @@ mod tests {
             let g = GvGraph::<u8, u32, 8>::new(make_config());
             assert!(g.gtree.soft_limit.is_none());
         }
+
+        #[test]
+        fn terminal_count_via_public_api() {
+            let g = GvGraph::<u8, u32, 8>::new(make_config());
+            assert_eq!(g.terminal_count(), 1);
+        }
+
+        #[test]
+        fn depth_buffer_via_public_api() {
+            let g = GvGraph::<u8, u32, 8>::new(make_config());
+            assert_eq!(g.depth_buffer(), 2);
+        }
+
+        #[test]
+        fn headroom_via_public_api() {
+            let g = GvGraph::<u8, u32, 8>::new(make_config());
+            assert_eq!(g.headroom(), 27);
+        }
+
+        #[test]
+        fn soft_limit_via_public_api_none() {
+            let g = GvGraph::<u8, u32, 8>::new(make_config());
+            assert!(g.soft_limit().is_none());
+        }
     }
+
+    // ── Debug and Clone ─────────────────────────────────────────────────
+    mod debug_clone {
+        use super::*;
+
+        #[test]
+        fn debug_format_contains_gvgraph() {
+            let g = GvGraph::<u8, u32, 8>::new(make_config());
+            let s = format!("{g:?}");
+            assert!(s.contains("GvGraph"), "expected GvGraph in debug output: {s}");
+        }
+
+        #[test]
+        fn clone_has_same_sum() {
+            let mut g = GvGraph::<u8, u32, 8>::new(make_config());
+            g.observe(64u8, 5u32);
+            let g2 = g.clone();
+            assert_eq!(g.total_sum(), g2.total_sum());
+        }
+    }
+
 
     // ── uniform_contour_depth_of ─────────────────────────────────────────
     #[cfg(feature = "dynamic-contour-tracking")]

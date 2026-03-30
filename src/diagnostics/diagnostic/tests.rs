@@ -292,4 +292,120 @@ mod diagnose_missed_violation_fn {
         };
         diagnose_missed_violation(g.vnodes(), child_id, &ctx);
     }
+
+    #[test]
+    fn depth_two_entry_is_direct_child_of_collapse_sibling() {
+        // Sets collapse_sibling = violated's own parent.
+        // is_ancestor_in_nodes(parent, violated) → true (parent is a direct ancestor).
+        // sole_children.contains(violated.index()) → true → exercises the
+        // "IS a direct child of collapse_sibling" branch in diagnose_collapse_sibling.
+        let mut g: G = GvGraph::new(make_config());
+        for coord in [32u8, 96u8, 160u8, 224u8] {
+            g.observe(coord, 3u32);
+        }
+        let v_root = g.v_root().expect("v_root must exist");
+        let mut stack: Vec<(crate::handle::VNodeId, usize)> = vec![(v_root, 0)];
+        let mut found: Option<(crate::handle::VNodeId, crate::handle::VNodeId)> = None;
+        while let Some((id, depth)) = stack.pop() {
+            let n = g.vnodes().get(id.index());
+            match &n.kind() {
+                VKind::Entry { .. } if depth >= 2 => {
+                    let parent_id = n.parent().unwrap();
+                    // grandparent must exist to avoid early-return in the diagnoser.
+                    if g.vnodes().get(parent_id.index()).parent().is_some() {
+                        found = Some((id, parent_id));
+                        break;
+                    }
+                }
+                VKind::Structural { children, .. } => {
+                    for (cid, _) in children.iter() {
+                        stack.push((cid, depth + 1));
+                    }
+                }
+                _ => {}
+            }
+        }
+        let Some((entry_id, parent_id)) = found else {
+            return; // not enough depth; treat as vacuous pass
+        };
+        // collapse_sibling = parent_id → violated IS a direct child of collapse_sibling.
+        let ctx = MissedViolationContext {
+            evicted_parent: None,
+            evicted_parent_child_count: 0,
+            collapse_sibling: Some(parent_id),
+        };
+        diagnose_missed_violation(g.vnodes(), entry_id, &ctx);
+    }
+}
+
+// ── diagnose_missed_violation_in_tree ─────────────────────────────
+mod diagnose_missed_violation_in_tree_fn {
+    use crate::diagnostics::diagnostic::{MissedViolationContext, diagnose_missed_violation_in_tree};
+    use crate::nodes::vnode::VKind;
+    use super::*;
+
+    #[test]
+    fn does_not_panic_for_root_vnode_after_bootstrap() {
+        let mut g: G = GvGraph::new(make_config());
+        g.observe(64u8, 3u32);
+        let v_root = g.v_root().expect("v_root must exist");
+        let ctx = MissedViolationContext {
+            evicted_parent: None,
+            evicted_parent_child_count: 0,
+            collapse_sibling: None,
+        };
+        diagnose_missed_violation_in_tree(&g.vtree, v_root, &ctx);
+    }
+
+    #[test]
+    fn depth_one_child_hits_grandparent_not_found_path() {
+        let mut g: G = GvGraph::new(make_config());
+        g.observe(64u8, 3u32);
+        let v_root = g.v_root().expect("v_root must exist after bootstrap");
+        let child_id = match &g.vnodes().get(v_root.index()).kind() {
+            VKind::Structural { children, .. } => children.get(0).0,
+            _ => panic!("expected Structural v_root after bootstrap"),
+        };
+        let ctx = MissedViolationContext {
+            evicted_parent: None,
+            evicted_parent_child_count: 0,
+            collapse_sibling: None,
+        };
+        diagnose_missed_violation_in_tree(&g.vtree, child_id, &ctx);
+    }
+
+    #[test]
+    fn depth_two_entry_covers_full_path() {
+        let mut g: G = GvGraph::new(make_config());
+        for coord in [32u8, 96u8, 160u8, 224u8] {
+            g.observe(coord, 3u32);
+        }
+        let v_root = g.v_root().expect("v_root must exist");
+        let mut stack: Vec<(crate::handle::VNodeId, usize)> = vec![(v_root, 0)];
+        let mut depth2_entry = None;
+        while let Some((id, depth)) = stack.pop() {
+            let n = g.vnodes().get(id.index());
+            match &n.kind() {
+                VKind::Entry { .. } if depth >= 2 => {
+                    depth2_entry = Some(id);
+                    break;
+                }
+                VKind::Structural { children, .. } => {
+                    for (cid, _) in children.iter() {
+                        stack.push((cid, depth + 1));
+                    }
+                }
+                _ => {}
+            }
+        }
+        let Some(entry_id) = depth2_entry else {
+            return;
+        };
+        let ctx = MissedViolationContext {
+            evicted_parent: None,
+            evicted_parent_child_count: 0,
+            collapse_sibling: Some(v_root),
+        };
+        diagnose_missed_violation_in_tree(&g.vtree, entry_id, &ctx);
+    }
 }
