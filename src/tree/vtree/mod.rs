@@ -40,56 +40,15 @@
 //! A V-node is *violated* when its intensity distribution across children
 //! breaches the configured balance threshold.  See `rebalance.rs` for the
 //! `is_violated` predicate and the `resolve` function that repairs violations.
-use crate::arena::Arena;
+
 use crate::handle::{GNodeId, VNodeId};
 use crate::nodes::vnode::{Children, VKind, VNode};
 use crate::tree::gtree::GTree;
 use crate::traits::{Accumulator, Coordinate};
-use std::ops::{Deref, DerefMut};
 
-mod traversal;
-
-// ── VNodeTree ────────────────────────────────────────────────────────────────
-
-/// Structural V-node owner.
-#[derive(Debug, Clone)]
-pub struct VNodeTree<V: Accumulator> {
-    nodes: Arena<VNode<V>>,
-}
-
-impl<V: Accumulator> VNodeTree<V> {
-    #[must_use]
-    pub(crate) fn new() -> Self {
-        Self { nodes: Arena::new() }
-    }
-}
-
-impl<V: Accumulator> Default for VNodeTree<V> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl<V: Accumulator> From<Arena<VNode<V>>> for VNodeTree<V> {
-    fn from(nodes: Arena<VNode<V>>) -> Self {
-        Self { nodes }
-    }
-}
-
-impl<V: Accumulator> Deref for VNodeTree<V> {
-    type Target = Arena<VNode<V>>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.nodes
-    }
-}
-
-impl<V: Accumulator> DerefMut for VNodeTree<V> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.nodes
-    }
-}
-
+pub(crate) mod vnode_tree;
+pub(crate) mod traversal;
+pub(crate) use vnode_tree::VNodeTree;
 
 // ── VTree ────────────────────────────────────────────────────────────────────
 
@@ -456,7 +415,6 @@ impl<V: Accumulator> VTree<V> {
 
 #[cfg(test)]
 mod tests {
-
     use super::{VNodeTree, VTree};
     use crate::arena::Arena;
     use crate::handle::{GNodeId, VNodeId};
@@ -557,7 +515,7 @@ mod tests {
 
         /// Minimal G-tree with one Terminal `GNode` at index 0.
         fn gtree_with_one_node() -> GTree<u8, u32, 8> {
-            let mut gnodes: Arena<GNode<u8, u32>> = Arena::new();
+            let mut gnodes: crate::arena::Arena<GNode<u8, u32>> = Arena::new();
             let root = GNodeId::from_index(gnodes.alloc(GNode::new_leaf(0u8, 255u8, 0u32, None)));
             GTree {
                 nodes: GNodeTree {
