@@ -132,7 +132,7 @@ impl<C: Coordinate, V: Accumulator> GNodeTree<C, V> {
     #[cfg(feature = "dynamic-contour-tracking")]
     #[must_use]
     pub(crate) fn uniform_contour_depth_of(&self, gid: GNodeId, n: u32) -> Option<u32> {
-        super::uniform_contour_depth_of(&self.nodes, gid, n)
+        uniform_contour_depth_of(&self.nodes, gid, n)
     }
 
     // ── G-node allocation / eviction helpers ─────────────────────────────
@@ -210,5 +210,36 @@ impl<C: Coordinate, V: Accumulator> GNodeTree<C, V> {
         self.nodes.get_mut(parent_id.index()).set_sum(new_sum);
 
         parent_id
+    }
+}
+
+/// Returns the uniform contour depth of the subtree rooted at `gid`, or
+/// `None` if the leaf G-nodes in that subtree do not all share the same depth.
+///
+/// Kept as a free helper (instead of an inherent method only) so low-level
+/// code can evaluate synthetic `Arena<GNode<..>>` fixtures without constructing
+/// a full `GNodeTree` wrapper (root/counters are irrelevant for this query).
+#[cfg(feature = "dynamic-contour-tracking")]
+#[must_use]
+pub(crate) fn uniform_contour_depth_of<C: Coordinate, V: Accumulator>(
+    gnodes: &Arena<GNode<C, V>>,
+    gid: GNodeId,
+    n: u32,
+) -> Option<u32> {
+    use super::gnode::GState;
+
+    let g = gnodes.get(gid.index());
+    match g.state() {
+        GState::Terminal => Some(super::gnode_depth_from_range(g.range(), n)),
+        GState::SemiInternal => None,
+        GState::Internal => {
+            let ld = g
+                .left()
+                .and_then(|l| uniform_contour_depth_of(gnodes, l, n))?;
+            let rd = g
+                .right()
+                .and_then(|r| uniform_contour_depth_of(gnodes, r, n))?;
+            if ld == rd { Some(ld) } else { None }
+        }
     }
 }

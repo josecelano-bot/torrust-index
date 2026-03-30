@@ -527,7 +527,7 @@ mod tests {
         use crate::arena::Arena;
         use crate::handle::GNodeId;
         use crate::nodes::gnode::GNode;
-        use crate::tree::gtree::uniform_contour_depth_of;
+        use crate::tree::gtree::gnode_tree::uniform_contour_depth_of;
 
         fn make_terminal(lo: u8, hi: u8) -> GNode<u8, u32> {
             GNode::new_leaf(lo, hi, 0u32, None)

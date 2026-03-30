@@ -1,4 +1,3 @@
-use crate::arena::Arena;
 use crate::handle::GNodeId;
 use crate::spatial::range::CoordinateRange;
 use crate::traits::{Accumulator, Coordinate};
@@ -104,28 +103,3 @@ pub fn gnode_depth_from_range<C: Coordinate>(range: CoordinateRange<C>, n: u32) 
     depth
 }
 
-/// Returns the uniform contour depth of the subtree rooted at `gid`, or `None`
-/// if the leaf G-nodes do not all share the same depth.
-#[cfg(feature = "dynamic-contour-tracking")]
-#[must_use]
-pub fn uniform_contour_depth_of<C: Coordinate, V: Accumulator>(
-    gnodes: &Arena<GNode<C, V>>,
-    gid: GNodeId,
-    n: u32,
-) -> Option<u32> {
-    use self::gnode::GState;
-    let g = gnodes.get(gid.index());
-    match g.state() {
-        GState::Terminal => Some(gnode_depth_from_range(g.range(), n)),
-        GState::SemiInternal => None,
-        GState::Internal => {
-            let ld = g
-                .left()
-                .and_then(|l| uniform_contour_depth_of(gnodes, l, n))?;
-            let rd = g
-                .right()
-                .and_then(|r| uniform_contour_depth_of(gnodes, r, n))?;
-            if ld == rd { Some(ld) } else { None }
-        }
-    }
-}
