@@ -1,9 +1,8 @@
-use crate::arena::Arena;
 use crate::handle::{GNodeId, VNodeId};
 use crate::nodes::vnode::{Children, VKind, VNode};
 use crate::traits::{Accumulator, Coordinate, Inspectable};
 use crate::tree::gtree::GTree;
-use crate::tree::vtree::VTree;
+use crate::tree::vtree::{VNodeTree, VTree};
 
 mod context;
 mod resolve;
@@ -15,7 +14,7 @@ pub use resolve::resolve;
 pub use violation_scan::find_violated_nodes;
 
 #[must_use]
-pub fn max_uncle_intensity<V: Accumulator>(vnodes: &Arena<VNode<V>>, c: VNodeId) -> Option<V> {
+pub fn max_uncle_intensity<V: Accumulator>(vnodes: &VNodeTree<V>, c: VNodeId) -> Option<V> {
     let parent = vnodes.get(c.index()).parent()?;
     let grandparent = vnodes.get(parent.index()).parent()?;
 
@@ -39,7 +38,7 @@ pub fn max_uncle_intensity<V: Accumulator>(vnodes: &Arena<VNode<V>>, c: VNodeId)
 }
 
 #[must_use]
-pub fn is_violated<V: Accumulator>(vnodes: &Arena<VNode<V>>, c: VNodeId) -> bool {
+pub fn is_violated<V: Accumulator>(vnodes: &VNodeTree<V>, c: VNodeId) -> bool {
     let c_int = vnodes.get(c.index()).intensity();
     max_uncle_intensity(vnodes, c).is_some_and(|max_uncle| c_int > max_uncle)
 }
@@ -112,11 +111,8 @@ pub fn contract<V: Accumulator>(vtree: &mut VTree<V>, p: VNodeId) -> VNodeId {
     m_id
 }
 
-pub(super) fn node_has_evictable<V: Accumulator>(vnodes: &Arena<VNode<V>>, id: VNodeId) -> bool {
-    match &vnodes.get(id.index()).kind() {
-        VKind::Entry { is_evictable, .. } => *is_evictable,
-        VKind::Structural { has_evictable, .. } => *has_evictable,
-    }
+pub(super) fn node_has_evictable<V: Accumulator>(vnodes: &VNodeTree<V>, id: VNodeId) -> bool {
+    vnodes.node_has_evictable(id)
 }
 
 /// Log the violation-queue tail and either panic (debug) or signal a break
@@ -125,7 +121,7 @@ pub(super) fn node_has_evictable<V: Accumulator>(vnodes: &Arena<VNode<V>>, id: V
 /// Returns `false` in debug builds (unreachable — `panic!` diverges) and `true`
 /// in release builds to tell the caller to break out of the loop.
 fn handle_iteration_limit<V: Accumulator>(
-    vnodes: &Arena<VNode<V>>,
+    vnodes: &VNodeTree<V>,
     violations: &[VNodeId],
     iterations: u32,
     max_iterations: u32,
@@ -327,7 +323,6 @@ mod tests {
     // ── max_uncle_intensity ───────────────────────────────────────────
     mod max_uncle_intensity_fn {
         use super::*;
-        use crate::arena::Arena;
         use crate::handle::{GNodeId, VNodeId};
 
         #[test]
@@ -363,7 +358,7 @@ mod tests {
 
         #[test]
         fn returns_max_across_multiple_uncles() {
-            let mut vnodes: Arena<VNode<u32>> = Arena::new();
+            let mut vnodes = crate::tree::vtree::VNodeTree::<u32>::from(crate::arena::Arena::new());
 
             let c = VNodeId::from_index(vnodes.alloc(VNode::new_entry(
                 5,
@@ -573,7 +568,6 @@ mod tests {
     // ── rebalance (integration) ───────────────────────────────────────
     mod rebalance_fn {
         use super::*;
-        use crate::arena::Arena;
         use crate::graph::algorithm::rebalance::{
             VTreeMutContext, handle_iteration_limit, rebalance, resolve,
         };
@@ -655,7 +649,7 @@ mod tests {
         #[test]
         #[should_panic(expected = "rebalance: exceeded")]
         fn handle_iteration_limit_panics_in_debug_mode() {
-            let mut vnodes: Arena<VNode<u32>> = Arena::new();
+            let mut vnodes = crate::tree::vtree::VNodeTree::<u32>::from(crate::arena::Arena::new());
             let live = VNodeId::from_index(vnodes.alloc(VNode::new_entry(
                 1,
                 None,

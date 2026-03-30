@@ -22,10 +22,10 @@
 //! | 9      | `source_9_collapse_cousins`             | Collapse exposes cousins via grandparent path |
 //! | 10     | `source_10_g_contraction_promotion`     | G-contraction followed by promotion           |
 
-use crate::arena::Arena;
 use crate::handle::VNodeId;
-use crate::nodes::vnode::{VKind, VNode};
+use crate::nodes::vnode::VKind;
 use crate::traits::Accumulator;
+use crate::tree::vtree::VNodeTree;
 
 use super::rebalance::{Nd, is_violated};
 use super::violation_sources::ViolationSources;
@@ -40,38 +40,38 @@ impl<'a> ViolationQueue<'a> {
         Self { violations }
     }
 
-    pub fn push_side_effect<V: Accumulator>(&mut self, vnodes: &Arena<VNode<V>>, node: VNodeId) {
+    pub fn push_side_effect<V: Accumulator>(&mut self, vnodes: &VNodeTree<V>, node: VNodeId) {
         push_side_effect_violations(vnodes, node, self.violations);
     }
 
-    pub fn push_promoted<V: Accumulator>(&mut self, vnodes: &Arena<VNode<V>>, node: VNodeId) {
+    pub fn push_promoted<V: Accumulator>(&mut self, vnodes: &VNodeTree<V>, node: VNodeId) {
         push_promoted_violations(vnodes, node, self.violations);
     }
 
     pub fn push_contraction_child<V: Accumulator>(
         &mut self,
-        vnodes: &Arena<VNode<V>>,
+        vnodes: &VNodeTree<V>,
         node: VNodeId,
         skip: VNodeId,
     ) {
         push_contraction_child_violations(vnodes, node, skip, self.violations);
     }
 
-    pub fn push_source_10<V: Accumulator>(&mut self, vnodes: &Arena<VNode<V>>, node: VNodeId) {
+    pub fn push_source_10<V: Accumulator>(&mut self, vnodes: &VNodeTree<V>, node: VNodeId) {
         push_source_10_violations(vnodes, node, self.violations);
     }
 
-    pub fn push_leaf_removal<V: Accumulator>(&mut self, vnodes: &Arena<VNode<V>>, start: VNodeId) {
+    pub fn push_leaf_removal<V: Accumulator>(&mut self, vnodes: &VNodeTree<V>, start: VNodeId) {
         push_leaf_removal_violations(vnodes, start, self.violations);
     }
 
-    pub fn push_collapse<V: Accumulator>(&mut self, vnodes: &Arena<VNode<V>>, sole: VNodeId) {
+    pub fn push_collapse<V: Accumulator>(&mut self, vnodes: &VNodeTree<V>, sole: VNodeId) {
         push_collapse_violations(vnodes, sole, self.violations);
     }
 
     pub fn push_remaining_sibling<V: Accumulator>(
         &mut self,
-        vnodes: &Arena<VNode<V>>,
+        vnodes: &VNodeTree<V>,
         parent: VNodeId,
         removed: VNodeId,
     ) {
@@ -80,7 +80,7 @@ impl<'a> ViolationQueue<'a> {
 
     pub fn push_cousin<V: Accumulator>(
         &mut self,
-        vnodes: &Arena<VNode<V>>,
+        vnodes: &VNodeTree<V>,
         sole: VNodeId,
         grandparent: VNodeId,
     ) {
@@ -91,7 +91,7 @@ impl<'a> ViolationQueue<'a> {
 // ── Plain wrappers (use all-enabled config) ──────────────────────────────────
 
 pub fn push_side_effect_violations<V: Accumulator>(
-    vnodes: &Arena<VNode<V>>,
+    vnodes: &VNodeTree<V>,
     node: VNodeId,
     violations: &mut Vec<VNodeId>,
 ) {
@@ -104,7 +104,7 @@ pub fn push_side_effect_violations<V: Accumulator>(
 }
 
 pub fn push_source_10_violations<V: Accumulator>(
-    vnodes: &Arena<VNode<V>>,
+    vnodes: &VNodeTree<V>,
     node: VNodeId,
     violations: &mut Vec<VNodeId>,
 ) {
@@ -117,7 +117,7 @@ pub fn push_source_10_violations<V: Accumulator>(
 }
 
 pub fn push_promoted_violations<V: Accumulator>(
-    vnodes: &Arena<VNode<V>>,
+    vnodes: &VNodeTree<V>,
     node: VNodeId,
     violations: &mut Vec<VNodeId>,
 ) {
@@ -125,7 +125,7 @@ pub fn push_promoted_violations<V: Accumulator>(
 }
 
 pub fn push_contraction_child_violations<V: Accumulator>(
-    vnodes: &Arena<VNode<V>>,
+    vnodes: &VNodeTree<V>,
     node: VNodeId,
     skip: VNodeId,
     violations: &mut Vec<VNodeId>,
@@ -147,7 +147,7 @@ pub fn push_contraction_child_violations<V: Accumulator>(
 }
 
 pub fn push_leaf_removal_violations<V: Accumulator>(
-    vnodes: &Arena<VNode<V>>,
+    vnodes: &VNodeTree<V>,
     start: VNodeId,
     violations: &mut Vec<VNodeId>,
 ) {
@@ -160,7 +160,7 @@ pub fn push_leaf_removal_violations<V: Accumulator>(
 }
 
 pub fn push_collapse_violations<V: Accumulator>(
-    vnodes: &Arena<VNode<V>>,
+    vnodes: &VNodeTree<V>,
     sole: VNodeId,
     violations: &mut Vec<VNodeId>,
 ) {
@@ -168,7 +168,7 @@ pub fn push_collapse_violations<V: Accumulator>(
 }
 
 pub fn push_remaining_sibling_violations<V: Accumulator>(
-    vnodes: &Arena<VNode<V>>,
+    vnodes: &VNodeTree<V>,
     p: VNodeId,
     removed: VNodeId,
     violations: &mut Vec<VNodeId>,
@@ -183,7 +183,7 @@ pub fn push_remaining_sibling_violations<V: Accumulator>(
 }
 
 pub fn push_cousin_violations<V: Accumulator>(
-    vnodes: &Arena<VNode<V>>,
+    vnodes: &VNodeTree<V>,
     sole: VNodeId,
     grandparent: VNodeId,
     violations: &mut Vec<VNodeId>,
@@ -201,7 +201,7 @@ pub fn push_cousin_violations<V: Accumulator>(
 
 #[inline]
 pub fn push_side_effect_violations_with_config<V: Accumulator>(
-    vnodes: &Arena<VNode<V>>,
+    vnodes: &VNodeTree<V>,
     node: VNodeId,
     violations: &mut Vec<VNodeId>,
     config: ViolationSources,
@@ -214,7 +214,7 @@ pub fn push_side_effect_violations_with_config<V: Accumulator>(
 
 #[inline]
 pub fn push_source_10_violations_with_config<V: Accumulator>(
-    vnodes: &Arena<VNode<V>>,
+    vnodes: &VNodeTree<V>,
     node: VNodeId,
     violations: &mut Vec<VNodeId>,
     config: ViolationSources,
@@ -227,7 +227,7 @@ pub fn push_source_10_violations_with_config<V: Accumulator>(
 
 #[inline]
 pub fn push_promoted_violations_with_config<V: Accumulator>(
-    vnodes: &Arena<VNode<V>>,
+    vnodes: &VNodeTree<V>,
     node: VNodeId,
     violations: &mut Vec<VNodeId>,
     config: ViolationSources,
@@ -249,7 +249,7 @@ pub fn push_promoted_violations_with_config<V: Accumulator>(
 
 #[inline]
 pub fn push_leaf_removal_violations_with_config<V: Accumulator>(
-    vnodes: &Arena<VNode<V>>,
+    vnodes: &VNodeTree<V>,
     start: VNodeId,
     violations: &mut Vec<VNodeId>,
     config: ViolationSources,
@@ -290,7 +290,7 @@ pub fn push_leaf_removal_violations_with_config<V: Accumulator>(
 
 #[inline]
 pub fn push_collapse_violations_with_config<V: Accumulator>(
-    vnodes: &Arena<VNode<V>>,
+    vnodes: &VNodeTree<V>,
     sole: VNodeId,
     violations: &mut Vec<VNodeId>,
     config: ViolationSources,
@@ -307,7 +307,7 @@ pub fn push_collapse_violations_with_config<V: Accumulator>(
 
 #[inline]
 pub fn push_remaining_sibling_violations_with_config<V: Accumulator>(
-    vnodes: &Arena<VNode<V>>,
+    vnodes: &VNodeTree<V>,
     p: VNodeId,
     removed: VNodeId,
     violations: &mut Vec<VNodeId>,
@@ -333,7 +333,7 @@ pub fn push_remaining_sibling_violations_with_config<V: Accumulator>(
 
 #[inline]
 pub fn push_cousin_violations_with_config<V: Accumulator>(
-    vnodes: &Arena<VNode<V>>,
+    vnodes: &VNodeTree<V>,
     sole: VNodeId,
     grandparent: VNodeId,
     violations: &mut Vec<VNodeId>,
@@ -367,7 +367,7 @@ pub fn push_cousin_violations_with_config<V: Accumulator>(
 // ── Private helpers ──────────────────────────────────────────────────────────
 
 fn push_grandchild_violations<V: Accumulator>(
-    vnodes: &Arena<VNode<V>>,
+    vnodes: &VNodeTree<V>,
     node: VNodeId,
     violations: &mut Vec<VNodeId>,
 ) {
@@ -389,7 +389,7 @@ fn push_grandchild_violations<V: Accumulator>(
 }
 
 fn push_children_violations<V: Accumulator>(
-    vnodes: &Arena<VNode<V>>,
+    vnodes: &VNodeTree<V>,
     node: VNodeId,
     source: &str,
     violations: &mut Vec<VNodeId>,

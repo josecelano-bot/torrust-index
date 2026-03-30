@@ -1,11 +1,10 @@
-use crate::arena::Arena;
 use crate::handle::VNodeId;
-use crate::nodes::vnode::{VKind, VNode};
+use crate::nodes::vnode::VKind;
 use crate::traits::{Accumulator, Inspectable};
-use crate::tree::vtree::VTree;
+use crate::tree::vtree::{VNodeTree, VTree};
 
 fn is_ancestor_in_nodes<V: Accumulator>(
-    vnodes: &Arena<VNode<V>>,
+    vnodes: &VNodeTree<V>,
     ancestor: VNodeId,
     mut descendant: VNodeId,
 ) -> bool {
@@ -22,7 +21,7 @@ fn is_ancestor_in_nodes<V: Accumulator>(
 /// Walks the V-tree ancestry from `violated` to the root, logging each hop
 /// at `tracing::error!` level for post-mortem diagnosis.
 pub(super) fn log_vtree_ancestry<V: Accumulator + Inspectable>(
-    vnodes: &Arena<VNode<V>>,
+    vnodes: &VNodeTree<V>,
     violated: VNodeId,
 ) {
     let _span =
@@ -60,7 +59,7 @@ pub(super) fn log_vtree_ancestry<V: Accumulator + Inspectable>(
 /// `violated` is a descendant of `sole` and explains which source should have
 /// caught the violation.
 pub(super) fn diagnose_collapse_sibling<V: Accumulator + Inspectable>(
-    vnodes: &Arena<VNode<V>>,
+    vnodes: &VNodeTree<V>,
     violated: VNodeId,
     sole: VNodeId,
 ) {

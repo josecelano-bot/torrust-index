@@ -1,8 +1,8 @@
-use crate::arena::Arena;
 use crate::handle::{GNodeId, VNodeId};
-use crate::nodes::vnode::{VKind, VNode};
+use crate::nodes::vnode::VKind;
 use crate::traits::{Accumulator, Coordinate};
 use crate::tree::gtree::GTree;
+use crate::tree::vtree::VNodeTree;
 
 use super::super::promote::{legacy_promote, skip_promote, standard_promote};
 use super::super::violation_push::{
@@ -10,11 +10,11 @@ use super::super::violation_push::{
 };
 use super::{contract, is_violated, Ctx, EscalationContext, Nd, VTreeMutContext};
 
-fn structural_child_count<V: Accumulator>(vnodes: &Arena<VNode<V>>, id: VNodeId) -> usize {
+fn structural_child_count<V: Accumulator>(vnodes: &VNodeTree<V>, id: VNodeId) -> usize {
     vnodes.get(id.index()).child_count()
 }
 
-fn any_child_violated<V: Accumulator>(vnodes: &Arena<VNode<V>>, node: VNodeId) -> bool {
+fn any_child_violated<V: Accumulator>(vnodes: &VNodeTree<V>, node: VNodeId) -> bool {
     match &vnodes.get(node.index()).kind() {
         VKind::Structural { children, .. } => {
             for i in 0..children.len() {
@@ -29,9 +29,8 @@ fn any_child_violated<V: Accumulator>(vnodes: &Arena<VNode<V>>, node: VNodeId) -
     }
 }
 
-fn v_depth_local<V: Accumulator>(vnodes: &Arena<VNode<V>>, id: VNodeId) -> u32 {
-    let node = vnodes.get(id.index());
-    node.parent().map_or(0, |p| v_depth_local(vnodes, p) + 1)
+fn v_depth_local<V: Accumulator>(vnodes: &VNodeTree<V>, id: VNodeId) -> u32 {
+    vnodes.depth(id)
 }
 
 /// Contracts the 3-child parent `p` after a promote, propagates violations,

@@ -12,14 +12,13 @@
 //!   G-child, which is the **only** case in the rebalancing path that mutates
 //!   the G-tree arena.
 
-use crate::arena::Arena;
 use crate::handle::{GNodeId, VNodeId};
 use crate::nodes::vnode::{Children, VKind, VNode};
 use crate::traits::{Accumulator, Coordinate};
 use crate::tree::gtree::GTree;
 use crate::tree::vtree::VTree;
 
-use super::rebalance::{Ch, Nd, node_has_evictable};
+use super::rebalance::{Ch, Nd};
 
 pub fn standard_promote<V: Accumulator>(vtree: &mut VTree<V>, c: VNodeId) {
     let p = vtree
@@ -47,11 +46,11 @@ pub fn standard_promote<V: Accumulator>(vtree: &mut VTree<V>, c: VNodeId) {
         }
     };
 
-    let sibling_id = sibling_of(&vtree.nodes, p, c);
+    let sibling_id = vtree.nodes.sibling_of(p, c);
 
-    let sib_terminal = node_has_evictable(&vtree.nodes, sibling_id.0);
-    let c1_terminal = node_has_evictable(&vtree.nodes, c1_id);
-    let c2_terminal = node_has_evictable(&vtree.nodes, c2_id);
+    let sib_terminal = vtree.nodes.node_has_evictable(sibling_id.0);
+    let c1_terminal = vtree.nodes.node_has_evictable(c1_id);
+    let c2_terminal = vtree.nodes.node_has_evictable(c2_id);
 
     let p_node = vtree.nodes.get_mut(p.index());
     if let VKind::Structural {
@@ -92,15 +91,15 @@ pub fn skip_promote<V: Accumulator>(vtree: &mut VTree<V>, c: VNodeId) -> Option<
     )
     .entered();
 
-    let (s_id, s_int) = sibling_of(&vtree.nodes, p, c);
+    let (s_id, s_int) = vtree.nodes.sibling_of(p, c);
 
     let c_int = vtree.nodes.get(c.index()).intensity();
 
-    let (u_id, u_int) = sibling_of(&vtree.nodes, g, p);
+    let (u_id, u_int) = vtree.nodes.sibling_of(g, p);
 
-    let c_terminal = node_has_evictable(&vtree.nodes, c);
-    let s_terminal = node_has_evictable(&vtree.nodes, s_id);
-    let u_terminal = node_has_evictable(&vtree.nodes, u_id);
+    let c_terminal = vtree.nodes.node_has_evictable(c);
+    let s_terminal = vtree.nodes.node_has_evictable(s_id);
+    let u_terminal = vtree.nodes.node_has_evictable(u_id);
 
     let g_node = vtree.nodes.get_mut(g.index());
     if let VKind::Structural {
@@ -169,11 +168,11 @@ pub fn legacy_promote<C: Coordinate, V: Accumulator, const N: u32>(
     let c_int = vtree.nodes.get(c.index()).intensity();
     vtree.replace_structural_child(p, c, ne_id, V::zero());
 
-    let (u_id, u_int) = sibling_of(&vtree.nodes, g, p);
+    let (u_id, u_int) = vtree.nodes.sibling_of(g, p);
 
     let c_evictable = false;
-    let p_evictable = node_has_evictable(&vtree.nodes, p);
-    let u_evictable = node_has_evictable(&vtree.nodes, u_id);
+    let p_evictable = vtree.nodes.node_has_evictable(p);
+    let u_evictable = vtree.nodes.node_has_evictable(u_id);
 
     let p_int = vtree.nodes.get(p.index()).intensity();
     let g_node = vtree.nodes.get_mut(g.index());
@@ -204,39 +203,6 @@ pub fn legacy_promote<C: Coordinate, V: Accumulator, const N: u32>(
     new_child_id
 }
 
-fn sibling_of<V: Accumulator>(
-    vnodes: &Arena<VNode<V>>,
-    parent: VNodeId,
-    child: VNodeId,
-) -> (VNodeId, V) {
-    let p_node = vnodes.get(parent.index());
-    match &p_node.kind() {
-        VKind::Structural { children, .. } => {
-            assert_eq!(
-                children.len(),
-                2,
-                "sibling_of: parent must be a 2-child structural node"
-            );
-
-            let (id0, int0) = children.get(0);
-            let (id1, int1) = children.get(1);
-
-            if id0 == child {
-                (id1, int1)
-            } else if id1 == child {
-                (id0, int0)
-            } else {
-                panic!(
-                    "sibling_of: child {} not found in parent {}",
-                    child.index(),
-                    parent.index()
-                );
-            }
-        }
-        VKind::Entry { .. } => panic!("sibling_of: parent must be structural"),
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::{skip_promote, standard_promote};
@@ -247,7 +213,7 @@ mod tests {
 
     fn make_vtree<V: crate::traits::Accumulator>() -> VTree<V> {
         VTree {
-            nodes: Arena::new(),
+            nodes: Arena::new().into(),
             root: None,
             violations: Vec::new(),
         }

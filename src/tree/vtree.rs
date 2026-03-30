@@ -45,10 +45,50 @@ use crate::handle::{GNodeId, VNodeId};
 use crate::nodes::vnode::{Children, VKind, VNode};
 use crate::tree::gtree::GTree;
 use crate::traits::{Accumulator, Coordinate};
+use std::ops::{Deref, DerefMut};
 
 mod traversal;
-use traversal::compute_has_evictable;
-use traversal::v_depth;
+
+// ── VNodeTree ────────────────────────────────────────────────────────────────
+
+/// Structural V-node owner.
+#[derive(Debug, Clone)]
+pub struct VNodeTree<V: Accumulator> {
+    nodes: Arena<VNode<V>>,
+}
+
+impl<V: Accumulator> VNodeTree<V> {
+    #[must_use]
+    pub(crate) fn new() -> Self {
+        Self { nodes: Arena::new() }
+    }
+}
+
+impl<V: Accumulator> Default for VNodeTree<V> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<V: Accumulator> From<Arena<VNode<V>>> for VNodeTree<V> {
+    fn from(nodes: Arena<VNode<V>>) -> Self {
+        Self { nodes }
+    }
+}
+
+impl<V: Accumulator> Deref for VNodeTree<V> {
+    type Target = Arena<VNode<V>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.nodes
+    }
+}
+
+impl<V: Accumulator> DerefMut for VNodeTree<V> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.nodes
+    }
+}
 
 
 // ── VTree ────────────────────────────────────────────────────────────────────
@@ -58,7 +98,7 @@ use traversal::v_depth;
 #[derive(Debug, Clone)]
 pub struct VTree<V: Accumulator> {
     /// Backing store for all V-nodes.
-    pub(crate) nodes: Arena<VNode<V>>,
+    pub(crate) nodes: VNodeTree<V>,
     /// Root V-node (`None` only when the tree is empty).
     pub(crate) root: Option<VNodeId>,
     /// V-nodes whose intensity distribution violates the balance threshold.
@@ -119,7 +159,7 @@ impl<V: Accumulator> VTree<V> {
         }
 
         span.record("case", "collapse");
-        let sole_id = self.sole_sibling(p_id, v_id);
+        let sole_id = self.nodes.sibling_of(p_id, v_id).0;
         let grandparent = self.nodes.get(p_id.index()).parent();
 
         self.nodes.get_mut(sole_id.index()).set_parent_opt(grandparent);
@@ -155,7 +195,7 @@ impl<V: Accumulator> VTree<V> {
     // ── Depth cache ───────────────────────────────────────────────────────
 
     pub(crate) fn depth(&self, id: VNodeId) -> u32 {
-        v_depth(&self.nodes, id)
+        self.nodes.depth(id)
     }
 
     // ── Evictable flags ───────────────────────────────────────────────────
@@ -289,7 +329,7 @@ impl<V: Accumulator> VTree<V> {
                     has_evictable,
                 } => {
                     let old = *has_evictable;
-                    let new_flag = compute_has_evictable(&self.nodes, children);
+                    let new_flag = self.nodes.compute_has_evictable(children);
                     if new_flag == old {
                         return;
                     }
@@ -340,19 +380,6 @@ impl<V: Accumulator> VTree<V> {
     fn recompute_and_propagate_v_sums(&mut self, start: VNodeId) {
         self.recompute_and_sync_parent_slot(start);
         self.propagate_v_sums(start);
-    }
-
-    fn sole_sibling(&self, parent: VNodeId, child: VNodeId) -> VNodeId {
-        let p = self.nodes.get(parent.index());
-        if let VKind::Structural { children, .. } = &p.kind() {
-            for i in 0..children.len() {
-                let (id, _) = children.get(i);
-                if id != child {
-                    return id;
-                }
-            }
-        }
-        unreachable!("sole_sibling: child not found in parent");
     }
 
     /// Allocates a new 2-child structural node whose children are `a` and `b`,
@@ -430,7 +457,7 @@ impl<V: Accumulator> VTree<V> {
 #[cfg(test)]
 mod tests {
 
-    use super::{VTree, v_depth};
+    use super::{VNodeTree, VTree};
     use crate::arena::Arena;
     use crate::handle::{GNodeId, VNodeId};
     use crate::nodes::vnode::{Children, VKind, VNode};
@@ -445,25 +472,25 @@ mod tests {
 
         #[test]
         fn root_node_has_depth_zero() {
-            let mut vnodes: Arena<VNode<u32>> = Arena::new();
+            let mut vnodes = VNodeTree::from(Arena::new());
             let id = VNodeId::from_index(vnodes.alloc(entry_vnode(0, None)));
-            assert_eq!(v_depth(&vnodes, id), 0);
+            assert_eq!(vnodes.depth(id), 0);
         }
 
         #[test]
         fn child_of_root_has_depth_one() {
-            let mut vnodes: Arena<VNode<u32>> = Arena::new();
+            let mut vnodes = VNodeTree::from(Arena::new());
             let root_id = VNodeId::from_index(vnodes.alloc(entry_vnode(0, None)));
             let child_id = VNodeId::from_index(vnodes.alloc(entry_vnode(0, Some(root_id))));
-            assert_eq!(v_depth(&vnodes, child_id), 1);
+            assert_eq!(vnodes.depth(child_id), 1);
         }
 
         #[test]
         fn depth_is_consistent_across_calls() {
-            let mut vnodes: Arena<VNode<u32>> = Arena::new();
+            let mut vnodes = VNodeTree::from(Arena::new());
             let id = VNodeId::from_index(vnodes.alloc(entry_vnode(0, None)));
-            let d1 = v_depth(&vnodes, id);
-            let d2 = v_depth(&vnodes, id);
+            let d1 = vnodes.depth(id);
+            let d2 = vnodes.depth(id);
             assert_eq!(d1, d2);
         }
     }
@@ -477,7 +504,7 @@ mod tests {
             let mut vnodes: Arena<VNode<u32>> = Arena::new();
             let root_id = VNodeId::from_index(vnodes.alloc(entry_vnode(10, None)));
             let mut vtree = VTree {
-                nodes: vnodes,
+                nodes: vnodes.into(),
                 root: Some(root_id),
                 violations: Vec::new(),
             };
@@ -509,7 +536,7 @@ mod tests {
             vnodes.get_mut(child_a_id.index()).set_intensity(20);
 
             let mut vtree = VTree {
-                nodes: vnodes,
+                nodes: vnodes.into(),
                 root: Some(parent_id),
                 violations: Vec::new(),
             };
@@ -552,7 +579,7 @@ mod tests {
             let mut gtree = gtree_with_one_node();
             let v_root = VNodeId::from_index(vnodes.alloc(entry_vnode(10, None)));
             let mut vtree = VTree {
-                nodes: vnodes,
+                nodes: vnodes.into(),
                 root: Some(v_root),
                 violations: Vec::new(),
             };
@@ -583,7 +610,7 @@ mod tests {
             vnodes.get_mut(child_c.index()).set_parent(parent_id);
 
             let mut vtree = VTree {
-                nodes: vnodes,
+                nodes: vnodes.into(),
                 root: Some(parent_id),
                 violations: Vec::new(),
             };
@@ -617,7 +644,7 @@ mod tests {
             vnodes.get_mut(sibling.index()).set_parent(parent_id);
 
             let mut vtree = VTree {
-                nodes: vnodes,
+                nodes: vnodes.into(),
                 root: Some(parent_id),
                 violations: Vec::new(),
             };

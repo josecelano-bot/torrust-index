@@ -7,15 +7,15 @@
 
 use std::fmt;
 
-use crate::arena::Arena;
 use crate::handle::VNodeId;
-use crate::nodes::vnode::{VKind, VNode};
+use crate::nodes::vnode::VKind;
 use crate::traits::Accumulator;
+use crate::tree::vtree::VNodeTree;
 
 use super::rebalance::max_uncle_intensity;
 
 /// Formats a single V-node: `v{idx}(E,{intensity})` or `v{idx}(S{n},{intensity})`.
-pub struct Nd<'a, V: Accumulator>(pub &'a Arena<VNode<V>>, pub VNodeId);
+pub struct Nd<'a, V: Accumulator>(pub &'a VNodeTree<V>, pub VNodeId);
 
 impl<V: Accumulator> fmt::Display for Nd<'_, V> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -34,7 +34,7 @@ impl<V: Accumulator> fmt::Display for Nd<'_, V> {
 }
 
 /// Formats the child list of a structural V-node: `[v{a}({ia}), v{b}({ib}), …]`.
-pub(super) struct Ch<'a, V: Accumulator>(pub(super) &'a Arena<VNode<V>>, pub(super) VNodeId);
+pub(super) struct Ch<'a, V: Accumulator>(pub(super) &'a VNodeTree<V>, pub(super) VNodeId);
 
 impl<V: Accumulator> fmt::Display for Ch<'_, V> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -58,7 +58,7 @@ impl<V: Accumulator> fmt::Display for Ch<'_, V> {
 /// Formats a node together with its parent and grandparent context and (if
 /// applicable) the maximum uncle intensity — useful for tracing why a node is
 /// flagged as violated.
-pub struct Ctx<'a, V: Accumulator>(pub &'a Arena<VNode<V>>, pub VNodeId);
+pub struct Ctx<'a, V: Accumulator>(pub &'a VNodeTree<V>, pub VNodeId);
 
 impl<V: Accumulator> fmt::Display for Ctx<'_, V> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

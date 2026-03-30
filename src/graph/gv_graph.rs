@@ -6,7 +6,7 @@ use crate::nodes::vnode::VNode;
 use crate::spatial::node::Node;
 use crate::traits::{Accumulator, Coordinate, PlateauTracking};
 use crate::tree::gtree::GTree;
-use crate::tree::vtree::VTree;
+use crate::tree::vtree::{VNodeTree, VTree};
 
 use super::config::Config;
 
@@ -139,7 +139,7 @@ fn build_core<C: Coordinate, V: Accumulator, const N: u32>(
     };
 
     let vtree = VTree {
-        nodes: vnodes,
+        nodes: vnodes.into(),
         root: Some(v_root_id),
         violations: Vec::new(),
     };
@@ -254,7 +254,7 @@ impl<C: Coordinate, V: Accumulator, const N: u32, T: PlateauTracking<C, V>> GvGr
 
     #[must_use]
     #[inline]
-    pub(crate) const fn vnodes(&self) -> &Arena<VNode<V>> {
+    pub(crate) const fn vnodes(&self) -> &VNodeTree<V> {
         &self.vtree.nodes
     }
 

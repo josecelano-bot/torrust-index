@@ -1,8 +1,7 @@
-use crate::arena::Arena;
 use crate::handle::VNodeId;
-use crate::nodes::vnode::{VKind, VNode};
+use crate::nodes::vnode::VKind;
 use crate::traits::{Accumulator, Inspectable};
-use crate::tree::vtree::VTree;
+use crate::tree::vtree::{VNodeTree, VTree};
 
 use super::{
     MissedViolationContext, diagnose_collapse_sibling, diagnose_collapse_sibling_in_tree,
@@ -10,7 +9,7 @@ use super::{
 };
 
 fn diagnose_missed_violation_core<V, FC, FL>(
-    vnodes: &Arena<VNode<V>>,
+    vnodes: &VNodeTree<V>,
     violated: VNodeId,
     context: &MissedViolationContext,
     mut collapse_diagnoser: FC,
@@ -97,7 +96,7 @@ fn diagnose_missed_violation_core<V, FC, FL>(
 }
 
 pub(super) fn diagnose_missed_violation_impl<V: Accumulator + Inspectable>(
-    vnodes: &Arena<VNode<V>>,
+    vnodes: &VNodeTree<V>,
     violated: VNodeId,
     context: &MissedViolationContext,
 ) {

@@ -1,14 +1,12 @@
 #![allow(dead_code)]
 
-use crate::arena::Arena;
 #[cfg(feature = "dynamic-contour-tracking")]
 #[allow(unused_imports)]
 pub use crate::diagnostics::plateau_audit::{PlateauAuditContext, audit_plateau_consistency};
 use crate::graph::algorithm::rebalance::{self, Ctx};
 use crate::handle::VNodeId;
-use crate::nodes::vnode::VNode;
 use crate::traits::{Accumulator, Inspectable};
-use crate::tree::vtree::VTree;
+use crate::tree::vtree::{VNodeTree, VTree};
 
 mod logging;
 use logging::{
@@ -18,7 +16,7 @@ use logging::{
 mod diagnose;
 
 pub fn audit_violations<V: Accumulator + Inspectable>(
-    vnodes: &Arena<VNode<V>>,
+    vnodes: &VNodeTree<V>,
     violations: &[VNodeId],
     checkpoint: &str,
 ) -> Vec<VNodeId> {
@@ -45,7 +43,7 @@ pub struct MissedViolationContext {
 }
 
 pub fn diagnose_missed_violation<V: Accumulator + Inspectable>(
-    vnodes: &Arena<VNode<V>>,
+    vnodes: &VNodeTree<V>,
     violated: VNodeId,
     context: &MissedViolationContext,
 ) {

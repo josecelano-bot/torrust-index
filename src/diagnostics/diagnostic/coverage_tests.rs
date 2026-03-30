@@ -1,9 +1,10 @@
 use super::*;
 use crate::handle::{GNodeId, VNodeId};
 use crate::nodes::vnode::{Children, VNode};
+use crate::tree::vtree::VNodeTree;
 
-fn build_small_vtree() -> (Arena<VNode<u32>>, VNodeId, VNodeId, VNodeId) {
-    let mut vnodes = Arena::new();
+fn build_small_vtree() -> (VNodeTree<u32>, VNodeId, VNodeId, VNodeId) {
+    let mut vnodes = VNodeTree::from(crate::arena::Arena::new());
 
     let root = VNodeId::from_index(vnodes.alloc(VNode::new_entry(
         10,
@@ -66,7 +67,7 @@ fn log_vtree_ancestry_walks_to_root_without_panicking() {
 
 #[test]
 fn diagnose_missed_violation_hits_root_and_depth_one_early_returns() {
-    let mut vnodes = Arena::new();
+    let mut vnodes = VNodeTree::from(crate::arena::Arena::new());
     let root = VNodeId::from_index(vnodes.alloc(VNode::new_entry(
         1u32,
         None,
@@ -95,7 +96,7 @@ fn diagnose_missed_violation_hits_root_and_depth_one_early_returns() {
 #[test]
 fn diagnose_missed_violation_covers_structural_and_entry_grandparent_paths() {
     // structural grandparent path
-    let mut vnodes = Arena::new();
+    let mut vnodes = VNodeTree::from(crate::arena::Arena::new());
     let gp = VNodeId::from_index(vnodes.alloc(VNode::new_entry(
         12u32,
         None,
@@ -139,7 +140,7 @@ fn diagnose_missed_violation_covers_structural_and_entry_grandparent_paths() {
     diagnose_missed_violation(&vnodes, violated, &ctx);
 
     // entry grandparent path (uncles = empty vec)
-    let mut vnodes2 = Arena::new();
+    let mut vnodes2 = VNodeTree::from(crate::arena::Arena::new());
     let gp2 = VNodeId::from_index(vnodes2.alloc(VNode::new_entry(
         5u32,
         None,

@@ -1,11 +1,11 @@
-use crate::arena::Arena;
 use crate::graph::GvGraph;
 use crate::graph::algorithm::rebalance;
 use crate::graph::algorithm::violation_push::ViolationQueue;
 use crate::handle::VNodeId;
 use crate::nodes::gnode::GState;
-use crate::nodes::vnode::{VKind, VNode};
+use crate::nodes::vnode::VKind;
 use crate::traits::{Accumulator, Coordinate, Inspectable};
+use crate::tree::vtree::VNodeTree;
 
 /// Topology of the V-node being evicted, captured before the leaf is removed.
 struct LeafRemovalContext {
@@ -21,7 +21,7 @@ struct LeafRemovalContext {
 
 /// Captures the V-topology before removing `v_id` from the tree.
 fn classify_leaf_removal<V: Accumulator>(
-    vnodes: &Arena<VNode<V>>,
+    vnodes: &VNodeTree<V>,
     v_id: VNodeId,
 ) -> LeafRemovalContext {
     let v_parent = vnodes.get(v_id.index()).parent();
@@ -56,7 +56,7 @@ fn classify_leaf_removal<V: Accumulator>(
 
 /// Pushes all rebalancing violations triggered by the removal of `v_id`.
 fn push_eviction_violations<V: Accumulator>(
-    vnodes: &Arena<VNode<V>>,
+    vnodes: &VNodeTree<V>,
     v_id: VNodeId,
     ctx: &LeafRemovalContext,
     queue: &mut ViolationQueue<'_>,
@@ -278,7 +278,6 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
 
 #[cfg(test)]
 mod tests {
-    use crate::arena::Arena;
     use crate::graph::{Config, GvGraph, StructuralConfig};
     use crate::handle::{GNodeId, VNodeId};
     use crate::nodes::vnode::{Children, VNode};
@@ -410,7 +409,7 @@ mod tests {
 
         #[test]
         fn pair_parent_reports_grandparent_change_point_and_sibling() {
-            let mut vnodes: Arena<VNode<u32>> = Arena::new();
+            let mut vnodes = crate::tree::vtree::VNodeTree::<u32>::from(crate::arena::Arena::new());
 
             let target = id(vnodes.alloc(VNode::new_entry(
                 1,
@@ -461,7 +460,7 @@ mod tests {
 
         #[test]
         fn triple_parent_reports_parent_as_change_point() {
-            let mut vnodes: Arena<VNode<u32>> = Arena::new();
+            let mut vnodes = crate::tree::vtree::VNodeTree::<u32>::from(crate::arena::Arena::new());
 
             let a = id(vnodes.alloc(VNode::new_entry(
                 1,
@@ -504,7 +503,7 @@ mod tests {
 
         #[test]
         fn lone_entry_has_zero_child_context() {
-            let mut vnodes: Arena<VNode<u32>> = Arena::new();
+            let mut vnodes = crate::tree::vtree::VNodeTree::<u32>::from(crate::arena::Arena::new());
             let target = id(vnodes.alloc(VNode::new_entry(
                 1,
                 None,
@@ -522,7 +521,7 @@ mod tests {
 
         #[test]
         fn push_eviction_violations_noops_for_zero_child_context() {
-            let mut vnodes: Arena<VNode<u32>> = Arena::new();
+            let mut vnodes = crate::tree::vtree::VNodeTree::<u32>::from(crate::arena::Arena::new());
             let target = id(vnodes.alloc(VNode::new_entry(
                 1,
                 None,
@@ -545,7 +544,7 @@ mod tests {
 
         #[test]
         fn push_eviction_violations_executes_pair_path() {
-            let mut vnodes: Arena<VNode<u32>> = Arena::new();
+            let mut vnodes = crate::tree::vtree::VNodeTree::<u32>::from(crate::arena::Arena::new());
 
             let target = id(vnodes.alloc(VNode::new_entry(
                 5,
@@ -601,7 +600,7 @@ mod tests {
 
         #[test]
         fn push_eviction_violations_executes_triple_path() {
-            let mut vnodes: Arena<VNode<u32>> = Arena::new();
+            let mut vnodes = crate::tree::vtree::VNodeTree::<u32>::from(crate::arena::Arena::new());
 
             let target = id(vnodes.alloc(VNode::new_entry(
                 5,
