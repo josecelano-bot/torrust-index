@@ -42,44 +42,7 @@ impl<C: Coordinate, V: Accumulator> DerefMut for GNodeTree<C, V> {
     }
 }
 
-// ── GTree ────────────────────────────────────────────────────────────────────
-
-/// The G-tree: a binary spatial-partition tree whose leaves are the observable
-/// coordinate ranges.  Wraps [`GNodeTree`] and adds policy parameters that
-/// constrain which trees are valid in the domain context.
-#[derive(Debug, Clone)]
-pub struct GTree<C: Coordinate, V: Accumulator, const N: u32> {
-    /// Structural node container (backing store, root, counters).
-    pub(crate) nodes: GNodeTree<C, V>,
-    /// Maximum depth at which live V-entries can exist before eviction.
-    pub(crate) live_depth_evict: u32,
-    /// Maximum depth at which new V-entries are created.
-    pub(crate) live_depth_create: u32,
-    /// `depth_evict - depth_create`.
-    pub(crate) depth_buffer: u32,
-    /// Maximum nodes in the `[depth_create, depth_evict]` band.
-    pub(crate) headroom: usize,
-    /// Soft node-count limit that triggers eviction (`budget - headroom`).
-    pub(crate) soft_limit: Option<usize>,
-}
-
-/// Transitional adapter: exposes `GNodeTree` fields (`root`, `node_count`,
-/// `terminal_count`) directly on `GTree` without field access changes at call
-/// sites.  Targeted for removal in Phase 4.
-impl<C: Coordinate, V: Accumulator, const N: u32> Deref for GTree<C, V, N> {
-    type Target = GNodeTree<C, V>;
-    fn deref(&self) -> &Self::Target {
-        &self.nodes
-    }
-}
-
-impl<C: Coordinate, V: Accumulator, const N: u32> DerefMut for GTree<C, V, N> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.nodes
-    }
-}
-
-impl<C: Coordinate, V: Accumulator, const N: u32> GTree<C, V, N> {
+impl<C: Coordinate, V: Accumulator> GNodeTree<C, V> {
     // ── Traversal ────────────────────────────────────────────────────────
 
     /// Walks down the G-tree from the root and returns the terminal (or
@@ -147,20 +110,13 @@ impl<C: Coordinate, V: Accumulator, const N: u32> GTree<C, V, N> {
 
     // ── Depth helpers ────────────────────────────────────────────────────
 
-    /// Returns the depth of a G-node whose interval is `[lo, hi)` in an
-    /// `N`-bit domain.
-    #[must_use]
-    #[inline]
-    pub(crate) fn depth_of_interval(lo: C, hi: C) -> u32 {
-        gnode_depth_from_interval(lo, hi, N)
-    }
-
     /// Returns the uniform contour depth of the subtree rooted at `gid`, or
-    /// `None` if the leaf G-nodes in the subtree do not all share the same depth.
+    /// `None` if the leaf G-nodes in the subtree do not all share the same
+    /// depth.  `n` is the bit-width of the coordinate domain.
     #[cfg(feature = "dynamic-contour-tracking")]
     #[must_use]
-    pub(crate) fn uniform_contour_depth(&self, gid: GNodeId) -> Option<u32> {
-        uniform_contour_depth_of(&self.nodes, gid, N)
+    pub(crate) fn uniform_contour_depth_of(&self, gid: GNodeId, n: u32) -> Option<u32> {
+        uniform_contour_depth_of(&self.nodes, gid, n)
     }
 
     // ── G-node allocation / eviction helpers ─────────────────────────────
@@ -194,34 +150,6 @@ impl<C: Coordinate, V: Accumulator, const N: u32> GTree<C, V, N> {
         // added, the parent terminal is lost: net change = +2 − 1 = +1.
         self.terminal_count += 1;
         (left_id, right_id)
-    }
-
-    /// Allocates the missing child of a semi-internal node and links it into
-    /// the vacant slot.
-    ///
-    /// This helper intentionally does not update `node_count` or
-    /// `terminal_count`; legacy-promote batching accounts for that separately.
-    pub(crate) fn allocate_missing_child(&mut self, parent_id: GNodeId) -> GNodeId {
-        let (new_lo, new_hi) = self
-            .nodes
-            .get(parent_id.index())
-            .uncovered_range()
-            .expect("allocate_missing_child: parent must have uncovered range");
-        let new_child = GNode::new_leaf(new_lo, new_hi, V::zero(), Some(parent_id));
-        let new_child_id = GNodeId::from_index(self.nodes.alloc(new_child));
-
-        let parent = self.nodes.get_mut(parent_id.index());
-        if parent.left().is_none() {
-            parent.link_left(new_child_id);
-        } else {
-            debug_assert!(
-                parent.right().is_none(),
-                "allocate_missing_child: expected empty right slot"
-            );
-            parent.link_right(new_child_id);
-        }
-
-        new_child_id
     }
 
     pub(crate) fn assign_entry(&mut self, gnode_id: GNodeId, entry_id: VNodeId) {
@@ -266,6 +194,93 @@ impl<C: Coordinate, V: Accumulator, const N: u32> GTree<C, V, N> {
         self.nodes.get_mut(parent_id.index()).set_sum(new_sum);
 
         parent_id
+    }
+}
+
+// ── GTree ────────────────────────────────────────────────────────────────────
+
+/// The G-tree: a binary spatial-partition tree whose leaves are the observable
+/// coordinate ranges.  Wraps [`GNodeTree`] and adds policy parameters that
+/// constrain which trees are valid in the domain context.
+#[derive(Debug, Clone)]
+pub struct GTree<C: Coordinate, V: Accumulator, const N: u32> {
+    /// Structural node container (backing store, root, counters).
+    pub(crate) nodes: GNodeTree<C, V>,
+    /// Maximum depth at which live V-entries can exist before eviction.
+    pub(crate) live_depth_evict: u32,
+    /// Maximum depth at which new V-entries are created.
+    pub(crate) live_depth_create: u32,
+    /// `depth_evict - depth_create`.
+    pub(crate) depth_buffer: u32,
+    /// Maximum nodes in the `[depth_create, depth_evict]` band.
+    pub(crate) headroom: usize,
+    /// Soft node-count limit that triggers eviction (`budget - headroom`).
+    pub(crate) soft_limit: Option<usize>,
+}
+
+/// Transitional adapter: exposes `GNodeTree` fields (`root`, `node_count`,
+/// `terminal_count`) directly on `GTree` without field access changes at call
+/// sites.  Targeted for removal in Phase 4.
+impl<C: Coordinate, V: Accumulator, const N: u32> Deref for GTree<C, V, N> {
+    type Target = GNodeTree<C, V>;
+    fn deref(&self) -> &Self::Target {
+        &self.nodes
+    }
+}
+
+impl<C: Coordinate, V: Accumulator, const N: u32> DerefMut for GTree<C, V, N> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.nodes
+    }
+}
+
+impl<C: Coordinate, V: Accumulator, const N: u32> GTree<C, V, N> {
+    // ── Depth helpers (policy-bound) ─────────────────────────────────────
+
+    /// Returns the depth of a G-node whose interval is `[lo, hi)` in an
+    /// `N`-bit domain.
+    #[must_use]
+    #[inline]
+    pub(crate) fn depth_of_interval(lo: C, hi: C) -> u32 {
+        gnode_depth_from_interval(lo, hi, N)
+    }
+
+    /// Returns the uniform contour depth of the subtree rooted at `gid`, or
+    /// `None` if the leaf G-nodes in the subtree do not all share the same depth.
+    #[cfg(feature = "dynamic-contour-tracking")]
+    #[must_use]
+    pub(crate) fn uniform_contour_depth(&self, gid: GNodeId) -> Option<u32> {
+        self.nodes.uniform_contour_depth_of(gid, N)
+    }
+
+    // ── G-node allocation helper (counter-exempt) ─────────────────────────
+
+    /// Allocates the missing child of a semi-internal node and links it into
+    /// the vacant slot.
+    ///
+    /// This helper intentionally does not update `node_count` or
+    /// `terminal_count`; legacy-promote batching accounts for that separately.
+    pub(crate) fn allocate_missing_child(&mut self, parent_id: GNodeId) -> GNodeId {
+        let (new_lo, new_hi) = self
+            .nodes
+            .get(parent_id.index())
+            .uncovered_range()
+            .expect("allocate_missing_child: parent must have uncovered range");
+        let new_child = GNode::new_leaf(new_lo, new_hi, V::zero(), Some(parent_id));
+        let new_child_id = GNodeId::from_index(self.nodes.alloc(new_child));
+
+        let parent = self.nodes.get_mut(parent_id.index());
+        if parent.left().is_none() {
+            parent.link_left(new_child_id);
+        } else {
+            debug_assert!(
+                parent.right().is_none(),
+                "allocate_missing_child: expected empty right slot"
+            );
+            parent.link_right(new_child_id);
+        }
+
+        new_child_id
     }
 }
 

@@ -536,7 +536,7 @@ mod tests {
         fn terminal_root_returns_some_depth() {
             let g = GvGraph::<u8, u32, 8>::new(make_config());
             // Fresh graph root is Terminal
-            let result = uniform_contour_depth_of(&g.gtree.nodes, g.gtree.nodes.root, 8);
+            let result = g.gtree.nodes.uniform_contour_depth_of(g.gtree.nodes.root, 8);
             assert!(result.is_some());
         }
 
@@ -550,7 +550,7 @@ mod tests {
                 .nodes
                 .get_mut(root.index())
                 .link_left(fake_child);
-            let result = uniform_contour_depth_of(&g.gtree.nodes, root, 8);
+            let result = g.gtree.nodes.uniform_contour_depth_of(root, 8);
             assert_eq!(result, None);
             // Restore so subsequent arena operations are not corrupted
             g.gtree
@@ -581,7 +581,7 @@ mod tests {
             // First obs: bootstrap split with odd domain (u8/N=8) → unequal-width children
             // left=[0,127) width=127 depth=2, right=[127,255] width=128 depth=1 → mismatch → None
             g.observe(64u8, 3u32);
-            let result = uniform_contour_depth_of(&g.gtree.nodes, g.gtree.root, 8);
+            let result = g.gtree.nodes.uniform_contour_depth_of(g.gtree.root, 8);
             assert_eq!(result, None);
         }
     }
