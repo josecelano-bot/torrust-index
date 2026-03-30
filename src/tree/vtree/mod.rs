@@ -47,7 +47,6 @@ use crate::tree::gtree::GTree;
 use crate::traits::{Accumulator, Coordinate};
 
 pub(crate) mod vnode_tree;
-pub(crate) mod traversal;
 pub(crate) use vnode_tree::VNodeTree;
 
 // ── VTree ────────────────────────────────────────────────────────────────────
