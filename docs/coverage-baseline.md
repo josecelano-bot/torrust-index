@@ -32,6 +32,8 @@ Compared with the previous baseline (2026-03-25):
 
 ## Per-file Coverage (Selected)
 
+Full per-file report copy (all files): [docs/coverage-report-full-2026-03-30.txt](docs/coverage-report-full-2026-03-30.txt)
+
 | File                                | Lines | Missed | Line Cover | Functions | Missed Fn | Fn Cover |
 | ----------------------------------- | ----: | -----: | ---------: | --------: | --------: | -------: |
 | `graph/algorithm/budget.rs`         |   209 |     17 |     91.87% |        19 |         1 |   94.74% |
@@ -82,6 +84,12 @@ Summary table:
 
 ```bash
 cargo llvm-cov --summary-only
+```
+
+Refresh full report copy:
+
+```bash
+cargo llvm-cov --summary-only > docs/coverage-report-full-2026-03-30.txt
 ```
 
 HTML output (browsable, highlights uncovered lines):
