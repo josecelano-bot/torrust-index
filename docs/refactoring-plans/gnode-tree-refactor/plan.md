@@ -2,10 +2,10 @@
 
 ## Status
 
-Planned.
+**Completed.**
 
-This document defines the next G-side refactor after the completed
-`gtree-tda-refactor` Tell-Don't-Ask cleanup.
+All five phases have been implemented and committed.  The full test gate
+(515 lib + 10 doc + 4 integration = 529 tests) is green on every phase commit.
 
 ## Goal
 
@@ -148,11 +148,11 @@ Plateau tracking trait and implementations accept `&GNodeTree<C, V>` instead of
 ### Phase Status
 
 - [x] Phase 0: boundary and scope reviewed
-- [ ] Phase 1: introduce `GNodeTree` wrapper
-- [ ] Phase 2: move low-risk structural helpers
-- [ ] Phase 3: migrate plateau tracking read-only boundary
-- [ ] Phase 4: integrate `GTree` ownership
-- [ ] Phase 5: cleanup and tightening
+- [x] Phase 1: introduce `GNodeTree` wrapper
+- [x] Phase 2: move low-risk structural helpers
+- [x] Phase 3: migrate plateau tracking read-only boundary
+- [x] Phase 4: remove transitional Deref adapters
+- [x] Phase 5: cleanup and tightening
 
 ### Execution Log
 
@@ -161,6 +161,11 @@ Plateau tracking trait and implementations accept `&GNodeTree<C, V>` instead of
 | 2026-03-30 | Review current G-side raw arena boundary | done | Confirmed `GTree` still owns raw arena and `uniform_contour_depth_of` is still free |
 | 2026-03-30 | Inventory `gnodes: &Arena<GNode<C, V>>` signatures | done | 61 exact-signature matches across G-tree and plateau tracking code |
 | 2026-03-30 | Write `GNodeTree` plan | done | Initial plan added |
+| 2026-04 | Phase 1: Introduce `GNodeTree` wrapper | done | Commit `7cfea13` — 4 borrow conflicts fixed; all 529 tests green |
+| 2026-04 | Phase 2: Move structural helpers to `GNodeTree` | done | Commit `f127f6c` — `route_to`, `recompute_sums*`, allocation/link helpers moved |
+| 2026-04 | Phase 3: Migrate plateau tracking boundary | done | Commit `e286851` — all `gnodes: &Arena` signatures replaced with `&GNodeTree` |
+| 2026-04 | Phase 4: Remove transitional Deref adapters | done | Commit `e0bf988` — both `GNodeTree→Arena` and `GTree→GNodeTree` Deref removed; delegation methods added; 529 tests green |
+| 2026-04 | Phase 5: Cleanup and plan update | done | This commit — plan updated, all done criteria verified |
 
 ## Migration Inventory
 
@@ -294,12 +299,14 @@ Exact current matches for `gnodes: &Arena<GNode<C, V>>`: 61.
 
 ## Transitional Adapter Debt
 
-Likely temporary adapters during migration:
+All transitional adapters have been removed.  The table below shows their
+full lifecycle.
 
-| Item | Introduced | Removal Target | Notes |
+| Item | Introduced | Removed | Notes |
 |---|---|---|---|
-| `Deref` / `DerefMut` from `GNodeTree` to `Arena<GNode<C, V>>` | Phase 1 | Phase 5 | Acceptable only as a migration aid |
-| `GTree` field name remains `nodes` | pre-refactor | Phase 5 | Rename only if it improves clarity after migration |
+| `Deref` / `DerefMut` from `GNodeTree` to `Arena<GNode<C, V>>` | Phase 1 | Phase 4 | Replaced by explicit delegation methods |
+| `Deref` / `DerefMut` from `GTree` to `GNodeTree<C, V>` | Phase 1 | Phase 4 | Removed; callers updated to use `.nodes.*` paths |
+| `GTree` field name `nodes` | pre-refactor | — | Kept; name is clear in context |
 
 ## Validation Gate
 
@@ -320,26 +327,20 @@ bash scripts/clippy-strict.sh
 
 ## Done Criteria for This Refactor
 
-The refactor is considered fully finished only when all of the following are
-true:
+All criteria have been met:
 
-1. No production helper signatures expose `&Arena<GNode<C, V>>` for structural
+1. ✅ No production helper signatures expose `&Arena<GNode<C, V>>` for structural
    read access.
-2. `GTree.nodes` stores `GNodeTree<C, V>`.
-3. Structural G-node traversal helpers live on `GNodeTree`.
-4. Plateau tracking reads G-node structure through `GNodeTree` or a higher
+2. ✅ `GTree.nodes` stores `GNodeTree<C, V>`.
+3. ✅ Structural G-node traversal helpers live on `GNodeTree`.
+4. ✅ Plateau tracking reads G-node structure through `GNodeTree` or a higher
    owner, not the raw arena.
-5. Transitional adapter debt table is empty.
-6. Validation targets for the agreed slice are green.
+5. ✅ Transitional adapter debt table is empty.
+6. ✅ Validation targets for all slices are green (529 tests pass).
 
 ## Remaining Work
 
-1. Implement Phase 1 and introduce the `GNodeTree` wrapper with its four fields.
-2. Move structural helpers in Phase 2 slices, starting with
-   `uniform_contour_depth_of`.
-3. Migrate plateau tracking boundary in Phase 3.
-4. Remove transitional adapters in Phase 4.
-5. Run full gate and update this plan after each completed phase.
+None.  Refactor is complete.
 
 ## Out of Scope
 
