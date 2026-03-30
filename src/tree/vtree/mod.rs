@@ -52,13 +52,11 @@ pub(crate) use vnode_tree::VNodeTree;
 // ── VTree ────────────────────────────────────────────────────────────────────
 
 /// The V-tree: an intensity-aggregation binary tree overlaid on the G-tree.
-/// Owns the node arena, the root pointer, and the violations queue.
+/// Owns the node arena and violations queue. Root identity is managed by [`VNodeTree`].
 #[derive(Debug, Clone)]
 pub struct VTree<V: Accumulator> {
-    /// Backing store for all V-nodes.
+    /// Backing store for all V-nodes (includes root).
     pub(crate) nodes: VNodeTree<V>,
-    /// Root V-node (`None` only when the tree is empty).
-    pub(crate) root: Option<VNodeId>,
     /// V-nodes whose intensity distribution violates the balance threshold.
     pub(crate) violations: Vec<VNodeId>,
 }
@@ -97,7 +95,7 @@ impl<V: Accumulator> VTree<V> {
         let Some(p_id) = parent else {
             span.record("case", "root");
             self.nodes.dealloc(v_id.index());
-            self.root = None;
+            self.nodes.root = None;
             return;
         };
 
@@ -122,12 +120,12 @@ impl<V: Accumulator> VTree<V> {
 
         self.nodes.get_mut(sole_id.index()).set_parent_opt(grandparent);
 
-        self.root = grandparent.map_or(Some(sole_id), |g_id| {
+        self.nodes.root = grandparent.map_or(Some(sole_id), |g_id| {
             let sole_int = self.nodes.get(sole_id.index()).intensity();
             self.replace_structural_child(g_id, p_id, sole_id, sole_int);
             self.recompute_and_propagate_v_sums(g_id);
             self.propagate_evictable(g_id);
-            self.root
+            self.nodes.root
         });
 
         self.nodes.dealloc(p_id.index());
@@ -145,7 +143,7 @@ impl<V: Accumulator> VTree<V> {
     }
 
     pub(crate) fn recompute_all_intensities(&mut self) {
-        if let Some(root) = self.root {
+        if let Some(root) = self.nodes.root {
             self.recompute_all_v_intensities(root);
         }
     }
@@ -370,7 +368,7 @@ impl<V: Accumulator> VTree<V> {
     ) -> Vec<VNodeId> {
         let _span = tracing::trace_span!("scan_for_candidates").entered();
         let mut candidates = Vec::new();
-        if let Some(v_root) = self.root {
+        if let Some(v_root) = self.nodes.root {
             self.scan_dfs(v_root, 0, live_depth_evict, g_root, &mut candidates);
         }
         tracing::trace!(candidates = candidates.len(), "scan complete");
@@ -460,9 +458,10 @@ mod tests {
         fn propagating_from_root_entry_does_not_panic() {
             let mut vnodes: Arena<VNode<u32>> = Arena::new();
             let root_id = VNodeId::from_index(vnodes.alloc(entry_vnode(10, None)));
+            let mut vnode_tree = VNodeTree::from(vnodes);
+            vnode_tree.root = Some(root_id);
             let mut vtree = VTree {
-                nodes: vnodes.into(),
-                root: Some(root_id),
+                nodes: vnode_tree,
                 violations: Vec::new(),
             };
             // Root has no parent; propagate_v_sums is a no-op but must not panic
@@ -492,9 +491,10 @@ mod tests {
             // Update child_a's own intensity
             vnodes.get_mut(child_a_id.index()).set_intensity(20);
 
+            let mut vnode_tree = VNodeTree::from(vnodes);
+            vnode_tree.root = Some(parent_id);
             let mut vtree = VTree {
-                nodes: vnodes.into(),
-                root: Some(parent_id),
+                nodes: vnode_tree,
                 violations: Vec::new(),
             };
             vtree.propagate_sums(child_a_id);
@@ -537,13 +537,14 @@ mod tests {
             let mut vnodes: Arena<VNode<u32>> = Arena::new();
             let mut gtree = gtree_with_one_node();
             let v_root = VNodeId::from_index(vnodes.alloc(entry_vnode(10, None)));
+            let mut vnode_tree = VNodeTree::from(vnodes);
+            vnode_tree.root = Some(v_root);
             let mut vtree = VTree {
-                nodes: vnodes.into(),
-                root: Some(v_root),
+                nodes: vnode_tree,
                 violations: Vec::new(),
             };
             vtree.remove_leaf(&mut gtree, v_root);
-            assert!(vtree.root.is_none());
+            assert!(vtree.nodes.root.is_none());
             assert!(!vtree.nodes.is_occupied(v_root.index()));
         }
 
@@ -568,14 +569,15 @@ mod tests {
             vnodes.get_mut(child_b.index()).set_parent(parent_id);
             vnodes.get_mut(child_c.index()).set_parent(parent_id);
 
+            let mut vnode_tree = VNodeTree::from(vnodes);
+            vnode_tree.root = Some(parent_id);
             let mut vtree = VTree {
-                nodes: vnodes.into(),
-                root: Some(parent_id),
+                nodes: vnode_tree,
                 violations: Vec::new(),
             };
 
             vtree.remove_leaf(&mut gtree, child_c);
-            assert_eq!(vtree.root, Some(parent_id)); // parent remains root
+            assert_eq!(vtree.nodes.root, Some(parent_id)); // parent remains root
             assert!(!vtree.nodes.is_occupied(child_c.index())); // target removed
             match &vtree.nodes.get(parent_id.index()).kind() {
                 VKind::Structural { children, .. } => assert_eq!(children.len(), 2),
@@ -602,14 +604,15 @@ mod tests {
             vnodes.get_mut(target.index()).set_parent(parent_id);
             vnodes.get_mut(sibling.index()).set_parent(parent_id);
 
+            let mut vnode_tree = VNodeTree::from(vnodes);
+            vnode_tree.root = Some(parent_id);
             let mut vtree = VTree {
-                nodes: vnodes.into(),
-                root: Some(parent_id),
+                nodes: vnode_tree,
                 violations: Vec::new(),
             };
 
             vtree.remove_leaf(&mut gtree, target);
-            assert_eq!(vtree.root, Some(sibling)); // sibling is new root
+            assert_eq!(vtree.nodes.root, Some(sibling)); // sibling is new root
             assert!(!vtree.nodes.is_occupied(target.index()));
             assert!(!vtree.nodes.is_occupied(parent_id.index())); // parent collapsed
             assert!(vtree.nodes.get(sibling.index()).parent().is_none());

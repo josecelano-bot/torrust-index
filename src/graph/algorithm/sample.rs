@@ -12,7 +12,7 @@ impl<C: Coordinate, V: Accumulator + Weighable, const N: u32> GvGraph<C, V, N> {
     ) -> Option<crate::spatial::view::Cell<C, V>> {
         use crate::nodes::vnode::VKind;
 
-        let v_root = self.vtree.root?;
+    let v_root = self.vtree.nodes.root?;
         let root_node = self.vtree.nodes.get(v_root.index());
         if root_node.intensity() == V::zero() {
             return None;

@@ -140,12 +140,13 @@ fn build_core<C: Coordinate, V: Accumulator, const N: u32>(
         soft_limit,
     };
 
+
+    let mut vnode_tree = VNodeTree::from(vnodes);
+    vnode_tree.root = Some(v_root_id);
     let vtree = VTree {
-        nodes: vnodes.into(),
-        root: Some(v_root_id),
+        nodes: vnode_tree,
         violations: Vec::new(),
     };
-
     (gtree, vtree, config, g_root)
 }
 
@@ -245,7 +246,7 @@ impl<C: Coordinate, V: Accumulator, const N: u32, T: PlateauTracking<C, V>> GvGr
     #[must_use]
     #[inline]
     pub(crate) const fn v_root(&self) -> Option<VNodeId> {
-        self.vtree.root
+        self.vtree.nodes.root
     }
 
     #[must_use]

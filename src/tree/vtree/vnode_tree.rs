@@ -4,16 +4,25 @@ use crate::nodes::vnode::{Children, VKind, VNode};
 use crate::traits::Accumulator;
 use std::ops::{Deref, DerefMut};
 
-/// Structural V-node owner.
+/// Structural V-node owner: backing storage and root identity.
+///
+/// All fields here depend only on the node set itself. Tree-level policy
+/// parameters (eviction depth, violations queue, etc.) live on [`super::VTree`].
 #[derive(Debug, Clone)]
 pub struct VNodeTree<V: Accumulator> {
+    /// Backing store for all V-nodes.
     nodes: Arena<VNode<V>>,
+    /// Root V-node (`None` only when the tree is empty).
+    pub(crate) root: Option<VNodeId>,
 }
 
 impl<V: Accumulator> VNodeTree<V> {
     #[must_use]
     pub(crate) fn new() -> Self {
-        Self { nodes: Arena::new() }
+        Self {
+            nodes: Arena::new(),
+            root: None,
+        }
     }
 }
 
@@ -25,7 +34,7 @@ impl<V: Accumulator> Default for VNodeTree<V> {
 
 impl<V: Accumulator> From<Arena<VNode<V>>> for VNodeTree<V> {
     fn from(nodes: Arena<VNode<V>>) -> Self {
-        Self { nodes }
+        Self { nodes, root: None }
     }
 }
 

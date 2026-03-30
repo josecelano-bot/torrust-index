@@ -54,8 +54,8 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
 
         self.vtree.set_entry_flags(entry_id, false, false);
 
-        self.vtree.root = Some(root_s_id);
 
+    self.vtree.nodes.root = Some(root_s_id);
         self.plateau_after_bootstrap_split(g_id, children.left_id);
         self.debug_assert_split_mirror_consistency("POST-BOOTSTRAP-SPLIT");
     }

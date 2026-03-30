@@ -211,10 +211,11 @@ mod tests {
     use crate::nodes::vnode::{Children, VKind, VNode};
     use crate::tree::vtree::VTree;
 
+    use crate::tree::vtree::VNodeTree;
+
     fn make_vtree<V: crate::traits::Accumulator>() -> VTree<V> {
         VTree {
-            nodes: Arena::new().into(),
-            root: None,
+            nodes: VNodeTree::from(Arena::new()),
             violations: Vec::new(),
         }
     }
