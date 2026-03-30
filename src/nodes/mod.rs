@@ -1,2 +1,2 @@
 pub use crate::tree::gtree::gnode;
-pub mod vnode;
+pub use crate::tree::vtree::vnode;

@@ -1,7 +1,7 @@
 use crate::arena::Arena;
 use crate::handle::VNodeId;
-use crate::nodes::vnode::{Children, VKind, VNode};
 use crate::traits::Accumulator;
+use super::vnode::{Children, VKind, VNode};
 use std::ops::{Deref, DerefMut};
 
 /// Structural V-node owner: backing storage and root identity.

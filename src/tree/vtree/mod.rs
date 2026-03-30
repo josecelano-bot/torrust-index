@@ -42,12 +42,13 @@
 //! `is_violated` predicate and the `resolve` function that repairs violations.
 
 use crate::handle::{GNodeId, VNodeId};
-use crate::nodes::vnode::{Children, VKind, VNode};
 use crate::tree::gtree::GTree;
 use crate::traits::{Accumulator, Coordinate};
 
+pub mod vnode;
 pub(crate) mod vnode_tree;
 pub(crate) use vnode_tree::VNodeTree;
+use self::vnode::{Children, VKind, VNode};
 
 // ── VTree ────────────────────────────────────────────────────────────────────
 
