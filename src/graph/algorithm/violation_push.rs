@@ -434,3 +434,113 @@ fn push_children_violations<V: Accumulator>(
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::arena::Arena;
+    use crate::handle::GNodeId;
+    use crate::nodes::vnode::{Children, VNode};
+
+    fn make_vnodes() -> VNodeTree<u32> {
+        VNodeTree::from(Arena::new())
+    }
+
+    fn all_disabled() -> ViolationSources {
+        ViolationSources {
+            source_3_contraction_grandchildren: false,
+            source_4_promotion_children: false,
+            source_6_leaf_removal_ancestors: false,
+            source_7_collapse_children: false,
+            source_8_three_to_two_siblings: false,
+            source_9_collapse_cousins: false,
+            source_10_g_contraction_promotion: false,
+        }
+    }
+
+    #[test]
+    fn config_disabled_paths_do_not_push() {
+        let mut vnodes = make_vnodes();
+        let e1 = VNodeId::from_index(vnodes.alloc(VNode::new_entry(
+            1,
+            None,
+            GNodeId::from_index(1),
+            true,
+            true,
+        )));
+        let e2 = VNodeId::from_index(vnodes.alloc(VNode::new_entry(
+            2,
+            None,
+            GNodeId::from_index(2),
+            true,
+            true,
+        )));
+        let p = VNodeId::from_index(vnodes.alloc(VNode::new_structural(
+            3,
+            None,
+            Children::new_2((e1, 1), (e2, 2)),
+            true,
+        )));
+        vnodes.get_mut(e1.index()).set_parent(p);
+        vnodes.get_mut(e2.index()).set_parent(p);
+
+        let mut violations = Vec::new();
+        let cfg = all_disabled();
+
+        push_side_effect_violations_with_config(&vnodes, p, &mut violations, cfg);
+        push_source_10_violations_with_config(&vnodes, p, &mut violations, cfg);
+        push_promoted_violations_with_config(&vnodes, p, &mut violations, cfg);
+        push_leaf_removal_violations_with_config(&vnodes, p, &mut violations, cfg);
+        push_collapse_violations_with_config(&vnodes, p, &mut violations, cfg);
+        push_remaining_sibling_violations_with_config(&vnodes, p, e1, &mut violations, cfg);
+        push_cousin_violations_with_config(&vnodes, e1, p, &mut violations, cfg);
+
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn entry_node_paths_return_without_pushes() {
+        let mut vnodes = make_vnodes();
+        let entry = VNodeId::from_index(vnodes.alloc(VNode::new_entry(
+            1,
+            None,
+            GNodeId::from_index(1),
+            true,
+            true,
+        )));
+        let other = VNodeId::from_index(vnodes.alloc(VNode::new_entry(
+            2,
+            None,
+            GNodeId::from_index(2),
+            true,
+            true,
+        )));
+        let mut violations = Vec::new();
+
+        push_contraction_child_violations(&vnodes, entry, other, &mut violations);
+        push_promoted_violations_with_config(
+            &vnodes,
+            entry,
+            &mut violations,
+            ViolationSources::all_enabled(),
+        );
+        push_remaining_sibling_violations_with_config(
+            &vnodes,
+            entry,
+            other,
+            &mut violations,
+            ViolationSources::all_enabled(),
+        );
+        push_cousin_violations_with_config(
+            &vnodes,
+            entry,
+            other,
+            &mut violations,
+            ViolationSources::all_enabled(),
+        );
+        push_grandchild_violations(&vnodes, entry, &mut violations);
+        push_children_violations(&vnodes, entry, "entry-source", &mut violations);
+
+        assert!(violations.is_empty());
+    }
+}

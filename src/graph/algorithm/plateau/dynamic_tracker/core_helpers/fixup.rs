@@ -378,3 +378,76 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
         }
     }
 }
+
+#[cfg(test)]
+#[cfg(feature = "dynamic-contour-tracking")]
+mod tests {
+    use super::*;
+    use crate::graph::{Config, GvGraph, StructuralConfig};
+
+    type G = GvGraph<u8, u32, 8>;
+
+    fn make_graph() -> G {
+        GvGraph::new(Config {
+            split_threshold: 2,
+            structural: StructuralConfig {
+                depth_create: 3,
+                depth_evict: 5,
+                budget: None,
+                alpha_relax: 0.5,
+                bounded_eviction: false,
+            },
+        })
+    }
+
+    #[test]
+    fn recompute_plateau_returns_for_missing_key() {
+        let mut g = make_graph();
+        g.observe(64u8, 3u32);
+        let missing = BasisEdge(200u8);
+
+        g.tracker.recompute_plateau(&g.gtree.nodes, &missing);
+        assert!(g.tracker.plateaus.contains_key(&BasisEdge(0u8)));
+    }
+
+    #[test]
+    fn fixup_plateau_removes_key_when_basis_is_empty() {
+        let mut g = make_graph();
+        let root = g.gtree.nodes.root;
+        let key = BasisEdge(0u8);
+
+        let removed = g.tracker.plateau_basis.remove(root);
+        assert_eq!(removed, Some(key));
+        g.tracker.fixup_plateau(&g.gtree.nodes, key);
+
+        assert!(!g.tracker.plateaus.contains_key(&key));
+    }
+
+    #[test]
+    fn find_boundary_node_descends_tree_and_finds_right_boundary() {
+        let mut g = make_graph();
+        g.observe(64u8, 3u32); // create root children
+
+        let root = g.gtree.nodes.root;
+        let found = g
+            .tracker
+            .find_boundary_node(&g.gtree.nodes, root, BasisEdge(0u8));
+
+        assert!(found.is_some());
+        let gid = found.unwrap();
+        let node = g.gtree.nodes.get(gid.index());
+        assert!(node.lo() > 0u8);
+    }
+
+    #[test]
+    fn split_for_p_i4_returns_when_no_boundary_exists() {
+        let mut g = make_graph();
+        let root = g.gtree.nodes.root;
+        let parent_pk = BasisEdge(255u8);
+        let before = g.tracker.plateaus.clone();
+
+        g.tracker.split_for_p_i4(&g.gtree.nodes, parent_pk, root);
+
+        assert_eq!(g.tracker.plateaus, before);
+    }
+}

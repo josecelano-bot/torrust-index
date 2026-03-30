@@ -326,5 +326,32 @@ mod tests {
             }
             assert!(g.is_eviction_candidate(id));
         }
+
+        #[test]
+        fn returns_false_for_structural_node() {
+            let mut g: G = GvGraph::new(make_config());
+            g.observe(64u8, 3u32);
+            let root = g.v_root().expect("v_root must exist after split");
+            assert!(!g.is_eviction_candidate(root));
+        }
+    }
+
+    mod handle_legacy_promotes_fn {
+        use super::*;
+
+        #[test]
+        fn increments_node_and_terminal_counts_per_new_gnode() {
+            let mut g: G = GvGraph::new(make_config());
+            let root = g.gtree.nodes.root;
+            let g1 = g.gtree.nodes.allocate_missing_child(root);
+            let n0 = g.gtree.nodes.node_count;
+            let t0 = g.gtree.nodes.terminal_count;
+
+            let new_gnodes = [g1];
+            g.handle_legacy_promotes(&new_gnodes);
+
+            assert_eq!(g.gtree.nodes.node_count, n0 + 1);
+            assert_eq!(g.gtree.nodes.terminal_count, t0 + 1);
+        }
     }
 }

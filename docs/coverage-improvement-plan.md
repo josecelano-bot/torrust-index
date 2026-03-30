@@ -99,3 +99,4 @@ Update `Status`, `Current`, and `Notes` after each coverage run.
 | Date | Files Updated | Result |
 | ---- | ------------- | ------ |
 | 2026-03-30 | Tracker initialized | All files set to `NS` |
+| 2026-03-30 | diagnostics, query, promote, rebalance/resolve, dynamic tracker helpers, invariants, vtree/vnode helpers | Reached line coverage milestones: Phase 1 >= 91%, Phase 2 >= 93%, Phase 3 >= 95% (current total: 95.01%) |

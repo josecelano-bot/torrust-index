@@ -601,6 +601,56 @@ pub fn check_p_i5_thatch_depth<C: Coordinate, V: Accumulator + Inspectable, cons
     }
 }
 
+#[cfg(test)]
+#[cfg(feature = "dynamic-contour-tracking")]
+mod tests {
+    use super::*;
+    use crate::graph::{Config, GvGraph, StructuralConfig};
+
+    type G = GvGraph<u8, u32, 8>;
+
+    fn make_graph() -> G {
+        GvGraph::new(Config {
+            split_threshold: 2,
+            structural: StructuralConfig {
+                depth_create: 3,
+                depth_evict: 5,
+                budget: None,
+                alpha_relax: 0.5,
+                bounded_eviction: false,
+            },
+        })
+    }
+
+    fn populated_graph() -> G {
+        let mut g = make_graph();
+        for (coord, delta) in [(64u8, 3u32), (32, 3), (128, 2), (192, 1), (16, 2)] {
+            g.observe(coord, delta);
+        }
+        g
+    }
+
+    #[test]
+    fn all_plateau_invariant_checks_pass_on_valid_graph() {
+        let g = populated_graph();
+        let mut errors = Vec::new();
+
+        check_plateau_btreemap_key_consistency(&g, &mut errors);
+        check_plateau_basis_consistency(&g, &mut errors);
+        check_plateau_sum_consistency(&g, &mut errors);
+        check_plateau_depth_consistency(&g, &mut errors);
+        check_p_i1_i_keys_are_contour_steps(&g, &mut errors);
+        check_p_i1_ii_tile_contiguity(&g, &mut errors);
+        check_p_i1_iii_run_contains_tile(&g, &mut errors);
+        check_p_i2_basis_minimality(&g, &mut errors);
+        check_p_i3_basis_disjointness(&g, &mut errors);
+        check_p_i4_thatch_one_hop(&g, &mut errors);
+        check_p_i5_thatch_depth(&g, &mut errors);
+
+        assert!(errors.is_empty(), "expected no plateau invariant violations: {errors:#?}");
+    }
+}
+
 #[cfg(feature = "dynamic-contour-tracking")]
 fn route_to_depth<C: Coordinate, V: Accumulator + Inspectable, const N: u32>(
     graph: &GvGraph<C, V, N>,

@@ -333,3 +333,112 @@ pub fn resolve<C: Coordinate, V: Accumulator, const N: u32>(
 
     result
 }
+
+#[cfg(test)]
+mod tests {
+    use super::resolve;
+    use crate::graph::algorithm::rebalance::VTreeMutContext;
+    use crate::graph::{Config, GvGraph, StructuralConfig};
+    use crate::handle::{GNodeId, VNodeId};
+    use crate::nodes::vnode::{Children, VKind, VNode};
+
+    type G = GvGraph<u8, u32, 8>;
+
+    fn make_graph() -> G {
+        GvGraph::new(Config {
+            split_threshold: 2,
+            structural: StructuralConfig {
+                depth_create: 3,
+                depth_evict: 5,
+                budget: None,
+                alpha_relax: 0.5,
+                bounded_eviction: false,
+            },
+        })
+    }
+
+    #[test]
+    fn resolve_returns_none_when_node_has_no_parent() {
+        let mut g = make_graph();
+        let c = g.v_root().expect("fresh graph must have v_root");
+        let depth_evict = g.gtree.live_depth_evict;
+        let mut tree = VTreeMutContext { vtree: &mut g.vtree };
+
+        let out = resolve(&mut tree, &mut g.gtree, c, depth_evict);
+        assert!(out.is_none());
+    }
+
+    #[test]
+    fn resolve_skip_path_returns_none_without_grandparent() {
+        let mut g = make_graph();
+        g.observe(64u8, 3u32);
+
+        let v_root = g.v_root().expect("v_root should exist after split");
+        let c = match g.vtree.nodes.get(v_root.index()).kind() {
+            VKind::Structural { children, .. } => children.get(0).0,
+            VKind::Entry { .. } => panic!("expected structural v_root after split"),
+        };
+
+        let depth_evict = g.gtree.live_depth_evict;
+        let mut tree = VTreeMutContext { vtree: &mut g.vtree };
+        let out = resolve(&mut tree, &mut g.gtree, c, depth_evict);
+        assert!(out.is_none());
+    }
+
+    #[test]
+    fn resolve_path_b_legacy_promote_returns_new_gnode() {
+        let mut g = make_graph();
+
+        let semi_gid = g.gtree.nodes.root;
+        let existing_child = g.gtree.nodes.allocate_missing_child(semi_gid);
+
+        let c = VNodeId::from_index(g.vtree.nodes.alloc(VNode::new_entry(
+            7,
+            None,
+            semi_gid,
+            true,
+            true,
+        )));
+        let s = VNodeId::from_index(g.vtree.nodes.alloc(VNode::new_entry(
+            5,
+            None,
+            GNodeId::from_index(existing_child.index()),
+            true,
+            true,
+        )));
+        let u = VNodeId::from_index(g.vtree.nodes.alloc(VNode::new_entry(
+            11,
+            None,
+            GNodeId::from_index(existing_child.index()),
+            true,
+            true,
+        )));
+
+        let p = VNodeId::from_index(g.vtree.nodes.alloc(VNode::new_structural(
+            12,
+            None,
+            Children::new_2((c, 7), (s, 5)),
+            true,
+        )));
+        g.vtree.nodes.get_mut(c.index()).set_parent(p);
+        g.vtree.nodes.get_mut(s.index()).set_parent(p);
+
+        let gp = VNodeId::from_index(g.vtree.nodes.alloc(VNode::new_structural(
+            23,
+            None,
+            Children::new_2((p, 12), (u, 11)),
+            true,
+        )));
+        g.vtree.nodes.get_mut(p.index()).set_parent(gp);
+        g.vtree.nodes.get_mut(u.index()).set_parent(gp);
+
+        g.gtree.nodes.assign_entry(semi_gid, c);
+
+        let depth_evict = g.gtree.live_depth_evict;
+        let mut tree = VTreeMutContext { vtree: &mut g.vtree };
+        let out = resolve(&mut tree, &mut g.gtree, c, depth_evict);
+
+        let new_gid = out.expect("legacy promote path should return new gnode");
+        assert_eq!(g.gtree.nodes.get(new_gid.index()).parent(), Some(semi_gid));
+    }
+}

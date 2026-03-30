@@ -205,8 +205,9 @@ pub fn legacy_promote<C: Coordinate, V: Accumulator, const N: u32>(
 
 #[cfg(test)]
 mod tests {
-    use super::{skip_promote, standard_promote};
+    use super::{legacy_promote, skip_promote, standard_promote};
     use crate::arena::Arena;
+    use crate::graph::{Config, GvGraph, StructuralConfig};
     use crate::handle::{GNodeId, VNodeId};
     use crate::nodes::vnode::{Children, VKind, VNode};
     use crate::tree::vtree::VTree;
@@ -218,6 +219,19 @@ mod tests {
             nodes: VNodeTree::from(Arena::new()),
             violations: Vec::new(),
         }
+    }
+
+    fn make_graph() -> GvGraph<u8, u64, 8> {
+        GvGraph::new(Config {
+            split_threshold: 2,
+            structural: StructuralConfig {
+                depth_create: 3,
+                depth_evict: 5,
+                budget: None,
+                alpha_relax: 0.5,
+                bounded_eviction: false,
+            },
+        })
     }
 
     #[test]
@@ -341,5 +355,204 @@ mod tests {
         assert_eq!(vtree.nodes.get(c.index()).parent(), Some(g));
         assert_eq!(vtree.nodes.get(s.index()).parent(), Some(g));
         assert!(!vtree.nodes.is_occupied(p.index()));
+    }
+
+    #[test]
+    fn legacy_promote_lifts_entry_and_creates_missing_gchild() {
+        let mut graph = make_graph();
+
+        let semi_gid = graph.gtree.nodes.root;
+        let existing_child = graph.gtree.nodes.allocate_missing_child(semi_gid);
+        assert!(graph.gtree.nodes.get(semi_gid.index()).is_semi_internal());
+
+        let c = VNodeId::from_index(graph.vtree.nodes.alloc(VNode::new_entry(
+            7,
+            None,
+            semi_gid,
+            true,
+            true,
+        )));
+        let s = VNodeId::from_index(graph.vtree.nodes.alloc(VNode::new_entry(
+            5,
+            None,
+            GNodeId::from_index(existing_child.index()),
+            true,
+            true,
+        )));
+        let u = VNodeId::from_index(graph.vtree.nodes.alloc(VNode::new_entry(
+            11,
+            None,
+            GNodeId::from_index(existing_child.index()),
+            true,
+            true,
+        )));
+
+        let p = VNodeId::from_index(graph.vtree.nodes.alloc(VNode::new_structural(
+            12,
+            None,
+            Children::new_2((c, 7), (s, 5)),
+            true,
+        )));
+        graph.vtree.nodes.get_mut(c.index()).set_parent(p);
+        graph.vtree.nodes.get_mut(s.index()).set_parent(p);
+
+        let g = VNodeId::from_index(graph.vtree.nodes.alloc(VNode::new_structural(
+            23,
+            None,
+            Children::new_2((p, 12), (u, 11)),
+            true,
+        )));
+        graph.vtree.nodes.get_mut(p.index()).set_parent(g);
+        graph.vtree.nodes.get_mut(u.index()).set_parent(g);
+
+        graph.gtree.nodes.assign_entry(semi_gid, c);
+
+        let new_gid = legacy_promote(&mut graph.vtree, &mut graph.gtree, c);
+        let new_entry = graph
+            .gtree
+            .nodes
+            .get(new_gid.index())
+            .entry()
+            .expect("new G-child must have V-entry");
+
+        let semi = graph.gtree.nodes.get(semi_gid.index());
+        assert!(semi.left().is_some());
+        assert!(semi.right().is_some());
+
+        match graph.vtree.nodes.get(p.index()).kind() {
+            VKind::Structural { children, .. } => {
+                assert_eq!(children.len(), 2);
+                assert_eq!(children.get(0).0, new_entry);
+                assert_eq!(children.get(1).0, s);
+            }
+            VKind::Entry { .. } => panic!("p should remain structural"),
+        }
+
+        match graph.vtree.nodes.get(g.index()).kind() {
+            VKind::Structural { children, .. } => {
+                assert_eq!(children.len(), 3);
+                assert_eq!(children.get(0).0, c);
+                assert_eq!(children.get(1).0, p);
+                assert_eq!(children.get(2).0, u);
+            }
+            VKind::Entry { .. } => panic!("g should remain structural"),
+        }
+
+        match graph.vtree.nodes.get(c.index()).kind() {
+            VKind::Entry {
+                is_exposed,
+                is_evictable,
+                ..
+            } => {
+                assert!(!is_exposed);
+                assert!(!is_evictable);
+            }
+            VKind::Structural { .. } => panic!("c should remain entry"),
+        }
+
+        match graph.vtree.nodes.get(new_entry.index()).kind() {
+            VKind::Entry {
+                gnode,
+                is_exposed,
+                is_evictable,
+            } => {
+                assert_eq!(*gnode, new_gid);
+                assert!(*is_exposed);
+                assert!(*is_evictable);
+            }
+            VKind::Structural { .. } => panic!("new entry must be an entry"),
+        }
+
+        assert_eq!(graph.vtree.nodes.get(c.index()).parent(), Some(g));
+        assert_eq!(graph.vtree.nodes.get(new_entry.index()).parent(), Some(p));
+        assert_eq!(graph.gtree.nodes.get(new_gid.index()).parent(), Some(semi_gid));
+    }
+
+    #[test]
+    #[should_panic(expected = "standard_promote: c must be structural")]
+    fn standard_promote_panics_for_entry_node() {
+        let mut vtree: VTree<u64> = make_vtree();
+        let c = VNodeId::from_index(vtree.nodes.alloc(VNode::new_entry(
+            4,
+            None,
+            GNodeId::from_index(1),
+            true,
+            true,
+        )));
+        let s = VNodeId::from_index(vtree.nodes.alloc(VNode::new_entry(
+            3,
+            None,
+            GNodeId::from_index(2),
+            true,
+            true,
+        )));
+        let p = VNodeId::from_index(vtree.nodes.alloc(VNode::new_structural(
+            7,
+            None,
+            Children::new_2((c, 4), (s, 3)),
+            true,
+        )));
+        vtree.nodes.get_mut(c.index()).set_parent(p);
+        vtree.nodes.get_mut(s.index()).set_parent(p);
+
+        standard_promote(&mut vtree, c);
+    }
+
+    #[test]
+    #[should_panic(expected = "legacy_promote: c must be an entry")]
+    fn legacy_promote_panics_for_structural_c() {
+        let mut graph = make_graph();
+
+        let semi_gid = graph.gtree.nodes.root;
+        let _ = graph.gtree.nodes.allocate_missing_child(semi_gid);
+
+        let c1 = VNodeId::from_index(graph.vtree.nodes.alloc(VNode::new_entry(
+            1,
+            None,
+            semi_gid,
+            true,
+            true,
+        )));
+        let c2 = VNodeId::from_index(graph.vtree.nodes.alloc(VNode::new_entry(
+            2,
+            None,
+            semi_gid,
+            true,
+            true,
+        )));
+        let c = VNodeId::from_index(graph.vtree.nodes.alloc(VNode::new_structural(
+            3,
+            None,
+            Children::new_2((c1, 1), (c2, 2)),
+            true,
+        )));
+        graph.vtree.nodes.get_mut(c1.index()).set_parent(c);
+        graph.vtree.nodes.get_mut(c2.index()).set_parent(c);
+
+        let u = VNodeId::from_index(graph.vtree.nodes.alloc(VNode::new_entry(
+            9,
+            None,
+            semi_gid,
+            true,
+            true,
+        )));
+        let p = VNodeId::from_index(graph.vtree.nodes.alloc(VNode::new_structural(
+            3,
+            None,
+            Children::new_2((c, 3), (u, 9)),
+            true,
+        )));
+        graph.vtree.nodes.get_mut(c.index()).set_parent(p);
+        graph.vtree.nodes.get_mut(u.index()).set_parent(p);
+
+        let g = VNodeId::from_index(graph.vtree.nodes.alloc(VNode::new_structural(
+            12,
+            None,
+            Children::new_2((p, 12), (u, 9)),
+            true,
+        )));
+        graph.vtree.nodes.get_mut(p.index()).set_parent(g);
+
+        let _ = legacy_promote(&mut graph.vtree, &mut graph.gtree, c);
     }
 }

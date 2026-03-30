@@ -539,7 +539,7 @@ mod tests {
     use super::*;
     use crate::graph::{Config, StructuralConfig};
     use crate::handle::VNodeId;
-    use crate::nodes::vnode::VKind;
+    use crate::nodes::vnode::{VKind, VNode};
 
     type G = GvGraph<u8, u32, 8>;
 
@@ -716,6 +716,99 @@ mod tests {
         check_g_i4_entry_consistency(&g, &mut errors);
 
         assert!(errors.iter().any(|e| e.contains("entry V-node") && e.contains("not occupied")));
+    }
+
+    #[test]
+    fn check_g_i1_summation_reports_mismatch() {
+        let mut g: G = GvGraph::new(make_config(None));
+        let root = g.gtree.nodes.root;
+        g.gtree.nodes.get_mut(root.index()).set_sum(123u32);
+
+        let mut errors = Vec::new();
+        check_g_i1_summation(&g, &mut errors);
+
+        assert!(errors.iter().any(|e| e.contains("G-I1 violated")));
+    }
+
+    #[test]
+    fn check_g_i4_entry_consistency_reports_gnode_mismatch_and_structural_entry() {
+        let mut g: G = GvGraph::new(make_config(None));
+        g.observe(64u8, 3u32);
+
+        let root_gid = g.gtree.nodes.root;
+        let (child_gid, child_entry) = {
+            let root = g.gtree.nodes.get(root_gid.index());
+            let child_gid = root.left().expect("left child should exist after split");
+            let child_entry = g
+                .gtree
+                .nodes
+                .get(child_gid.index())
+                .entry()
+                .expect("child should have entry");
+            (child_gid, child_entry)
+        };
+
+        if let VKind::Entry { gnode, .. } = g.vtree.nodes.get_mut(child_entry.index()).kind_mut() {
+            *gnode = GNodeId::from_index(root_gid.index());
+        }
+
+        let v_root = g.v_root().expect("v_root must exist");
+        g.gtree.nodes.get_mut(root_gid.index()).assign_entry(v_root);
+
+        let mut errors = Vec::new();
+        check_g_i4_entry_consistency(&g, &mut errors);
+
+        assert!(errors.iter().any(|e| e.contains("entry's gnode") && e.contains(&child_gid.index().to_string())));
+        assert!(errors.iter().any(|e| e.contains("entry is a structural V-node")));
+    }
+
+    #[test]
+    fn check_g_i5_entry_bijection_reports_missing_entry_and_count_mismatch() {
+        let mut g: G = GvGraph::new(make_config(None));
+        let root = g.gtree.nodes.root;
+        g.gtree.nodes.get_mut(root.index()).clear_entry();
+        let extra = VNode::new_entry(0u32, None, root, true, true);
+        let _ = g.vtree.nodes.alloc(extra);
+
+        let mut errors = Vec::new();
+        check_g_i5_entry_bijection(&g, &mut errors);
+
+        assert!(errors.iter().any(|e| e.contains("no V-Entry")));
+        assert!(errors.iter().any(|e| e.contains("occupied G-nodes") && e.contains("V-Entry nodes")));
+    }
+
+    #[test]
+    fn check_v_i1_and_v_i5_report_unoccupied_child() {
+        let mut g: G = GvGraph::new(make_config(None));
+        g.observe(64u8, 3u32);
+
+        let v_root = g.v_root().expect("v_root must exist after split");
+        let child = match g.vtree.nodes.get(v_root.index()).kind() {
+            VKind::Structural { children, .. } => children.get(0).0,
+            VKind::Entry { .. } => panic!("expected structural v_root"),
+        };
+        g.vtree.nodes.dealloc(child.index());
+
+        let mut errors = Vec::new();
+        check_v_i1_structural_sum(&g, &mut errors);
+        check_v_i5_entry_leaf(&g, &mut errors);
+
+        assert!(errors.iter().any(|e| e.contains("V-I1 violated") && e.contains("not occupied")));
+        assert!(errors.iter().any(|e| e.contains("V-I5 violated") && e.contains("not occupied")));
+    }
+
+    #[test]
+    fn check_v_i6_reports_unoccupied_backing_gnode() {
+        let mut g: G = GvGraph::new(make_config(None));
+        let root = g.v_root().expect("fresh graph must have v_root");
+        if let VKind::Entry { gnode, .. } = g.vtree.nodes.get_mut(root.index()).kind_mut() {
+            *gnode = GNodeId::from_index(999);
+        }
+
+        let mut errors = Vec::new();
+        check_v_i6_exposed_flag(&g, &mut errors);
+
+        assert!(errors.iter().any(|e| e.contains("backing G-node") && e.contains("not occupied")));
     }
 
     #[test]

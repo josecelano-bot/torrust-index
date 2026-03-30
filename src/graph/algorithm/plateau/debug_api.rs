@@ -46,3 +46,63 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32>
         result
     }
 }
+
+#[cfg(test)]
+#[cfg(feature = "dynamic-contour-tracking")]
+mod tests {
+    use super::*;
+    use crate::graph::{Config, StructuralConfig};
+
+    type G = GvGraph<u8, u32, 8>;
+
+    fn make_graph() -> G {
+        GvGraph::new(Config {
+            split_threshold: 2,
+            structural: StructuralConfig {
+                depth_create: 3,
+                depth_evict: 5,
+                budget: None,
+                alpha_relax: 0.5,
+                bounded_eviction: false,
+            },
+        })
+    }
+
+    #[test]
+    fn debug_plateau_basis_reports_entries_after_observe() {
+        let mut g = make_graph();
+        g.observe(64u8, 3u32);
+        g.observe(32u8, 3u32);
+
+        let rows = g.debug_plateau_basis();
+        assert!(!rows.is_empty());
+
+        for (_key, infos) in &rows {
+            assert!(!infos.is_empty());
+            for &(idx, lo, hi, state, depth) in infos {
+                assert!(idx < g.node_count() as usize);
+                assert!(lo < hi);
+                assert!(matches!(state, "Terminal" | "Internal" | "SemiInternal"));
+                assert!(depth > 0);
+            }
+        }
+    }
+
+    #[test]
+    fn plateau_basis_accessor_matches_debug_view_count() {
+        let mut g = make_graph();
+        g.observe(64u8, 3u32);
+        g.observe(32u8, 3u32);
+
+        let debug_rows = g.debug_plateau_basis();
+        assert_eq!(g.plateau_basis().plateau_count(), debug_rows.len());
+    }
+
+    #[test]
+    fn debug_check_plateau_sums_does_not_panic_on_valid_graph() {
+        let mut g = make_graph();
+        g.observe(64u8, 3u32);
+        g.observe(128u8, 3u32);
+        g.debug_check_plateau_sums("debug-api-test");
+    }
+}
