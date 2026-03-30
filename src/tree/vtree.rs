@@ -20,12 +20,14 @@
 //! Three contexts require different amounts of work:
 //!
 //! 1. **Point update + ancestor propagate** (`observe`): after a single
-//!    G-node's own value changes, call [`sync_intensity_in_parent`] to update
-//!    the entry's cached slot in its parent, then [`propagate_v_sums`] to walk
+//!    G-node's own value changes, call [`VTree::sync_intensity_in_parent`] to
+//!    update the entry's cached slot in its parent, then
+//!    [`VTree::propagate_v_sums`] to walk
 //!    up to the root recomputing structural intensities.  O(depth) work.
 //!
 //! 2. **Full post-order recompute** (`decay`): after a bulk operation that
-//!    changes many G-nodes at once, call [`recompute_all_v_intensities`] which
+//!    changes many G-nodes at once, call [`VTree::recompute_all_v_intensities`]
+//!    which
 //!    visits every V-node in post-order.  O(n) work, but correct regardless of
 //!    which entries changed.
 //!
@@ -110,14 +112,14 @@ impl<V: Accumulator> VTree<V> {
         if p_child_count == 3 {
             span.record("case", "shrink");
             self.remove_structural_child(p_id, v_id);
-            recompute_and_propagate_v_sums(&mut self.nodes, p_id);
+            self.recompute_and_propagate_v_sums(p_id);
             self.propagate_evictable(p_id);
             self.nodes.dealloc(v_id.index());
             return;
         }
 
         span.record("case", "collapse");
-        let sole_id = sole_sibling(&self.nodes, p_id, v_id);
+        let sole_id = self.sole_sibling(p_id, v_id);
         let grandparent = self.nodes.get(p_id.index()).parent();
 
         self.nodes.get_mut(sole_id.index()).set_parent_opt(grandparent);
@@ -125,7 +127,7 @@ impl<V: Accumulator> VTree<V> {
         self.root = grandparent.map_or(Some(sole_id), |g_id| {
             let sole_int = self.nodes.get(sole_id.index()).intensity();
             self.replace_structural_child(g_id, p_id, sole_id, sole_int);
-            recompute_and_propagate_v_sums(&mut self.nodes, g_id);
+            self.recompute_and_propagate_v_sums(g_id);
             self.propagate_evictable(g_id);
             self.root
         });
@@ -137,16 +139,16 @@ impl<V: Accumulator> VTree<V> {
     // ── Sum / intensity propagation ───────────────────────────────────────
 
     pub(crate) fn propagate_sums(&mut self, id: VNodeId) {
-        propagate_v_sums(&mut self.nodes, id);
+        self.propagate_v_sums(id);
     }
 
     pub(crate) fn sync_intensity(&mut self, id: VNodeId, val: V) {
-        sync_intensity_in_parent(&mut self.nodes, id, val);
+        self.sync_intensity_in_parent(id, val);
     }
 
     pub(crate) fn recompute_all_intensities(&mut self) {
         if let Some(root) = self.root {
-            recompute_all_v_intensities(&mut self.nodes, root);
+            self.recompute_all_v_intensities(root);
         }
     }
 
@@ -159,7 +161,7 @@ impl<V: Accumulator> VTree<V> {
     // ── Evictable flags ───────────────────────────────────────────────────
 
     pub(crate) fn propagate_evictable(&mut self, id: VNodeId) {
-        propagate_evictable_flags(&mut self.nodes, id);
+        self.propagate_evictable_flags(id);
     }
 
     pub(crate) fn set_entry_flags(
@@ -207,7 +209,150 @@ impl<V: Accumulator> VTree<V> {
     }
 
     pub(crate) fn recompute_and_sync(&mut self, id: VNodeId) {
-        recompute_and_sync_parent_slot(&mut self.nodes, id);
+        self.recompute_and_sync_parent_slot(id);
+    }
+
+    // ── Internal arena-based helpers ──────────────────────────────────────
+
+    /// Walks ancestors of `start` (exclusive — `start` itself is not
+    /// recomputed) and updates each structural node's intensity and its cached
+    /// slot in its parent.
+    fn propagate_v_sums(&mut self, start: VNodeId) {
+        tracing::trace!(start = start.index(), "propagate_v_sums");
+        let mut current = self.nodes.get(start.index()).parent();
+        while let Some(id) = current {
+            self.recompute_structural_intensity(id);
+            let new_int = self.nodes.get(id.index()).intensity();
+            self.sync_intensity_in_parent(id, new_int);
+            current = self.nodes.get(id.index()).parent();
+        }
+    }
+
+    /// Recomputes intensities for every node in the tree rooted at `v_root`
+    /// (full post-order traversal).
+    fn recompute_all_v_intensities(&mut self, v_root: VNodeId) {
+        self.recompute_v_postorder(v_root);
+    }
+
+    fn recompute_v_postorder(&mut self, id: VNodeId) {
+        // Collect child IDs while holding a shared borrow, then release it so
+        // the recursive calls and the subsequent mutable borrows can proceed.
+        let child_ids: Vec<VNodeId> = {
+            let node = self.nodes.get(id.index());
+            match &node.kind() {
+                VKind::Entry { .. } => return,
+                VKind::Structural { children, .. } => {
+                    (0..children.len()).map(|i| children.get(i).0).collect()
+                }
+            }
+        };
+
+        for &child in &child_ids {
+            self.recompute_v_postorder(child);
+        }
+
+        for (i, &child) in child_ids.iter().enumerate() {
+            let child_int = self.nodes.get(child.index()).intensity();
+            let node = self.nodes.get_mut(id.index());
+            if let VKind::Structural { children, .. } = node.kind_mut() {
+                children.update_intensity(i, child_int);
+            }
+        }
+
+        // Sum updated child intensities. The shared borrow must end
+        // (NLL last-use) before the mutable borrow on the next line, so total
+        // is computed first.
+        let total: V = {
+            let node = self.nodes.get(id.index());
+            let VKind::Structural { children, .. } = &node.kind() else {
+                return;
+            };
+            let mut t = V::zero();
+            for i in 0..children.len() {
+                t = V::add(t, children.get(i).1);
+            }
+            t
+        };
+        self.nodes.get_mut(id.index()).set_intensity(total);
+    }
+
+    fn propagate_evictable_flags(&mut self, start: VNodeId) {
+        let mut current = Some(start);
+        while let Some(id) = current {
+            let node = self.nodes.get(id.index());
+            match &node.kind() {
+                VKind::Entry { .. } => {
+                    current = node.parent();
+                }
+                VKind::Structural {
+                    children,
+                    has_evictable,
+                } => {
+                    let old = *has_evictable;
+                    let new_flag = compute_has_evictable(&self.nodes, children);
+                    if new_flag == old {
+                        return;
+                    }
+
+                    let parent = node.parent();
+                    let node_mut = self.nodes.get_mut(id.index());
+                    if let VKind::Structural { has_evictable, .. } = node_mut.kind_mut() {
+                        *has_evictable = new_flag;
+                    }
+                    current = parent;
+                }
+            }
+        }
+    }
+
+    fn sync_intensity_in_parent(&mut self, child_id: VNodeId, new_intensity: V) {
+        let parent = self.nodes.get(child_id.index()).parent();
+        let Some(p_id) = parent else { return };
+        let p = self.nodes.get_mut(p_id.index());
+        if let VKind::Structural { children, .. } = p.kind_mut() {
+            if let Some(idx) = children.find_index(child_id) {
+                children.update_intensity(idx, new_intensity);
+            }
+        }
+    }
+
+    fn recompute_structural_intensity(&mut self, id: VNodeId) {
+        let node = self.nodes.get(id.index());
+        if let VKind::Structural { children, .. } = &node.kind() {
+            let mut total = V::zero();
+            for i in 0..children.len() {
+                total = V::add(total, children.get(i).1);
+            }
+
+            let _ = node;
+            self.nodes.get_mut(id.index()).set_intensity(total);
+        }
+    }
+
+    /// Recomputes the structural intensity of `child_id` and immediately
+    /// updates the cached intensity slot in its parent (if any).
+    fn recompute_and_sync_parent_slot(&mut self, child_id: VNodeId) {
+        self.recompute_structural_intensity(child_id);
+        let new_int = self.nodes.get(child_id.index()).intensity();
+        self.sync_intensity_in_parent(child_id, new_int);
+    }
+
+    fn recompute_and_propagate_v_sums(&mut self, start: VNodeId) {
+        self.recompute_and_sync_parent_slot(start);
+        self.propagate_v_sums(start);
+    }
+
+    fn sole_sibling(&self, parent: VNodeId, child: VNodeId) -> VNodeId {
+        let p = self.nodes.get(parent.index());
+        if let VKind::Structural { children, .. } = &p.kind() {
+            for i in 0..children.len() {
+                let (id, _) = children.get(i);
+                if id != child {
+                    return id;
+                }
+            }
+        }
+        unreachable!("sole_sibling: child not found in parent");
     }
 
     /// Allocates a new 2-child structural node whose children are `a` and `b`,
@@ -282,165 +427,10 @@ impl<V: Accumulator> VTree<V> {
     }
 }
 
-/// Walks ancestors of `start` (exclusive — `start` itself is not recomputed)
-/// and updates each structural node's intensity and its cached slot in its parent.
-/// Use [`recompute_and_propagate_v_sums`] when `start` also needs recomputing.
-fn propagate_v_sums<V: Accumulator>(vnodes: &mut Arena<VNode<V>>, start: VNodeId) {
-    tracing::trace!(start = start.index(), "propagate_v_sums");
-    let mut current = vnodes.get(start.index()).parent();
-    while let Some(id) = current {
-        recompute_structural_intensity(vnodes, id);
-        let new_int = vnodes.get(id.index()).intensity();
-        sync_intensity_in_parent(vnodes, id, new_int);
-        current = vnodes.get(id.index()).parent();
-    }
-}
-
-/// Recomputes intensities for every node in the tree rooted at `v_root`
-/// (full post-order traversal). Use [`propagate_v_sums`] for a cheaper
-/// ancestor-only walk after a targeted update.
-fn recompute_all_v_intensities<V: Accumulator>(vnodes: &mut Arena<VNode<V>>, v_root: VNodeId) {
-    recompute_v_postorder(vnodes, v_root);
-}
-
-fn recompute_v_postorder<V: Accumulator>(vnodes: &mut Arena<VNode<V>>, id: VNodeId) {
-    // Collect child IDs while holding a shared borrow, then release it so the
-    // recursive calls and the subsequent mutable borrows can proceed.
-    let child_ids: Vec<VNodeId> = {
-        let node = vnodes.get(id.index());
-        match &node.kind() {
-            VKind::Entry { .. } => return,
-            VKind::Structural { children, .. } => {
-                (0..children.len()).map(|i| children.get(i).0).collect()
-            }
-        }
-    };
-
-    for &child in &child_ids {
-        recompute_v_postorder(vnodes, child);
-    }
-
-    for (i, &child) in child_ids.iter().enumerate() {
-        let child_int = vnodes.get(child.index()).intensity();
-        let node = vnodes.get_mut(id.index());
-        if let VKind::Structural { children, .. } = node.kind_mut() {
-            children.update_intensity(i, child_int);
-        }
-    }
-
-    // Sum updated child intensities. The shared borrow must end (NLL last-use)
-    // before the mutable borrow on the next line, so total is computed first.
-    let total: V = {
-        let node = vnodes.get(id.index());
-        let VKind::Structural { children, .. } = &node.kind() else {
-            return;
-        };
-        let mut t = V::zero();
-        for i in 0..children.len() {
-            t = V::add(t, children.get(i).1);
-        }
-        t
-    };
-    vnodes.get_mut(id.index()).set_intensity(total);
-}
-
-fn propagate_evictable_flags<V: Accumulator>(
-    vnodes: &mut Arena<VNode<V>>,
-    start: VNodeId,
-) {
-    let mut current = Some(start);
-    while let Some(id) = current {
-        let node = vnodes.get(id.index());
-        match &node.kind() {
-            VKind::Entry { .. } => {
-                current = node.parent();
-            }
-            VKind::Structural {
-                children,
-                has_evictable,
-            } => {
-                let old = *has_evictable;
-                let new_flag = compute_has_evictable(vnodes, children);
-                if new_flag == old {
-                    return;
-                }
-
-                let parent = node.parent();
-                let node_mut = vnodes.get_mut(id.index());
-                if let VKind::Structural { has_evictable, .. } = node_mut.kind_mut() {
-                    *has_evictable = new_flag;
-                }
-                current = parent;
-            }
-        }
-    }
-}
-
-fn sync_intensity_in_parent<V: Accumulator>(
-    vnodes: &mut Arena<VNode<V>>,
-    child_id: VNodeId,
-    new_intensity: V,
-) {
-    let parent = vnodes.get(child_id.index()).parent();
-    let Some(p_id) = parent else { return };
-    let p = vnodes.get_mut(p_id.index());
-    if let VKind::Structural { children, .. } = p.kind_mut() {
-        if let Some(idx) = children.find_index(child_id) {
-            children.update_intensity(idx, new_intensity);
-        }
-    }
-}
-
-fn sole_sibling<V: Accumulator>(
-    vnodes: &Arena<VNode<V>>,
-    parent: VNodeId,
-    child: VNodeId,
-) -> VNodeId {
-    let p = vnodes.get(parent.index());
-    if let VKind::Structural { children, .. } = &p.kind() {
-        for i in 0..children.len() {
-            let (id, _) = children.get(i);
-            if id != child {
-                return id;
-            }
-        }
-    }
-    unreachable!("sole_sibling: child not found in parent");
-}
-
-fn recompute_structural_intensity<V: Accumulator>(vnodes: &mut Arena<VNode<V>>, id: VNodeId) {
-    let node = vnodes.get(id.index());
-    if let VKind::Structural { children, .. } = &node.kind() {
-        let mut total = V::zero();
-        for i in 0..children.len() {
-            total = V::add(total, children.get(i).1);
-        }
-
-        let _ = node;
-        vnodes.get_mut(id.index()).set_intensity(total);
-    }
-}
-
-/// Recomputes the structural intensity of `child_id` and immediately updates
-/// the cached intensity slot in its parent (if any).
-fn recompute_and_sync_parent_slot<V: Accumulator>(
-    vnodes: &mut Arena<VNode<V>>,
-    child_id: VNodeId,
-) {
-    recompute_structural_intensity(vnodes, child_id);
-    let new_int = vnodes.get(child_id.index()).intensity();
-    sync_intensity_in_parent(vnodes, child_id, new_int);
-}
-
-fn recompute_and_propagate_v_sums<V: Accumulator>(vnodes: &mut Arena<VNode<V>>, start: VNodeId) {
-    recompute_and_sync_parent_slot(vnodes, start);
-    propagate_v_sums(vnodes, start);
-}
-
 #[cfg(test)]
 mod tests {
 
-    use super::{VTree, propagate_v_sums, v_depth};
+    use super::{VTree, v_depth};
     use crate::arena::Arena;
     use crate::handle::{GNodeId, VNodeId};
     use crate::nodes::vnode::{Children, VKind, VNode};
@@ -486,8 +476,13 @@ mod tests {
         fn propagating_from_root_entry_does_not_panic() {
             let mut vnodes: Arena<VNode<u32>> = Arena::new();
             let root_id = VNodeId::from_index(vnodes.alloc(entry_vnode(10, None)));
+            let mut vtree = VTree {
+                nodes: vnodes,
+                root: Some(root_id),
+                violations: Vec::new(),
+            };
             // Root has no parent; propagate_v_sums is a no-op but must not panic
-            propagate_v_sums(&mut vnodes, root_id);
+            vtree.propagate_sums(root_id);
         }
 
         #[test]
@@ -513,11 +508,16 @@ mod tests {
             // Update child_a's own intensity
             vnodes.get_mut(child_a_id.index()).set_intensity(20);
 
-            propagate_v_sums(&mut vnodes, child_a_id);
+            let mut vtree = VTree {
+                nodes: vnodes,
+                root: Some(parent_id),
+                violations: Vec::new(),
+            };
+            vtree.propagate_sums(child_a_id);
 
             // Parent intensity should now reflect sum of cached child intensities
             // (The structural node caches 5 and 7; propagate_v_sums recomputes from them)
-            let parent_intensity = vnodes.get(parent_id.index()).intensity();
+            let parent_intensity = vtree.nodes.get(parent_id.index()).intensity();
             assert_eq!(parent_intensity, 5 + 7); // cached intensities in Children
         }
     }
