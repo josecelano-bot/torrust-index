@@ -163,7 +163,7 @@ pub fn legacy_promote<C: Coordinate, V: Accumulator, const N: u32>(
 
     let ne = VNode::new_entry(V::zero(), Some(p), new_child_id, true, true);
     let ne_id = VNodeId::from_index(vtree.nodes.alloc(ne));
-    gtree.assign_entry(new_child_id, ne_id);
+    gtree.nodes.assign_entry(new_child_id, ne_id);
 
     let c_int = vtree.nodes.get(c.index()).intensity();
     vtree.replace_structural_child(p, c, ne_id, V::zero());

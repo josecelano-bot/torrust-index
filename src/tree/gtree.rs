@@ -1,5 +1,3 @@
-use std::ops::{Deref, DerefMut};
-
 use crate::arena::Arena;
 use crate::handle::GNodeId;
 use crate::nodes::gnode::GNode;
@@ -26,23 +24,45 @@ pub struct GNodeTree<C: Coordinate, V: Accumulator> {
     pub(crate) terminal_count: u32,
 }
 
-/// Transitional adapter: allows `gnodes_ref.get(...)` and similar arena-style
-/// calls to continue working on `&GNodeTree` until they are migrated to
-/// explicit structural methods.  Targeted for removal in Phase 4.
-impl<C: Coordinate, V: Accumulator> Deref for GNodeTree<C, V> {
-    type Target = Arena<GNode<C, V>>;
-    fn deref(&self) -> &Self::Target {
-        &self.nodes
-    }
-}
-
-impl<C: Coordinate, V: Accumulator> DerefMut for GNodeTree<C, V> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.nodes
-    }
-}
-
 impl<C: Coordinate, V: Accumulator> GNodeTree<C, V> {
+    // ── Arena delegation ─────────────────────────────────────────────────
+
+    /// Returns a shared reference to the G-node at slot `idx`.
+    pub(crate) fn get(&self, idx: usize) -> &GNode<C, V> {
+        self.nodes.get(idx)
+    }
+
+    /// Returns a mutable reference to the G-node at slot `idx`.
+    pub(crate) fn get_mut(&mut self, idx: usize) -> &mut GNode<C, V> {
+        self.nodes.get_mut(idx)
+    }
+
+    /// Allocates a new G-node slot and returns its index.
+    pub(crate) fn alloc(&mut self, node: GNode<C, V>) -> usize {
+        self.nodes.alloc(node)
+    }
+
+    /// Frees the G-node slot at `idx` and returns the evicted value.
+    pub(crate) fn dealloc(&mut self, idx: usize) -> GNode<C, V> {
+        self.nodes.dealloc(idx)
+    }
+
+    /// Returns `true` if slot `idx` holds a live G-node.
+    pub(crate) fn is_occupied(&self, idx: usize) -> bool {
+        self.nodes.is_occupied(idx)
+    }
+
+    /// Returns the number of currently occupied G-node slots.
+    pub(crate) fn count(&self) -> u32 {
+        self.nodes.count()
+    }
+
+    /// Iterates over all occupied G-node slots as `(index, &GNode)` pairs.
+    pub(crate) fn iter_occupied(&self) -> impl Iterator<Item = (usize, &GNode<C, V>)> + '_ {
+        self.nodes.iter_occupied()
+    }
+
+
     // ── Traversal ────────────────────────────────────────────────────────
 
     /// Walks down the G-tree from the root and returns the terminal (or
@@ -218,21 +238,6 @@ pub struct GTree<C: Coordinate, V: Accumulator, const N: u32> {
     pub(crate) soft_limit: Option<usize>,
 }
 
-/// Transitional adapter: exposes `GNodeTree` fields (`root`, `node_count`,
-/// `terminal_count`) directly on `GTree` without field access changes at call
-/// sites.  Targeted for removal in Phase 4.
-impl<C: Coordinate, V: Accumulator, const N: u32> Deref for GTree<C, V, N> {
-    type Target = GNodeTree<C, V>;
-    fn deref(&self) -> &Self::Target {
-        &self.nodes
-    }
-}
-
-impl<C: Coordinate, V: Accumulator, const N: u32> DerefMut for GTree<C, V, N> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.nodes
-    }
-}
 
 impl<C: Coordinate, V: Accumulator, const N: u32> GTree<C, V, N> {
     // ── Depth helpers (policy-bound) ─────────────────────────────────────

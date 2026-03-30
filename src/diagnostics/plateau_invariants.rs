@@ -177,7 +177,7 @@ fn contour_steps<C: Coordinate, V: Accumulator + Inspectable, const N: u32>(
     graph: &GvGraph<C, V, N>,
 ) -> Vec<(C, u32)> {
     let mut cells: Vec<(C, u32)> = Vec::new();
-    let mut stack = vec![graph.gtree.root];
+    let mut stack = vec![graph.gtree.nodes.root];
     while let Some(gid) = stack.pop() {
         let g = graph.gtree.nodes.get(gid.index());
         let d = GTree::<C, V, N>::depth_of_interval(g.lo(), g.hi());
@@ -606,7 +606,7 @@ fn route_to_depth<C: Coordinate, V: Accumulator + Inspectable, const N: u32>(
     graph: &GvGraph<C, V, N>,
     x: C,
 ) -> u32 {
-    let mut cur = graph.gtree.root;
+    let mut cur = graph.gtree.nodes.root;
     for _ in 0..=N + 1 {
         let g = graph.gtree.nodes.get(cur.index());
         if g.is_terminal() {

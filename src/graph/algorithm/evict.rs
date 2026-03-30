@@ -134,7 +134,7 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
         span.record("gnode", gnode_id.index());
 
         assert_ne!(
-            gnode_id, self.gtree.root,
+            gnode_id, self.gtree.nodes.root,
             "evict_tip: cannot evict the G-root"
         );
 
@@ -150,7 +150,7 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
         // Absorb the evicted child's sum into the parent's own weight, detach
         // the child slot, and recompute the parent sum invariant.
         let parent_sum_before = self.gtree.nodes.get(parent_id.index()).sum();
-        self.gtree.merge_into_parent(gnode_id);
+        self.gtree.nodes.merge_into_parent(gnode_id);
         debug_assert!(
             (self
                 .gtree
@@ -254,10 +254,10 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
 
         // ── Phase 8: Dealloc evicted node and update counts ──────────────────────
         self.gtree.nodes.dealloc(gnode_id.index());
-        self.gtree.node_count -= 1;
-        self.gtree.terminal_count -= 1;
+        self.gtree.nodes.node_count -= 1;
+        self.gtree.nodes.terminal_count -= 1;
         if self.gtree.nodes.get(parent_id.index()).is_terminal() {
-            self.gtree.terminal_count += 1;
+            self.gtree.nodes.terminal_count += 1;
         }
 
         // ── Phase 9: Plateau mirror update ───────────────────────────────────────
@@ -327,7 +327,7 @@ mod tests {
             let g: G = GvGraph::new(make_config());
             let candidates = g
                 .vtree
-                .scan_for_candidates(g.gtree.live_depth_evict, g.gtree.root);
+                .scan_for_candidates(g.gtree.live_depth_evict, g.gtree.nodes.root);
             assert!(candidates.is_empty());
         }
 
@@ -339,7 +339,7 @@ mod tests {
             g.observe(64u8, 3u32); // triggers bootstrap split
             let candidates = g
                 .vtree
-                .scan_for_candidates(g.gtree.live_depth_evict, g.gtree.root);
+                .scan_for_candidates(g.gtree.live_depth_evict, g.gtree.nodes.root);
             assert!(candidates.is_empty());
         }
 
@@ -352,7 +352,7 @@ mod tests {
             g.observe(192u8, 3u32);
             let candidates = g
                 .vtree
-                .scan_for_candidates(g.gtree.live_depth_evict, g.gtree.root);
+                .scan_for_candidates(g.gtree.live_depth_evict, g.gtree.nodes.root);
             // entries at depth 2 are not > live_depth_evict=2 → empty
             assert!(candidates.is_empty());
         }
@@ -370,7 +370,7 @@ mod tests {
                 g.observe(i.wrapping_mul(13), 3u32);
             }
             // The eviction mechanism must keep the graph alive (no panic).
-            assert!(g.gtree.node_count >= 1);
+            assert!(g.gtree.nodes.node_count >= 1);
         }
 
         #[test]

@@ -41,34 +41,6 @@ impl<T: Default> Arena<T> {
         self.count
     }
 
-    /// Returns the number of currently occupied slots as `usize`.
-    #[must_use]
-    #[inline]
-    pub const fn len(&self) -> usize {
-        self.count as usize
-    }
-
-    /// Returns `true` when there are no occupied slots.
-    #[must_use]
-    #[inline]
-    pub const fn is_empty(&self) -> bool {
-        self.count == 0
-    }
-
-    /// Returns the total number of allocated slots (occupied + free).
-    #[must_use]
-    #[inline]
-    pub fn capacity(&self) -> usize {
-        self.slots.len()
-    }
-
-    /// Returns the number of reusable free slots.
-    #[must_use]
-    #[inline]
-    pub fn free_slots(&self) -> usize {
-        self.free.len()
-    }
-
     pub fn alloc(&mut self, value: T) -> usize {
         let index = if let Some(idx) = self.free.pop() {
             let i = idx as usize;
@@ -169,6 +141,30 @@ impl<T: Default + Clone> Clone for Arena<T> {
             free: self.free.clone(),
             count: self.count,
         }
+    }
+}
+
+/// Test-only helpers exposed on `Arena<T>`.
+#[cfg(test)]
+impl<T: Default> Arena<T> {
+    /// Returns the number of currently occupied slots as `usize`.
+    pub const fn len(&self) -> usize {
+        self.count as usize
+    }
+
+    /// Returns `true` when there are no occupied slots.
+    pub const fn is_empty(&self) -> bool {
+        self.count == 0
+    }
+
+    /// Returns the total number of allocated slots (occupied + free).
+    pub fn capacity(&self) -> usize {
+        self.slots.len()
+    }
+
+    /// Returns the number of reusable free slots.
+    pub fn free_slots(&self) -> usize {
+        self.free.len()
     }
 }
 

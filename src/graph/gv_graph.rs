@@ -251,7 +251,7 @@ impl<C: Coordinate, V: Accumulator, const N: u32, T: PlateauTracking<C, V>> GvGr
     #[must_use]
     #[inline]
     pub fn total_sum(&self) -> V {
-        self.gtree.nodes.get(self.gtree.root.index()).sum()
+        self.gtree.nodes.get(self.gtree.nodes.root.index()).sum()
     }
 
     #[must_use]
@@ -375,13 +375,13 @@ mod tests {
         #[test]
         fn starts_with_one_node() {
             let g = GvGraph::<u8, u32, 8>::new(make_config());
-            assert_eq!(g.gtree.node_count, 1);
+            assert_eq!(g.gtree.nodes.node_count, 1);
         }
 
         #[test]
         fn starts_with_one_terminal() {
             let g = GvGraph::<u8, u32, 8>::new(make_config());
-            assert_eq!(g.gtree.terminal_count, 1);
+            assert_eq!(g.gtree.nodes.terminal_count, 1);
         }
 
         #[test]
@@ -398,13 +398,13 @@ mod tests {
         #[test]
         fn returns_some_for_root() {
             let g = GvGraph::<u8, u32, 8>::new(make_config());
-            assert!(g.gnode_info(g.gtree.root).is_some());
+            assert!(g.gnode_info(g.gtree.nodes.root).is_some());
         }
 
         #[test]
         fn root_covers_full_domain() {
             let g = GvGraph::<u8, u32, 8>::new(make_config());
-            let info = g.gnode_info(g.gtree.root).unwrap();
+            let info = g.gnode_info(g.gtree.nodes.root).unwrap();
             use crate::traits::Coordinate;
             assert_eq!(info.start, u8::zero());
             assert_eq!(info.end, u8::domain_max(8));
@@ -414,14 +414,14 @@ mod tests {
         fn root_is_terminal_at_start() {
             use crate::nodes::gnode::GState;
             let g = GvGraph::<u8, u32, 8>::new(make_config());
-            let info = g.gnode_info(g.gtree.root).unwrap();
+            let info = g.gnode_info(g.gtree.nodes.root).unwrap();
             assert_eq!(info.state, GState::Terminal);
         }
 
         #[test]
         fn root_is_root_node() {
             let g = GvGraph::<u8, u32, 8>::new(make_config());
-            let info = g.gnode_info(g.gtree.root).unwrap();
+            let info = g.gnode_info(g.gtree.nodes.root).unwrap();
             assert!(info.is_root());
         }
 
@@ -442,7 +442,7 @@ mod tests {
         #[test]
         fn root_has_no_children_initially() {
             let g = GvGraph::<u8, u32, 8>::new(make_config());
-            let ch = g.gnode_children(g.gtree.root).unwrap();
+            let ch = g.gnode_children(g.gtree.nodes.root).unwrap();
             assert!(ch.left.is_none());
             assert!(ch.right.is_none());
         }
@@ -464,7 +464,7 @@ mod tests {
         #[test]
         fn node_is_not_ancestor_of_itself() {
             let g = GvGraph::<u8, u32, 8>::new(make_config());
-            assert!(!g.is_ancestor_of(g.gtree.root, g.gtree.root));
+            assert!(!g.is_ancestor_of(g.gtree.nodes.root, g.gtree.nodes.root));
         }
 
         #[test]
@@ -472,7 +472,7 @@ mod tests {
             let g = GvGraph::<u8, u32, 8>::new(make_config());
             use crate::handle::GNodeId;
             let unoccupied = GNodeId::from_index(999);
-            assert!(!g.is_ancestor_of(unoccupied, g.gtree.root));
+            assert!(!g.is_ancestor_of(unoccupied, g.gtree.nodes.root));
         }
     }
 
@@ -581,7 +581,7 @@ mod tests {
             // First obs: bootstrap split with odd domain (u8/N=8) → unequal-width children
             // left=[0,127) width=127 depth=2, right=[127,255] width=128 depth=1 → mismatch → None
             g.observe(64u8, 3u32);
-            let result = g.gtree.nodes.uniform_contour_depth_of(g.gtree.root, 8);
+            let result = g.gtree.nodes.uniform_contour_depth_of(g.gtree.nodes.root, 8);
             assert_eq!(result, None);
         }
     }

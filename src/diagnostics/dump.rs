@@ -74,8 +74,8 @@ pub fn dump_gtree<C: Coordinate, V: Accumulator + Inspectable, const N: u32>(
     writeln!(
         out,
         "═══ G-Tree dump (root=GNodeId({}), {} nodes) ═══",
-        graph.gtree.root.index(),
-        graph.gtree.node_count
+        graph.gtree.nodes.root.index(),
+        graph.gtree.nodes.node_count
     )
     .unwrap();
 

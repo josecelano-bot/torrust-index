@@ -148,10 +148,10 @@ mod tests {
         fn no_split_when_sum_at_threshold() {
             // delta=2 equals split_threshold, condition is >, not >=
             let mut g = fresh_graph();
-            let n0 = g.gtree.node_count;
+            let n0 = g.gtree.nodes.node_count;
             g.observe(64u8, 2u32);
             assert_eq!(
-                g.gtree.node_count, n0,
+                g.gtree.nodes.node_count, n0,
                 "must not split at exactly threshold"
             );
         }
@@ -159,26 +159,26 @@ mod tests {
         #[test]
         fn no_split_when_sum_below_threshold() {
             let mut g = fresh_graph();
-            let n0 = g.gtree.node_count;
+            let n0 = g.gtree.nodes.node_count;
             g.observe(64u8, 1u32);
-            assert_eq!(g.gtree.node_count, n0);
+            assert_eq!(g.gtree.nodes.node_count, n0);
         }
 
         #[test]
         fn bootstrap_split_increases_node_count_by_two() {
             // sum > split_threshold on root triggers bootstrap_split
             let mut g = fresh_graph();
-            let n0 = g.gtree.node_count;
+            let n0 = g.gtree.nodes.node_count;
             g.observe(64u8, 3u32);
-            assert_eq!(g.gtree.node_count, n0 + 2);
+            assert_eq!(g.gtree.nodes.node_count, n0 + 2);
         }
 
         #[test]
         fn bootstrap_split_increases_terminal_count_by_one() {
             let mut g = fresh_graph();
-            let t0 = g.gtree.terminal_count;
+            let t0 = g.gtree.nodes.terminal_count;
             g.observe(64u8, 3u32);
-            assert_eq!(g.gtree.terminal_count, t0 + 1);
+            assert_eq!(g.gtree.nodes.terminal_count, t0 + 1);
         }
 
         #[test]
@@ -187,9 +187,9 @@ mod tests {
             // child triggers catalytic split.
             let mut g = fresh_graph();
             g.observe(32u8, 3u32); // bootstrap split — left child covers [0,128)
-            let n1 = g.gtree.node_count;
+            let n1 = g.gtree.nodes.node_count;
             g.observe(32u8, 3u32); // catalytic split of the left child
-            assert!(g.gtree.node_count > n1);
+            assert!(g.gtree.nodes.node_count > n1);
         }
 
         #[test]
@@ -198,12 +198,12 @@ mod tests {
             // attempt_split on the root is a no-op (early return).
             let mut g = fresh_graph();
             g.observe(64u8, 3u32); // bootstrap — root now has children
-            let n1 = g.gtree.node_count;
+            let n1 = g.gtree.nodes.node_count;
             // Observing the root coordinate again should not double-split the root.
             // A further split (if any) would happen on a child, not the root.
             g.observe(128u8, 3u32); // different half — may split the right child
             // node_count may grow (child splits) but the root is not split again
-            assert!(g.gtree.node_count >= n1);
+            assert!(g.gtree.nodes.node_count >= n1);
         }
 
         #[test]
@@ -213,10 +213,10 @@ mod tests {
             // must be a no-op (it returns immediately).
             let mut g = fresh_graph();
             g.observe(64u8, 3u32); // bootstrap — g_root becomes Internal
-            let root = g.gtree.root;
-            let n_before = g.gtree.node_count;
+            let root = g.gtree.nodes.root;
+            let n_before = g.gtree.nodes.node_count;
             g.attempt_split(root);
-            assert_eq!(g.gtree.node_count, n_before);
+            assert_eq!(g.gtree.nodes.node_count, n_before);
         }
     }
 }

@@ -47,7 +47,7 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
     }
 
     pub(super) fn allocate_split_children(&mut self, g_id: GNodeId) -> SplitChildren {
-        let (left_id, right_id) = self.gtree.allocate_children(g_id);
+        let (left_id, right_id) = self.gtree.nodes.allocate_children(g_id);
         let left_entry_id = alloc_v_entry(&mut self.vtree, &mut self.gtree, left_id);
         let right_entry_id = alloc_v_entry(&mut self.vtree, &mut self.gtree, right_id);
 
@@ -78,7 +78,7 @@ pub(super) fn alloc_v_entry<C: Coordinate, V: Accumulator, const N: u32>(
 ) -> VNodeId {
     let e = VNode::new_entry(V::zero(), None, gnode, true, true);
     let e_id = VNodeId::from_index(vtree.nodes.alloc(e));
-    gtree.assign_entry(gnode, e_id);
+    gtree.nodes.assign_entry(gnode, e_id);
     e_id
 }
 

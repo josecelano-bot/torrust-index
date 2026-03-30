@@ -31,7 +31,7 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32, T: PlateauTracki
         use crate::spatial::plateau::basis_edge_of;
 
         let mut basis: Vec<(BasisEdge<C>, u32, C, C, V)> = Vec::new();
-        let mut stack = vec![self.gtree.root];
+        let mut stack = vec![self.gtree.nodes.root];
         while let Some(gid) = stack.pop() {
             let g = self.gtree.nodes.get(gid.index());
             match g.state() {

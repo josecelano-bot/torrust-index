@@ -147,6 +147,20 @@ impl<C: Copy, V: Copy> GNode<C, V> {
         }
     }
 
+    #[inline]
+    pub const fn assign_entry(&mut self, vid: VNodeId) {
+        self.entry = Some(vid);
+    }
+
+    #[inline]
+    pub const fn clear_entry(&mut self) {
+        self.entry = None;
+    }
+}
+
+/// Test-only helpers for `GNode<C, V>` (first group: mutation helpers).
+#[cfg(test)]
+impl<C: Copy, V: Copy> GNode<C, V> {
     /// Replaces the child id `old` with `new` in whichever slot currently
     /// contains `old`.
     #[inline]
@@ -165,17 +179,8 @@ impl<C: Copy, V: Copy> GNode<C, V> {
     pub fn clear_child(&mut self, child: GNodeId) {
         self.detach_child(child);
     }
-
-    #[inline]
-    pub const fn assign_entry(&mut self, vid: VNodeId) {
-        self.entry = Some(vid);
-    }
-
-    #[inline]
-    pub const fn clear_entry(&mut self) {
-        self.entry = None;
-    }
 }
+
 
 impl<C, V> GNode<C, V> {
     #[inline]
@@ -196,6 +201,44 @@ impl<C, V> GNode<C, V> {
 
     #[inline]
     #[must_use]
+    pub const fn range(&self) -> CoordinateRange<C>
+    where
+        C: crate::traits::Coordinate,
+    {
+        CoordinateRange::new(self.lo, self.hi)
+    }
+
+    #[inline]
+    #[must_use]
+    pub const fn is_semi_internal(&self) -> bool {
+        matches!(self.state(), GState::SemiInternal)
+    }
+
+    #[must_use]
+    pub fn uncovered_range(&self) -> Option<(C, C)>
+    where
+        C: crate::traits::Coordinate,
+    {
+        match (self.left, self.right) {
+            (None, None) => Some((self.lo, self.hi)),
+            (Some(_), None) => {
+                let mid = C::midpoint(self.lo, self.hi);
+                Some((mid, self.hi))
+            }
+            (None, Some(_)) => {
+                let mid = C::midpoint(self.lo, self.hi);
+                Some((self.lo, mid))
+            }
+            (Some(_), Some(_)) => None,
+        }
+    }
+}
+
+/// Test-only helpers for `GNode<C, V>` (second group: analysis helpers).
+#[cfg(test)]
+impl<C, V> GNode<C, V> {
+    #[inline]
+    #[must_use]
     pub const fn is_leaf(&self) -> bool {
         self.is_terminal()
     }
@@ -203,6 +246,13 @@ impl<C, V> GNode<C, V> {
     #[inline]
     #[must_use]
     pub const fn has_children(&self) -> bool {
+        self.left.is_some() || self.right.is_some()
+    }
+
+    #[inline]
+    #[must_use]
+    #[allow(dead_code)]
+    pub const fn has_dependents(&self) -> bool {
         self.left.is_some() || self.right.is_some()
     }
 
@@ -220,28 +270,6 @@ impl<C, V> GNode<C, V> {
             left: self.left,
             right: self.right,
         }
-    }
-
-    #[inline]
-    #[must_use]
-    pub const fn range(&self) -> CoordinateRange<C>
-    where
-        C: crate::traits::Coordinate,
-    {
-        CoordinateRange::new(self.lo, self.hi)
-    }
-
-    #[inline]
-    #[must_use]
-    #[allow(dead_code)]
-    pub const fn has_dependents(&self) -> bool {
-        self.left.is_some() || self.right.is_some()
-    }
-
-    #[inline]
-    #[must_use]
-    pub const fn is_semi_internal(&self) -> bool {
-        matches!(self.state(), GState::SemiInternal)
     }
 
     /// Returns a copy of this node with both child slots set.
@@ -271,26 +299,8 @@ impl<C, V> GNode<C, V> {
             _ => Ok(()),
         }
     }
-
-    #[must_use]
-    pub fn uncovered_range(&self) -> Option<(C, C)>
-    where
-        C: crate::traits::Coordinate,
-    {
-        match (self.left, self.right) {
-            (None, None) => Some((self.lo, self.hi)),
-            (Some(_), None) => {
-                let mid = C::midpoint(self.lo, self.hi);
-                Some((mid, self.hi))
-            }
-            (None, Some(_)) => {
-                let mid = C::midpoint(self.lo, self.hi);
-                Some((self.lo, mid))
-            }
-            (Some(_), Some(_)) => None,
-        }
-    }
 }
+
 
 impl<C: Default, V: Default> Default for GNode<C, V> {
     fn default() -> Self {

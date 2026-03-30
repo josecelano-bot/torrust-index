@@ -346,7 +346,7 @@ mod tests {
             let mut basis = Vec::new();
             // Root interval is [0, 255), so [255, 255) has no overlap.
             g.decompose_basis(
-                g.gtree.root,
+                g.gtree.nodes.root,
                 CoordinateRange::new(255u8, 255u8),
                 &mut basis,
             );
@@ -359,7 +359,7 @@ mod tests {
             // Create two children under root.
             g.observe(64u8, 3u32);
 
-            let root = g.gtree.root;
+            let root = g.gtree.nodes.root;
             let evict_child = g
                 .gtree
                 .nodes

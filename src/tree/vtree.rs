@@ -131,7 +131,7 @@ impl<V: Accumulator> VTree<V> {
         .entered();
 
         if let VKind::Entry { gnode, .. } = self.nodes.get(v_id.index()).kind() {
-            gtree.clear_entry(*gnode);
+            gtree.nodes.clear_entry(*gnode);
         }
 
         let parent = self.nodes.get(v_id.index()).parent();

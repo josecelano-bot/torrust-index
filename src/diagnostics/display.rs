@@ -2,15 +2,14 @@
 
 use std::fmt;
 
-use crate::arena::Arena;
+use crate::tree::gtree::GNodeTree;
 #[cfg(feature = "dynamic-contour-tracking")]
 use crate::graph::GvGraph;
 use crate::handle::GNodeId;
-use crate::nodes::gnode::GNode;
 use crate::traits::{Accumulator, Coordinate, Inspectable};
 
 pub struct Gn<'a, C: Coordinate, V: Accumulator + Inspectable>(
-    pub &'a Arena<GNode<C, V>>,
+    pub &'a GNodeTree<C, V>,
     pub GNodeId,
 );
 

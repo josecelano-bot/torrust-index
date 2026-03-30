@@ -118,7 +118,7 @@ impl<C: DiscreteCoordinate, V: Accumulator + Proratable + Inspectable, const N: 
 
         let mut basis = Vec::new();
         self.decompose_basis(
-            self.gtree.root,
+            self.gtree.nodes.root,
             CoordinateRange::new(start.0, end.0),
             &mut basis,
         );

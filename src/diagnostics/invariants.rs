@@ -337,7 +337,7 @@ fn check_clean_accounting<C: Coordinate, V: Accumulator + Inspectable, const N: 
     }
     let g_root_sum = graph
         .gtree.nodes
-        .get(graph.gtree.root.index())
+        .get(graph.gtree.nodes.root.index())
         .sum()
         .to_f64_approx();
     if total_v != g_root_sum && (total_v - g_root_sum).abs() > 1e-9 {
@@ -463,10 +463,10 @@ fn check_node_count_consistency<C: Coordinate, V: Accumulator + Inspectable, con
     errors: &mut Vec<String>,
 ) {
     let actual = graph.gtree.nodes.count();
-    let expected = graph.gtree.node_count;
+    let expected = graph.gtree.nodes.node_count;
     if actual != expected {
         errors.push(format!(
-            "Node count: graph.gtree.node_count={expected}, arena count={actual}"
+            "Node count: graph.gtree.nodes.node_count={expected}, arena count={actual}"
         ));
     }
 }
@@ -481,10 +481,10 @@ fn check_terminal_count_consistency<C: Coordinate, V: Accumulator + Inspectable,
         .iter_occupied()
         .filter(|(_, g)| g.is_terminal())
         .count() as u32;
-    let expected = graph.gtree.terminal_count;
+    let expected = graph.gtree.nodes.terminal_count;
     if actual != expected {
         errors.push(format!(
-            "Terminal count: graph.gtree.terminal_count={expected}, arena walk={actual}"
+            "Terminal count: graph.gtree.nodes.terminal_count={expected}, arena walk={actual}"
         ));
     }
 }
@@ -494,10 +494,10 @@ fn check_hard_budget<C: Coordinate, V: Accumulator + Inspectable, const N: u32>(
     errors: &mut Vec<String>,
 ) {
     if let Some(budget) = graph.config().structural.budget {
-        if graph.gtree.node_count as usize > budget {
+        if graph.gtree.nodes.node_count as usize > budget {
             errors.push(format!(
                 "Hard budget violated (ADR-M-018): node_count ({}) > budget ({})",
-                graph.gtree.node_count,
+                graph.gtree.nodes.node_count,
                 budget
             ));
         }
@@ -566,7 +566,7 @@ mod tests {
     #[test]
     fn check_node_count_consistency_reports_mismatch() {
         let mut g: G = GvGraph::new(make_config(None));
-        g.gtree.node_count += 1;
+        g.gtree.nodes.node_count += 1;
 
         let mut errors = Vec::new();
         check_node_count_consistency(&g, &mut errors);
@@ -580,7 +580,7 @@ mod tests {
     #[test]
     fn check_terminal_count_consistency_reports_mismatch() {
         let mut g: G = GvGraph::new(make_config(None));
-        g.gtree.terminal_count += 1;
+        g.gtree.nodes.terminal_count += 1;
 
         let mut errors = Vec::new();
         check_terminal_count_consistency(&g, &mut errors);
@@ -638,7 +638,7 @@ mod tests {
     #[test]
     fn check_hard_budget_reports_exceeded_budget() {
         let mut g: G = GvGraph::new(make_config(Some(30)));
-        g.gtree.node_count = 31;
+        g.gtree.nodes.node_count = 31;
 
         let mut errors = Vec::new();
         check_hard_budget(&g, &mut errors);
@@ -657,8 +657,8 @@ mod tests {
         g.observe(64u8, 3u32); // create structural V-root and multiple G-nodes
 
         // Break accounting counters.
-        g.gtree.node_count += 2;
-        g.gtree.terminal_count += 1;
+        g.gtree.nodes.node_count += 2;
+        g.gtree.nodes.terminal_count += 1;
 
         // Break depth-gate relation.
         g.gtree.live_depth_create = g.gtree.live_depth_evict;
@@ -672,7 +672,7 @@ mod tests {
         let root_entry = g
             .gtree
             .nodes
-            .get(g.gtree.root.index())
+            .get(g.gtree.nodes.root.index())
             .entry()
             .expect("root must have entry");
         {
@@ -726,7 +726,7 @@ mod tests {
         let root_entry = g
             .gtree
             .nodes
-            .get(g.gtree.root.index())
+            .get(g.gtree.nodes.root.index())
             .entry()
             .expect("root must have entry");
         let other_entry = g

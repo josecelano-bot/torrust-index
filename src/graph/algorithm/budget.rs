@@ -6,9 +6,9 @@ use crate::traits::{Accumulator, Coordinate, Inspectable, PlateauTracking};
 impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N> {
     pub(crate) fn handle_legacy_promotes(&mut self, new_gnodes: &[GNodeId]) {
         for &_new_gid in new_gnodes {
-            self.gtree.node_count += 1;
+            self.gtree.nodes.node_count += 1;
 
-            self.gtree.terminal_count += 1;
+            self.gtree.nodes.terminal_count += 1;
         }
         self.plateau_after_legacy_promotes_batched(new_gnodes);
     }
@@ -17,7 +17,7 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
         let Some(budget) = self.config.structural.budget else {
             return;
         };
-        let count = self.gtree.node_count as usize;
+        let count = self.gtree.nodes.node_count as usize;
 
         let convergence_bound = 2 * (self.gtree.live_depth_create as usize).saturating_sub(1);
         let required_headroom = self.gtree.headroom.max(convergence_bound);
@@ -91,7 +91,7 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
                 ..
             } => {
                 *is_evictable
-                    && *gnode != self.gtree.root
+                    && *gnode != self.gtree.nodes.root
                     && self.vtree.depth(v_id) > self.gtree.live_depth_evict
             }
         }
@@ -100,7 +100,7 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
     fn evict_candidates(&mut self, stop_at: Option<usize>) -> u32 {
         let candidates = self
             .vtree
-            .scan_for_candidates(self.gtree.live_depth_evict, self.gtree.root);
+            .scan_for_candidates(self.gtree.live_depth_evict, self.gtree.nodes.root);
         let _span =
             tracing::debug_span!("evict_batch", candidate_count = candidates.len(),).entered();
         let mut evicted: u32 = 0;
