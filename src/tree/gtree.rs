@@ -1,3 +1,5 @@
+use std::ops::{Deref, DerefMut};
+
 use crate::arena::Arena;
 use crate::handle::GNodeId;
 use crate::nodes::gnode::GNode;
@@ -5,13 +7,15 @@ use crate::handle::VNodeId;
 use crate::spatial::range::CoordinateRange;
 use crate::traits::{Accumulator, Coordinate};
 
-// ── GTree ────────────────────────────────────────────────────────────────────
+// ── GNodeTree ────────────────────────────────────────────────────────────────
 
-/// The G-tree: a binary spatial-partition tree whose leaves are the observable
-/// coordinate ranges.  Owns the node arena plus the operational parameters
-/// that govern growth and eviction.
+/// Structural owner of the G-node set: backing storage, root identity, and
+/// intrinsic structural statistics.
+///
+/// All fields here depend only on the node set itself.  Tree-level policy
+/// parameters (depth limits, headroom, soft limit) live on [`GTree`].
 #[derive(Debug, Clone)]
-pub struct GTree<C: Coordinate, V: Accumulator, const N: u32> {
+pub struct GNodeTree<C: Coordinate, V: Accumulator> {
     /// Backing store for all G-nodes.
     pub(crate) nodes: Arena<GNode<C, V>>,
     /// Root G-node (always present).
@@ -20,6 +24,33 @@ pub struct GTree<C: Coordinate, V: Accumulator, const N: u32> {
     pub(crate) node_count: u32,
     /// Number of terminal (leaf) G-nodes.
     pub(crate) terminal_count: u32,
+}
+
+/// Transitional adapter: allows `gnodes_ref.get(...)` and similar arena-style
+/// calls to continue working on `&GNodeTree` until they are migrated to
+/// explicit structural methods.  Targeted for removal in Phase 4.
+impl<C: Coordinate, V: Accumulator> Deref for GNodeTree<C, V> {
+    type Target = Arena<GNode<C, V>>;
+    fn deref(&self) -> &Self::Target {
+        &self.nodes
+    }
+}
+
+impl<C: Coordinate, V: Accumulator> DerefMut for GNodeTree<C, V> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.nodes
+    }
+}
+
+// ── GTree ────────────────────────────────────────────────────────────────────
+
+/// The G-tree: a binary spatial-partition tree whose leaves are the observable
+/// coordinate ranges.  Wraps [`GNodeTree`] and adds policy parameters that
+/// constrain which trees are valid in the domain context.
+#[derive(Debug, Clone)]
+pub struct GTree<C: Coordinate, V: Accumulator, const N: u32> {
+    /// Structural node container (backing store, root, counters).
+    pub(crate) nodes: GNodeTree<C, V>,
     /// Maximum depth at which live V-entries can exist before eviction.
     pub(crate) live_depth_evict: u32,
     /// Maximum depth at which new V-entries are created.
@@ -30,6 +61,22 @@ pub struct GTree<C: Coordinate, V: Accumulator, const N: u32> {
     pub(crate) headroom: usize,
     /// Soft node-count limit that triggers eviction (`budget - headroom`).
     pub(crate) soft_limit: Option<usize>,
+}
+
+/// Transitional adapter: exposes `GNodeTree` fields (`root`, `node_count`,
+/// `terminal_count`) directly on `GTree` without field access changes at call
+/// sites.  Targeted for removal in Phase 4.
+impl<C: Coordinate, V: Accumulator, const N: u32> Deref for GTree<C, V, N> {
+    type Target = GNodeTree<C, V>;
+    fn deref(&self) -> &Self::Target {
+        &self.nodes
+    }
+}
+
+impl<C: Coordinate, V: Accumulator, const N: u32> DerefMut for GTree<C, V, N> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.nodes
+    }
 }
 
 impl<C: Coordinate, V: Accumulator, const N: u32> GTree<C, V, N> {

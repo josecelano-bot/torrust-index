@@ -706,9 +706,10 @@ mod tests {
     #[test]
     fn check_g_i4_entry_consistency_reports_unoccupied_entry_id() {
         let mut g: G = GvGraph::new(make_config(None));
+        let root = g.gtree.nodes.root;
         g.gtree
             .nodes
-            .get_mut(g.gtree.root.index())
+            .get_mut(root.index())
             .assign_entry(VNodeId::from_index(9_999));
 
         let mut errors = Vec::new();

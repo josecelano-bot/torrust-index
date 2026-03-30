@@ -553,17 +553,19 @@ mod tests {
     mod vtree_remove_leaf_fn {
         use super::*;
         use crate::nodes::gnode::GNode;
-        use crate::tree::gtree::GTree;
+        use crate::tree::gtree::{GNodeTree, GTree};
 
         /// Minimal G-tree with one Terminal `GNode` at index 0.
         fn gtree_with_one_node() -> GTree<u8, u32, 8> {
             let mut gnodes: Arena<GNode<u8, u32>> = Arena::new();
             let root = GNodeId::from_index(gnodes.alloc(GNode::new_leaf(0u8, 255u8, 0u32, None)));
             GTree {
-                nodes: gnodes,
-                root,
-                node_count: 1,
-                terminal_count: 1,
+                nodes: GNodeTree {
+                    nodes: gnodes,
+                    root,
+                    node_count: 1,
+                    terminal_count: 1,
+                },
                 live_depth_evict: 5,
                 live_depth_create: 3,
                 depth_buffer: 2,

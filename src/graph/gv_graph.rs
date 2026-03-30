@@ -5,7 +5,7 @@ use crate::nodes::gnode::{GNode, GNodeChildren};
 use crate::nodes::vnode::VNode;
 use crate::spatial::node::Node;
 use crate::traits::{Accumulator, Coordinate, PlateauTracking};
-use crate::tree::gtree::GTree;
+use crate::tree::gtree::{GNodeTree, GTree};
 use crate::tree::vtree::{VNodeTree, VTree};
 
 use super::config::Config;
@@ -127,10 +127,12 @@ fn build_core<C: Coordinate, V: Accumulator, const N: u32>(
     gnodes.get_mut(g_root.index()).assign_entry(v_root_id);
 
     let gtree = GTree {
-        nodes: gnodes,
-        root: g_root,
-        node_count: 1,
-        terminal_count: 1,
+        nodes: GNodeTree {
+            nodes: gnodes,
+            root: g_root,
+            node_count: 1,
+            terminal_count: 1,
+        },
         live_depth_evict: config.structural.depth_evict,
         live_depth_create: config.structural.depth_create,
         depth_buffer,
@@ -213,13 +215,13 @@ impl<C: Coordinate, V: Accumulator, const N: u32, T: PlateauTracking<C, V>> GvGr
     #[must_use]
     #[inline]
     pub const fn node_count(&self) -> u32 {
-        self.gtree.node_count
+        self.gtree.nodes.node_count
     }
 
     #[must_use]
     #[inline]
     pub const fn terminal_count(&self) -> u32 {
-        self.gtree.terminal_count
+        self.gtree.nodes.terminal_count
     }
 
     #[must_use]
@@ -237,7 +239,7 @@ impl<C: Coordinate, V: Accumulator, const N: u32, T: PlateauTracking<C, V>> GvGr
     #[must_use]
     #[inline]
     pub const fn g_root(&self) -> GNodeId {
-        self.gtree.root
+        self.gtree.nodes.root
     }
 
     #[must_use]
@@ -534,7 +536,7 @@ mod tests {
         fn terminal_root_returns_some_depth() {
             let g = GvGraph::<u8, u32, 8>::new(make_config());
             // Fresh graph root is Terminal
-            let result = uniform_contour_depth_of(&g.gtree.nodes, g.gtree.root, 8);
+            let result = uniform_contour_depth_of(&g.gtree.nodes, g.gtree.nodes.root, 8);
             assert!(result.is_some());
         }
 
@@ -543,16 +545,17 @@ mod tests {
             let mut g = GvGraph::<u8, u32, 8>::new(make_config());
             // Manually give the root a single (fake) left child → SemiInternal
             let fake_child = GNodeId::from_index(999);
+            let root = g.gtree.nodes.root;
             g.gtree
                 .nodes
-                .get_mut(g.gtree.root.index())
+                .get_mut(root.index())
                 .link_left(fake_child);
-            let result = uniform_contour_depth_of(&g.gtree.nodes, g.gtree.root, 8);
+            let result = uniform_contour_depth_of(&g.gtree.nodes, root, 8);
             assert_eq!(result, None);
             // Restore so subsequent arena operations are not corrupted
             g.gtree
                 .nodes
-                .get_mut(g.gtree.root.index())
+                .get_mut(root.index())
                 .clear_child(fake_child);
         }
 
