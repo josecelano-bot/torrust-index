@@ -3,7 +3,7 @@ use crate::arena::Arena;
 use crate::handle::GNodeId;
 use crate::nodes::gnode::GNode;
 use crate::traits::{Accumulator, Coordinate};
-use crate::tree::gtree::gnode_depth_from_interval;
+use crate::tree::gtree::gnode_depth_from_range;
 
 impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
     fn catalytic_split_depths(
@@ -17,16 +17,8 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
             .right()
             .expect("catalytic_split: g_id must have a right child");
 
-        let left_depth = gnode_depth_from_interval(
-            gnodes.get(left_id.index()).lo(),
-            gnodes.get(left_id.index()).hi(),
-            self.n_bits,
-        );
-        let right_depth = gnode_depth_from_interval(
-            gnodes.get(right_id.index()).lo(),
-            gnodes.get(right_id.index()).hi(),
-            self.n_bits,
-        );
+        let left_depth = gnode_depth_from_range(gnodes.get(left_id.index()).range(), self.n_bits);
+        let right_depth = gnode_depth_from_range(gnodes.get(right_id.index()).range(), self.n_bits);
 
         (right_id, left_depth, right_depth)
     }

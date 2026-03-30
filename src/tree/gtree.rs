@@ -2,6 +2,7 @@ use crate::arena::Arena;
 use crate::handle::GNodeId;
 use crate::nodes::gnode::GNode;
 use crate::handle::VNodeId;
+use crate::spatial::range::CoordinateRange;
 use crate::traits::{Accumulator, Coordinate};
 
 // ── GTree ────────────────────────────────────────────────────────────────────
@@ -226,7 +227,13 @@ impl<C: Coordinate, V: Accumulator, const N: u32> GTree<C, V, N> {
 #[must_use]
 #[inline]
 pub fn gnode_depth_from_interval<C: Coordinate>(lo: C, hi: C, n: u32) -> u32 {
-    let width_f64 = C::width(lo, hi).to_f64();
+    gnode_depth_from_range(CoordinateRange::new(lo, hi), n)
+}
+
+#[must_use]
+#[inline]
+pub fn gnode_depth_from_range<C: Coordinate>(range: CoordinateRange<C>, n: u32) -> u32 {
+    let width_f64 = C::width(range.lo, range.hi).to_f64();
     debug_assert!(
         width_f64 > 0.0,
         "gnode_depth_from_interval: zero-width interval"
@@ -251,7 +258,7 @@ pub fn uniform_contour_depth_of<C: Coordinate, V: Accumulator>(
     use crate::nodes::gnode::GState;
     let g = gnodes.get(gid.index());
     match g.state() {
-        GState::Terminal => Some(gnode_depth_from_interval(g.lo(), g.hi(), n)),
+        GState::Terminal => Some(gnode_depth_from_range(g.range(), n)),
         GState::SemiInternal => None,
         GState::Internal => {
             let ld = g

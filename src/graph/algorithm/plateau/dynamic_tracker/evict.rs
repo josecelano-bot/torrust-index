@@ -2,8 +2,9 @@ use super::DynamicPlateauTracker;
 use crate::arena::Arena;
 use crate::handle::GNodeId;
 use crate::nodes::gnode::{GNode, GState};
+use crate::spatial::range::CoordinateRange;
 use crate::traits::{Accumulator, Coordinate};
-use crate::tree::gtree::gnode_depth_from_interval;
+use crate::tree::gtree::gnode_depth_from_range;
 
 impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
     pub(super) fn on_evict_impl(
@@ -57,7 +58,7 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
         // ── Phase 3: Compute parent depth after eviction ─────────────────────────
         let parent_depth = match parent_state_after {
             GState::Terminal | GState::SemiInternal => {
-                gnode_depth_from_interval(parent_lo, parent_hi, self.n_bits)
+                gnode_depth_from_range(CoordinateRange::new(parent_lo, parent_hi), self.n_bits)
             }
             GState::Internal => {
                 unreachable!("evict_tip: parent cannot remain Internal after eviction")

@@ -3,7 +3,7 @@ use crate::arena::Arena;
 use crate::handle::GNodeId;
 use crate::nodes::gnode::{GNode, GState};
 use crate::traits::{Accumulator, Coordinate};
-use crate::tree::gtree::gnode_depth_from_interval;
+use crate::tree::gtree::gnode_depth_from_range;
 
 impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
     pub(super) fn on_legacy_promotes_batched_impl(
@@ -30,7 +30,7 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
             let parent_id = ng
                 .parent()
                 .expect("legacy_promote child must have a parent");
-            let child_depth = gnode_depth_from_interval(ng.lo(), ng.hi(), self.n_bits);
+            let child_depth = gnode_depth_from_range(ng.range(), self.n_bits);
 
             let pg = gnodes.get(parent_id.index());
             let existing_child_id = if pg.left() == Some(new_gid) {
@@ -47,7 +47,7 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
                 let ec = gnodes.get(ec_id.index());
                 if ec.state() != GState::Internal && self.plateau_basis.plateau_key(ec_id).is_none()
                 {
-                    let existing_depth = gnode_depth_from_interval(ec.lo(), ec.hi(), self.n_bits);
+                    let existing_depth = gnode_depth_from_range(ec.range(), self.n_bits);
                     to_place.push((ec_id, existing_depth));
                 }
             }

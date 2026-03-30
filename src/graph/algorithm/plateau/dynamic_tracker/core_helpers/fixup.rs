@@ -4,7 +4,7 @@ use crate::handle::GNodeId;
 use crate::nodes::gnode::{GNode, GState};
 use crate::spatial::plateau::BasisEdge;
 use crate::traits::{Accumulator, Coordinate};
-use crate::tree::gtree::{gnode_depth_from_interval, uniform_contour_depth_of};
+use crate::tree::gtree::{gnode_depth_from_range, uniform_contour_depth_of};
 
 impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
     pub(in super::super) fn recompute_plateau(&mut self, gnodes: &Arena<GNode<C, V>>, key: &BasisEdge<C>) {
@@ -31,10 +31,10 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
 
             let d = match g.state() {
                 GState::Terminal | GState::SemiInternal => {
-                    gnode_depth_from_interval(g.lo(), g.hi(), self.n_bits)
+                    gnode_depth_from_range(g.range(), self.n_bits)
                 }
                 GState::Internal => uniform_contour_depth_of(gnodes, gid, self.n_bits)
-                    .unwrap_or_else(|| gnode_depth_from_interval(g.lo(), g.hi(), self.n_bits) + 1),
+                    .unwrap_or_else(|| gnode_depth_from_range(g.range(), self.n_bits) + 1),
             };
             depth = depth.max(d);
         }
@@ -88,11 +88,11 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
                     let g = gnodes.get(gid.index());
                     let d = match g.state() {
                         GState::Terminal | GState::SemiInternal => {
-                            gnode_depth_from_interval(g.lo(), g.hi(), self.n_bits)
+                            gnode_depth_from_range(g.range(), self.n_bits)
                         }
                         GState::Internal => uniform_contour_depth_of(gnodes, gid, self.n_bits)
                             .unwrap_or_else(|| {
-                                gnode_depth_from_interval(g.lo(), g.hi(), self.n_bits) + 1
+                                gnode_depth_from_range(g.range(), self.n_bits) + 1
                             }),
                     };
                     displaced.push((gid, d));
@@ -150,9 +150,9 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
         let boundary_key = basis_edge_of(bg);
         let boundary_depth = match bg.state() {
             GState::Terminal | GState::SemiInternal => {
-                gnode_depth_from_interval(bg.lo(), bg.hi(), self.n_bits)
+                gnode_depth_from_range(bg.range(), self.n_bits)
             }
-            GState::Internal => gnode_depth_from_interval(bg.lo(), bg.hi(), self.n_bits) + 1,
+            GState::Internal => gnode_depth_from_range(bg.range(), self.n_bits) + 1,
         };
         let b_lo = bg.lo();
         let b_hi = bg.hi();

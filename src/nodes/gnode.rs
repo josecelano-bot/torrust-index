@@ -1,6 +1,7 @@
 //! Core G-tree node representation and local structural helpers.
 
 use crate::handle::{GNodeId, VNodeId};
+use crate::spatial::range::CoordinateRange;
 
 #[doc(hidden)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -219,6 +220,15 @@ impl<C, V> GNode<C, V> {
             left: self.left,
             right: self.right,
         }
+    }
+
+    #[inline]
+    #[must_use]
+    pub const fn range(&self) -> CoordinateRange<C>
+    where
+        C: crate::traits::Coordinate,
+    {
+        CoordinateRange::new(self.lo, self.hi)
     }
 
     #[inline]
@@ -462,6 +472,7 @@ mod tests {
     // ── GNode helpers ───────────────────────────────────────────────────
     mod helpers {
         use super::*;
+        use crate::spatial::range::CoordinateRange;
 
         #[test]
         fn is_leaf_matches_terminal_state() {
@@ -509,6 +520,12 @@ mod tests {
             assert_eq!(n.left(), Some(l));
             assert_eq!(n.right(), Some(r));
             assert_eq!(n.state(), GState::Internal);
+        }
+
+        #[test]
+        fn range_returns_node_bounds() {
+            let n = make_node(None, None);
+            assert_eq!(n.range(), CoordinateRange::new(0u8, 16u8));
         }
 
         #[test]

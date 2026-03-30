@@ -4,7 +4,7 @@ use crate::handle::GNodeId;
 use crate::nodes::gnode::{GNode, GState};
 use crate::spatial::plateau::BasisEdge;
 use crate::traits::{Accumulator, Coordinate};
-use crate::tree::gtree::{gnode_depth_from_interval, uniform_contour_depth_of};
+use crate::tree::gtree::{gnode_depth_from_range, uniform_contour_depth_of};
 
 impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
     fn basis_ids_snapshot(&self) -> Vec<GNodeId> {
@@ -31,14 +31,14 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
         elems: &mut Vec<(GNodeId, BasisEdge<C>, u32, C, C, V)>,
         stack: &mut Vec<GNodeId>,
     ) {
-        let g = gnodes.get(nid.index());
+        let g: &GNode<C, V> = gnodes.get(nid.index());
         match g.state() {
             GState::Terminal => {
-                let depth = gnode_depth_from_interval(g.lo(), g.hi(), self.n_bits);
+                let depth = gnode_depth_from_range(g.range(), self.n_bits);
                 self.push_normalize_element(gnodes, elems, nid, depth);
             }
             GState::SemiInternal => {
-                let depth = gnode_depth_from_interval(g.lo(), g.hi(), self.n_bits);
+                let depth = gnode_depth_from_range(g.range(), self.n_bits);
                 self.push_normalize_element(gnodes, elems, nid, depth);
                 if let Some(left) = g.left() {
                     stack.push(left);
@@ -87,7 +87,7 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
         let g = gnodes.get(gid.index());
         match g.state() {
             GState::Terminal | GState::SemiInternal => {
-                let depth = gnode_depth_from_interval(g.lo(), g.hi(), self.n_bits);
+                let depth = gnode_depth_from_range(g.range(), self.n_bits);
                 out.push((gid, depth));
             }
             GState::Internal => {
