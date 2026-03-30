@@ -1,7 +1,7 @@
 use crate::arena::Arena;
 use crate::handle::{GNodeId, VNodeId};
-use crate::nodes::gnode::GNode;
 use crate::traits::{Accumulator, Coordinate};
+use super::gnode::GNode;
 
 /// Structural owner of the G-node set: backing storage, root identity, and
 /// intrinsic structural statistics.

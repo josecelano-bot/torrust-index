@@ -1,11 +1,12 @@
 use crate::arena::Arena;
 use crate::handle::GNodeId;
-use crate::nodes::gnode::GNode;
 use crate::spatial::range::CoordinateRange;
 use crate::traits::{Accumulator, Coordinate};
 
+pub mod gnode;
 pub(crate) mod gnode_tree;
 pub(crate) use gnode_tree::GNodeTree;
+use gnode::GNode;
 
 // ── GTree ────────────────────────────────────────────────────────────────────
 
@@ -112,7 +113,7 @@ pub fn uniform_contour_depth_of<C: Coordinate, V: Accumulator>(
     gid: GNodeId,
     n: u32,
 ) -> Option<u32> {
-    use crate::nodes::gnode::GState;
+    use self::gnode::GState;
     let g = gnodes.get(gid.index());
     match g.state() {
         GState::Terminal => Some(gnode_depth_from_range(g.range(), n)),
