@@ -1,7 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-DOCS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+DOCS_DIR="${REPO_ROOT}/docs"
+
+if ! command -v plantuml &>/dev/null; then
+    echo "ERROR: 'plantuml' is not installed or not in PATH." >&2
+    echo "       Install it first, then re-run this script." >&2
+    exit 1
+fi
 
 # Render .puml files to SVG
 plantuml -Djava.awt.headless=true -tsvg "$DOCS_DIR"/*.puml

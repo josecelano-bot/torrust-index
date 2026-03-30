@@ -17,7 +17,7 @@ pub struct EscalationContext {
 
 impl EscalationContext {
 	#[must_use]
-	pub fn new(
+	pub const fn new(
 		parent_id: VNodeId,
 		grandparent_id: VNodeId,
 		heaviest_id: VNodeId,

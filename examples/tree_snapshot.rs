@@ -35,6 +35,8 @@
 //! cargo run --example tree_snapshot
 //! ```
 
+#![allow(clippy::format_push_string)]
+
 use std::fs;
 use std::path::Path;
 

@@ -5,8 +5,8 @@
 # separate from the source .dot files.
 #
 # Usage:
-#   ./docs/snapshots/render-svg.sh          # from repo root
-#   cd docs/snapshots && ./render-svg.sh    # from the snapshots folder
+#   ./scripts/render-svg.sh                 # from repo root
+#   cd scripts && ./render-svg.sh           # from the scripts folder
 #
 # Requirements: Graphviz (https://graphviz.org/)
 #   apt:  sudo apt install graphviz
@@ -17,7 +17,9 @@ set -euo pipefail
 # Resolve the directory that contains this script, regardless of where it is
 # called from.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-OUT_DIR="${SCRIPT_DIR}/svg"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+SNAPSHOTS_DIR="${REPO_ROOT}/docs/snapshots"
+OUT_DIR="${SNAPSHOTS_DIR}/svg"
 
 if ! command -v dot &>/dev/null; then
     echo "ERROR: 'dot' (Graphviz) is not installed or not in PATH." >&2
@@ -28,10 +30,10 @@ fi
 mkdir -p "${OUT_DIR}"
 
 shopt -s nullglob
-dot_files=("${SCRIPT_DIR}"/*.dot)
+dot_files=("${SNAPSHOTS_DIR}"/*.dot)
 
 if [[ ${#dot_files[@]} -eq 0 ]]; then
-    echo "No .dot files found in ${SCRIPT_DIR}."
+    echo "No .dot files found in ${SNAPSHOTS_DIR}."
     echo "Run 'cargo run --example tree_snapshot' first to generate them."
     exit 0
 fi

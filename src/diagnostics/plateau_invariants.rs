@@ -168,7 +168,7 @@ fn tile_of<C: Coordinate, V: Accumulator>(g: &GNode<C, V>) -> (C, C) {
 }
 
 #[cfg(feature = "dynamic-contour-tracking")]
-fn is_contour_step_node(state: GState) -> bool {
+const fn is_contour_step_node(state: GState) -> bool {
     matches!(state, GState::Terminal | GState::SemiInternal)
 }
 

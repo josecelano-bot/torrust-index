@@ -77,7 +77,7 @@ mod tests {
             // → crate::traits::Rng (blanket, #[cfg(feature = "rand")]).
             let mut rng = FixedRng(1u64 << 53);
             let v = rng.next_f64();
-            assert!(v >= 0.0 && v < 1.0, "expected value in [0,1), got {v}");
+            assert!((0.0..1.0).contains(&v), "expected value in [0,1), got {v}");
         }
 
         #[test]

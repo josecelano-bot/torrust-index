@@ -185,9 +185,9 @@ mod tests {
 
     /// Config that allows depth-gate tightening.
     ///
-    /// depth_buffer = 2, headroom = 3^3 = 27, soft_limit = 30 - 27 = 3.
-    /// After the second split node_count = 5 > soft_limit = 3, so
-    /// adjust_depth_gates must tighten live_depth_evict from 4 → 3.
+    /// `depth_buffer` = 2, headroom = 3^3 = 27, `soft_limit` = 30 - 27 = 3.
+    /// After the second split `node_count` = 5 > `soft_limit` = 3, so
+    /// `adjust_depth_gates` must tighten `live_depth_evict` from 4 → 3.
     fn gate_config() -> Config<u32> {
         Config {
             split_threshold: 2,

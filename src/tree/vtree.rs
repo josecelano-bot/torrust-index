@@ -49,7 +49,7 @@ use traversal::compute_has_evictable;
 use traversal::v_depth;
 
 mod mutation;
-pub(crate) use mutation::{
+pub use mutation::{
     add_child_to_structural, remove_child_from_structural, replace_child_in_parent,
     set_entry_flags, set_has_evictable,
 };
@@ -316,7 +316,7 @@ fn recompute_v_postorder<V: Accumulator>(vnodes: &mut Arena<VNode<V>>, id: VNode
     vnodes.get_mut(id.index()).set_intensity(total);
 }
 
-pub(crate) fn propagate_evictable_flags<V: Accumulator>(
+pub fn propagate_evictable_flags<V: Accumulator>(
     vnodes: &mut Arena<VNode<V>>,
     start: VNodeId,
 ) {
@@ -392,7 +392,7 @@ fn recompute_structural_intensity<V: Accumulator>(vnodes: &mut Arena<VNode<V>>, 
 
 /// Recomputes the structural intensity of `child_id` and immediately updates
 /// the cached intensity slot in its parent (if any).
-pub(crate) fn recompute_and_sync_parent_slot<V: Accumulator>(
+pub fn recompute_and_sync_parent_slot<V: Accumulator>(
     vnodes: &mut Arena<VNode<V>>,
     child_id: VNodeId,
 ) {
@@ -496,7 +496,7 @@ mod tests {
         use super::*;
         use crate::nodes::gnode::GNode;
 
-        /// Minimal gnodes arena with one Terminal GNode at index 0.
+        /// Minimal gnodes arena with one Terminal `GNode` at index 0.
         fn gnodes_with_one_node() -> Arena<GNode<u8, u32>> {
             let mut gnodes: Arena<GNode<u8, u32>> = Arena::new();
             gnodes.alloc(GNode::new_leaf(0u8, 255u8, 0u32, None));

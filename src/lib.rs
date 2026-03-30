@@ -1,11 +1,31 @@
 #![forbid(unsafe_code)]
+#![allow(
+    clippy::approx_constant,
+    clippy::cast_possible_truncation,
+    clippy::doc_markdown,
+    clippy::double_must_use,
+    clippy::field_reassign_with_default,
+    clippy::float_cmp,
+    clippy::inline_always,
+    clippy::items_after_statements,
+    clippy::many_single_char_names,
+    clippy::match_wildcard_for_single_variants,
+    clippy::no_effect_underscore_binding,
+    clippy::or_fun_call,
+    clippy::reversed_empty_ranges,
+    clippy::self_only_used_in_recursion,
+    clippy::similar_names,
+    clippy::struct_field_names,
+    clippy::too_many_arguments,
+    clippy::type_complexity,
+    clippy::unused_self
+)]
 
 /// # Public API Contract
 ///
 /// This library provides an adaptive streaming spatial density estimator for 1D coordinate spaces.
 /// It maintains a histogram that automatically adjusts resolution based on activity levels,
 /// guided by the golden ratio φ, with temporal decay for sliding window tracking.
-
 /// Handle types for identifying nodes in the index.
 pub(crate) mod handle;
 /// Node implementations for graph and tree structures.

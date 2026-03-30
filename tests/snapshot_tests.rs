@@ -49,7 +49,7 @@ use torrust_mudlark::{Config, GNodeId, GState, GvGraph, StructuralConfig};
 type TestGraph = GvGraph<u32, u64, 16>;
 
 #[must_use]
-fn make_config() -> Config<u64> {
+const fn make_config() -> Config<u64> {
     Config {
         split_threshold: 5,
         structural: StructuralConfig {

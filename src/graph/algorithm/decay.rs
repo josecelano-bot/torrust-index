@@ -415,7 +415,7 @@ mod tests {
             let mut g = split_graph();
             let children = g.gnode_children(g.gtree.root).unwrap();
             // Decay a child subtree (non-global) to exercise the is_global=false path
-            if let Some(sub_root) = children.left.or_else(|| children.right) {
+            if let Some(sub_root) = children.left.or(children.right) {
                 g.decay(sub_root, 0.5, 0.0);
             }
         }
@@ -424,7 +424,7 @@ mod tests {
         fn sub_root_selective_decay_does_not_panic() {
             let mut g = split_graph();
             let children = g.gnode_children(g.gtree.root).unwrap();
-            if let Some(sub_root) = children.left.or_else(|| children.right) {
+            if let Some(sub_root) = children.left.or(children.right) {
                 g.decay(sub_root, 0.5, 0.5);
             }
         }

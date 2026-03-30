@@ -111,9 +111,8 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
 
         panic!(
             "{label}: dynamic-contour-tracking mirror diverged from static rebuild\n\
-             left (dynamic): {:#?}\n\
-             right (static): {:#?}",
-            dynamic, fresh
+             left (dynamic): {dynamic:#?}\n\
+             right (static): {fresh:#?}"
         );
     }
 }

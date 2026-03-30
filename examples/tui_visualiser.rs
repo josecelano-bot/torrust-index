@@ -32,6 +32,14 @@
 //! cargo run --example tui_visualiser
 //! ```
 
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::items_after_statements,
+    clippy::needless_pass_by_value,
+    clippy::too_many_arguments,
+    clippy::too_many_lines
+)]
+
 use std::collections::HashMap;
 use std::io;
 use std::net::Ipv4Addr;

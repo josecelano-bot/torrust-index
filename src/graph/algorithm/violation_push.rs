@@ -36,7 +36,7 @@ pub struct ViolationQueue<'a> {
 
 impl<'a> ViolationQueue<'a> {
     #[must_use]
-    pub fn new(violations: &'a mut Vec<VNodeId>) -> Self {
+    pub const fn new(violations: &'a mut Vec<VNodeId>) -> Self {
         Self { violations }
     }
 

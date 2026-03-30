@@ -27,7 +27,7 @@ use super::config::Config;
 /// When `dynamic-contour-tracking` is enabled this resolves to
 /// [`DynamicPlateauTracker`]; otherwise it resolves to [`NoopPlateauTracker`].
 #[cfg(feature = "dynamic-contour-tracking")]
-pub(crate) type DefaultTracker<C, V> =
+pub type DefaultTracker<C, V> =
     crate::graph::algorithm::plateau::DynamicPlateauTracker<C, V>;
 #[cfg(not(feature = "dynamic-contour-tracking"))]
 pub(crate) type DefaultTracker<C, V> = crate::graph::algorithm::plateau::NoopPlateauTracker;

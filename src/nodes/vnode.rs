@@ -271,7 +271,7 @@ impl<V> Children<V> {
     /// Returns the child id slice in slot order.
     #[must_use]
     #[allow(dead_code)]
-    pub fn ids(&self) -> &[VNodeId] {
+    pub const fn ids(&self) -> &[VNodeId] {
         match self {
             Self::Pair { ids, .. } => ids,
             Self::Triple { ids, .. } => ids,
@@ -628,7 +628,7 @@ mod tests {
         fn clone_preserves_intensity() {
             let mut original: VNode<u32> = VNode::default();
             original.intensity = 42;
-            let cloned = original.clone();
+            let cloned = original;
             assert_eq!(cloned.intensity, 42);
         }
 
@@ -636,7 +636,7 @@ mod tests {
         fn clone_is_independent_of_original_intensity() {
             let mut original: VNode<u32> = VNode::default();
             original.intensity = 10;
-            let cloned = original.clone();
+            let cloned = original;
             assert_eq!(original.intensity, 10);
             assert_ne!(cloned.intensity, 99);
         }
@@ -661,7 +661,7 @@ mod tests {
             let n = VNode::new_structural(10u32, None, children, true);
             assert!(!n.is_entry());
             assert!(n.is_structural());
-            assert_eq!(n.children().map(|c| c.len()), Some(2));
+            assert_eq!(n.children().map(super::super::Children::len), Some(2));
             assert_eq!(n.child_ids().expect("children present"), &[id(0), id(1)]);
         }
     }

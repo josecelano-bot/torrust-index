@@ -3,7 +3,7 @@ use crate::handle::VNodeId;
 use crate::nodes::vnode::{VKind, VNode};
 use crate::traits::Accumulator;
 
-pub(crate) fn replace_child_in_parent<V: Accumulator>(
+pub fn replace_child_in_parent<V: Accumulator>(
     vnodes: &mut Arena<VNode<V>>,
     parent: VNodeId,
     old_child: VNodeId,
@@ -16,7 +16,7 @@ pub(crate) fn replace_child_in_parent<V: Accumulator>(
     }
 }
 
-pub(crate) fn add_child_to_structural<V: Accumulator>(
+pub fn add_child_to_structural<V: Accumulator>(
     vnodes: &mut Arena<VNode<V>>,
     parent: VNodeId,
     child: VNodeId,
@@ -28,7 +28,7 @@ pub(crate) fn add_child_to_structural<V: Accumulator>(
     }
 }
 
-pub(crate) fn set_entry_flags<V: Accumulator>(
+pub fn set_entry_flags<V: Accumulator>(
     vnodes: &mut Arena<VNode<V>>,
     entry_id: VNodeId,
     is_exposed_value: bool,
@@ -45,7 +45,7 @@ pub(crate) fn set_entry_flags<V: Accumulator>(
     }
 }
 
-pub(crate) fn remove_child_from_structural<V: Accumulator>(
+pub fn remove_child_from_structural<V: Accumulator>(
     vnodes: &mut Arena<VNode<V>>,
     parent: VNodeId,
     child: VNodeId,
@@ -56,7 +56,7 @@ pub(crate) fn remove_child_from_structural<V: Accumulator>(
     }
 }
 
-pub(crate) fn set_has_evictable<V: Accumulator>(
+pub fn set_has_evictable<V: Accumulator>(
     vnodes: &mut Arena<VNode<V>>,
     id: VNodeId,
     flag: bool,

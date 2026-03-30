@@ -7,7 +7,7 @@ type TestGraph = GvGraph<u32, u64, 16>;
 // Helpers
 // -------------------------------------------------------------------
 
-fn minimal_config() -> Config<u64> {
+const fn minimal_config() -> Config<u64> {
     Config {
         split_threshold: 10,
         structural: StructuralConfig {

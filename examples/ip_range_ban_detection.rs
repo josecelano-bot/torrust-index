@@ -10,6 +10,13 @@
 //! cargo run --example ip_range_ban_detection
 //! ```
 
+#![allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss,
+    clippy::doc_overindented_list_items
+)]
+
 use std::net::Ipv4Addr;
 
 use torrust_mudlark::{Config, GState, GvGraph, StructuralConfig};
@@ -100,8 +107,7 @@ fn print_heatmap(label: &str, graph: &BadRequestMap, a: u8, b: u8) {
         graph.total_sum()
     );
     println!(
-        "   {} /24 subnets per column · {} columns · colour = relative density",
-        SUBNETS_PER_COL, COLS
+        "   {SUBNETS_PER_COL} /24 subnets per column · {COLS} columns · colour = relative density"
     );
     println!("   {a}.{b}.0          {a}.{b}.64         {a}.{b}.128        {a}.{b}.192");
     println!("   |              |              |              |              |");
@@ -158,8 +164,8 @@ fn print_heatmap(label: &str, graph: &BadRequestMap, a: u8, b: u8) {
 fn print_tree(label: &str, graph: &BadRequestMap) {
     println!("\n── {label} (total_sum={}) ──", graph.total_sum());
     println!(
-        "{:>5}  {:<45}  {:>10}  {:>10}  {}",
-        "depth", "range [start_ip … end_ip]", "own", "sum", "state"
+        "{:>5}  {:<45}  {:>10}  {:>10}  state",
+        "depth", "range [start_ip … end_ip]", "own", "sum"
     );
     for (depth, node) in graph.layers() {
         let start_ip = Ipv4Addr::from(node.start);

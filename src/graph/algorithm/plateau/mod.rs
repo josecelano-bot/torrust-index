@@ -5,13 +5,13 @@ mod read_api;
 mod update_wrappers;
 
 pub mod dynamic_tracker;
-pub(crate) mod noop_tracker;
+pub mod noop_tracker;
 
 #[cfg(feature = "dynamic-contour-tracking")]
 #[allow(unused_imports)]
 pub use dynamic_tracker::DynamicPlateauTracker;
 #[allow(unused_imports)]
-pub(crate) use noop_tracker::NoopPlateauTracker;
+pub use noop_tracker::NoopPlateauTracker;
 
 #[cfg(test)]
 mod tests {
@@ -270,7 +270,7 @@ mod tests {
             assert!(tracker.plateaus_dirty);
             assert!(tracker.plateau_basis.basis_count() >= 1);
             assert!(tracker.plateau_basis.plateau_key(parent).is_some() || tracker.plateau_basis.plateau_key(new_child).is_some());
-            assert!(tracker.plateaus.len() >= 1);
+            assert!(!tracker.plateaus.is_empty());
         }
 
         #[test]

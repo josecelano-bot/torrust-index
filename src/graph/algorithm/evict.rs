@@ -299,8 +299,8 @@ mod tests {
     }
 
     /// Config with a small budget so the observe loop reaches the eviction
-    /// check.  depth_create=1 < depth_evict=2 satisfies all invariants.
-    /// soft_limit = budget (10) - headroom (9) = 1.
+    /// check.  `depth_create=1` < `depth_evict=2` satisfies all invariants.
+    /// `soft_limit` = budget (10) - headroom (9) = 1.
     fn eviction_config() -> Config<u32> {
         // depth_buffer = depth_evict - depth_create = 2 - 1 = 1
         // headroom     = 3^(1+1) = 9
