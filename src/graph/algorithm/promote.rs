@@ -159,7 +159,7 @@ pub fn legacy_promote<C: Coordinate, V: Accumulator, const N: u32>(
     )
     .entered();
 
-    let new_child_id = gtree.allocate_missing_child(gnode_id);
+    let new_child_id = gtree.nodes.allocate_missing_child(gnode_id);
 
     let ne = VNode::new_entry(V::zero(), Some(p), new_child_id, true, true);
     let ne_id = VNodeId::from_index(vtree.nodes.alloc(ne));

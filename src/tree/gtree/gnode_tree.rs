@@ -137,6 +137,34 @@ impl<C: Coordinate, V: Accumulator> GNodeTree<C, V> {
 
     // ── G-node allocation / eviction helpers ─────────────────────────────
 
+    /// Allocates the missing child of a semi-internal node and links it into
+    /// the vacant slot.
+    ///
+    /// This helper intentionally does not update `node_count` or
+    /// `terminal_count`; legacy-promote batching accounts for that separately.
+    pub(crate) fn allocate_missing_child(&mut self, parent_id: GNodeId) -> GNodeId {
+        let (new_lo, new_hi) = self
+            .nodes
+            .get(parent_id.index())
+            .uncovered_range()
+            .expect("allocate_missing_child: parent must have uncovered range");
+        let new_child = GNode::new_leaf(new_lo, new_hi, V::zero(), Some(parent_id));
+        let new_child_id = GNodeId::from_index(self.alloc(new_child));
+
+        let parent = self.nodes.get_mut(parent_id.index());
+        if parent.left().is_none() {
+            parent.link_left(new_child_id);
+        } else {
+            debug_assert!(
+                parent.right().is_none(),
+                "allocate_missing_child: expected empty right slot"
+            );
+            parent.link_right(new_child_id);
+        }
+
+        new_child_id
+    }
+
     /// Allocates two new leaf G-nodes that split `parent_id` at its midpoint,
     /// links them as left and right children of `parent_id`, and updates the
     /// node / terminal counts (`node_count += 2`, `terminal_count += 1`).
@@ -147,13 +175,13 @@ impl<C: Coordinate, V: Accumulator> GNodeTree<C, V> {
             (g.lo(), g.hi())
         };
         let mid = C::midpoint(lo, hi);
-        let left_id = GNodeId::from_index(self.nodes.alloc(GNode::new_leaf(
+        let left_id = GNodeId::from_index(self.alloc(GNode::new_leaf(
             lo,
             mid,
             V::zero(),
             Some(parent_id),
         )));
-        let right_id = GNodeId::from_index(self.nodes.alloc(GNode::new_leaf(
+        let right_id = GNodeId::from_index(self.alloc(GNode::new_leaf(
             mid,
             hi,
             V::zero(),
