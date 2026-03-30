@@ -1,13 +1,13 @@
 use super::super::DynamicPlateauTracker;
-use crate::arena::Arena;
+use crate::tree::gtree::GNodeTree;
 use crate::handle::GNodeId;
-use crate::nodes::gnode::{GNode, GState};
+use crate::nodes::gnode::GState;
 use crate::spatial::plateau::BasisEdge;
 use crate::traits::{Accumulator, Coordinate};
-use crate::tree::gtree::{gnode_depth_from_range, uniform_contour_depth_of};
+use crate::tree::gtree::gnode_depth_from_range;
 
 impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
-    pub(in super::super) fn recompute_plateau(&mut self, gnodes: &Arena<GNode<C, V>>, key: &BasisEdge<C>) {
+    pub(in super::super) fn recompute_plateau(&mut self, gnodes: &GNodeTree<C, V>, key: &BasisEdge<C>) {
         let elements = self.plateau_basis.basis_elements(key);
         if elements.is_empty() {
             return;
@@ -33,7 +33,8 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
                 GState::Terminal | GState::SemiInternal => {
                     gnode_depth_from_range(g.range(), self.n_bits)
                 }
-                GState::Internal => uniform_contour_depth_of(gnodes, gid, self.n_bits)
+                GState::Internal => gnodes
+                    .uniform_contour_depth_of(gid, self.n_bits)
                     .unwrap_or_else(|| gnode_depth_from_range(g.range(), self.n_bits) + 1),
             };
             depth = depth.max(d);
@@ -47,7 +48,7 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
         }
     }
 
-    pub(in super::super) fn fixup_plateau(&mut self, gnodes: &Arena<GNode<C, V>>, old_key: BasisEdge<C>) {
+    pub(in super::super) fn fixup_plateau(&mut self, gnodes: &GNodeTree<C, V>, old_key: BasisEdge<C>) {
         use crate::spatial::plateau::{BasisEdge, Plateau, basis_edge_of};
 
         let element_ids: Vec<GNodeId> = self
@@ -90,7 +91,8 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
                         GState::Terminal | GState::SemiInternal => {
                             gnode_depth_from_range(g.range(), self.n_bits)
                         }
-                        GState::Internal => uniform_contour_depth_of(gnodes, gid, self.n_bits)
+                        GState::Internal => gnodes
+                            .uniform_contour_depth_of(gid, self.n_bits)
                             .unwrap_or_else(|| {
                                 gnode_depth_from_range(g.range(), self.n_bits) + 1
                             }),
@@ -135,7 +137,7 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
 
     pub(in super::super) fn split_for_p_i4(
         &mut self,
-        gnodes: &Arena<GNode<C, V>>,
+        gnodes: &GNodeTree<C, V>,
         parent_pk: BasisEdge<C>,
         child_id: GNodeId,
     ) {
@@ -177,7 +179,7 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
 
     pub(in super::super) fn find_boundary_node(
         &self,
-        gnodes: &Arena<GNode<C, V>>,
+        gnodes: &GNodeTree<C, V>,
         gid: GNodeId,
         parent_pk: BasisEdge<C>,
     ) -> Option<GNodeId> {
@@ -210,7 +212,7 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
     /// basis covers `parent_id`.
     pub(in super::super) fn evict_ancestor_key(
         &mut self,
-        gnodes: &Arena<GNode<C, V>>,
+        gnodes: &GNodeTree<C, V>,
         parent_id: GNodeId,
         parent_state_after: GState,
         displaced: &mut Vec<GNodeId>,
@@ -250,7 +252,7 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
 
     fn displace_semi_internal_survivor(
         &mut self,
-        gnodes: &Arena<GNode<C, V>>,
+        gnodes: &GNodeTree<C, V>,
         parent_id: GNodeId,
         parent_state_after: GState,
         displaced: &mut Vec<GNodeId>,
@@ -270,7 +272,7 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
 
     fn displace_path_siblings(
         &mut self,
-        gnodes: &Arena<GNode<C, V>>,
+        gnodes: &GNodeTree<C, V>,
         path: &[GNodeId],
         displaced: &mut Vec<GNodeId>,
     ) {
@@ -302,7 +304,7 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
     /// for subsequent re-placement.
     pub(in super::super) fn evacuate_adjacent_plateaus(
         &mut self,
-        gnodes: &Arena<GNode<C, V>>,
+        gnodes: &GNodeTree<C, V>,
         parent_lo: C,
         parent_hi: C,
         parent_depth: u32,

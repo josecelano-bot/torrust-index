@@ -1,15 +1,14 @@
 use std::collections::BTreeMap;
 
 use super::DynamicPlateauTracker;
-use crate::arena::Arena;
+use crate::tree::gtree::GNodeTree;
 use crate::handle::GNodeId;
-use crate::nodes::gnode::GNode;
 use crate::spatial::plateau::{BasisEdge, Plateau};
 use crate::traits::{Accumulator, Coordinate};
 
 impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
     #[allow(clippy::too_many_lines, clippy::float_cmp)]
-    pub(super) fn normalize_impl(&mut self, gnodes: &Arena<GNode<C, V>>) {
+    pub(super) fn normalize_impl(&mut self, gnodes: &GNodeTree<C, V>) {
         if !self.plateaus_dirty {
             return;
         }

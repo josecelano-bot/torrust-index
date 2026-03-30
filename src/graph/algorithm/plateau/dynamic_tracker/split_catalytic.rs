@@ -1,14 +1,13 @@
 use super::DynamicPlateauTracker;
-use crate::arena::Arena;
+use crate::tree::gtree::GNodeTree;
 use crate::handle::GNodeId;
-use crate::nodes::gnode::GNode;
 use crate::traits::{Accumulator, Coordinate};
 use crate::tree::gtree::gnode_depth_from_range;
 
 impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
     fn catalytic_split_depths(
         &self,
-        gnodes: &Arena<GNode<C, V>>,
+        gnodes: &GNodeTree<C, V>,
         g_id: GNodeId,
         left_id: GNodeId,
     ) -> (GNodeId, u32, u32) {
@@ -38,7 +37,7 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
 
     fn collect_path_siblings_for_split(
         &self,
-        gnodes: &Arena<GNode<C, V>>,
+        gnodes: &GNodeTree<C, V>,
         path: &[GNodeId],
     ) -> Vec<GNodeId> {
         let mut displaced: Vec<GNodeId> = Vec::new();
@@ -62,7 +61,7 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
 
     fn locate_covering_basis_for_catalytic_split(
         &mut self,
-        gnodes: &Arena<GNode<C, V>>,
+        gnodes: &GNodeTree<C, V>,
         g_id: GNodeId,
     ) -> (crate::spatial::plateau::BasisEdge<C>, Vec<GNodeId>) {
         if let Some(key) = self.plateau_basis.remove(g_id) {
@@ -89,7 +88,7 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
 
     fn reinsert_split_targets(
         &mut self,
-        gnodes: &Arena<GNode<C, V>>,
+        gnodes: &GNodeTree<C, V>,
         displaced: &[GNodeId],
         g_id: GNodeId,
         left_id: GNodeId,
@@ -112,7 +111,7 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
 
     pub(super) fn on_catalytic_split_impl(
         &mut self,
-        gnodes: &Arena<GNode<C, V>>,
+        gnodes: &GNodeTree<C, V>,
         g_id: GNodeId,
         left_id: GNodeId,
     ) {

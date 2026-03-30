@@ -3,9 +3,9 @@
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 
-use crate::arena::Arena;
+use crate::tree::gtree::GNodeTree;
 use crate::handle::GNodeId;
-use crate::nodes::gnode::{GNode, GState};
+use crate::nodes::gnode::GState;
 use crate::spatial::plateau::{BasisEdge, Plateau};
 use crate::traits::{Accumulator, Coordinate, PlateauTracking};
 
@@ -16,12 +16,12 @@ pub struct NoopPlateauTracker;
 
 impl<C: Coordinate, V: Accumulator> PlateauTracking<C, V> for NoopPlateauTracker {
     #[inline(always)]
-    fn on_observe(&mut self, _gnodes: &Arena<GNode<C, V>>, _g_id: GNodeId, _value: V) {}
+    fn on_observe(&mut self, _gnodes: &GNodeTree<C, V>, _g_id: GNodeId, _value: V) {}
 
     #[inline(always)]
     fn on_bootstrap_split(
         &mut self,
-        _gnodes: &Arena<GNode<C, V>>,
+        _gnodes: &GNodeTree<C, V>,
         _g_id: GNodeId,
         _left_id: GNodeId,
     ) {
@@ -30,7 +30,7 @@ impl<C: Coordinate, V: Accumulator> PlateauTracking<C, V> for NoopPlateauTracker
     #[inline(always)]
     fn on_catalytic_split(
         &mut self,
-        _gnodes: &Arena<GNode<C, V>>,
+        _gnodes: &GNodeTree<C, V>,
         _g_id: GNodeId,
         _left_id: GNodeId,
     ) {
@@ -39,7 +39,7 @@ impl<C: Coordinate, V: Accumulator> PlateauTracking<C, V> for NoopPlateauTracker
     #[inline(always)]
     fn on_evict(
         &mut self,
-        _gnodes: &Arena<GNode<C, V>>,
+        _gnodes: &GNodeTree<C, V>,
         _gnode_id: GNodeId,
         _parent_id: GNodeId,
         _parent_state_after: GState,
@@ -51,19 +51,19 @@ impl<C: Coordinate, V: Accumulator> PlateauTracking<C, V> for NoopPlateauTracker
     #[inline(always)]
     fn on_legacy_promotes_batched(
         &mut self,
-        _gnodes: &Arena<GNode<C, V>>,
+        _gnodes: &GNodeTree<C, V>,
         _new_gnodes: &[GNodeId],
     ) {
     }
 
     #[inline(always)]
-    fn normalize(&mut self, _gnodes: &Arena<GNode<C, V>>) {}
+    fn normalize(&mut self, _gnodes: &GNodeTree<C, V>) {}
 
     #[inline(always)]
-    fn repair_p_i4(&mut self, _gnodes: &Arena<GNode<C, V>>) {}
+    fn repair_p_i4(&mut self, _gnodes: &GNodeTree<C, V>) {}
 
     #[inline(always)]
-    fn recompute_sums(&mut self, _gnodes: &Arena<GNode<C, V>>, _label: &str) {}
+    fn recompute_sums(&mut self, _gnodes: &GNodeTree<C, V>, _label: &str) {}
 
     #[inline(always)]
     fn set_dirty(&mut self) {}

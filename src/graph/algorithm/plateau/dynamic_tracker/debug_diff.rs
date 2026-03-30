@@ -1,15 +1,14 @@
 use std::collections::BTreeMap;
 
 use super::DynamicPlateauTracker;
-use crate::arena::Arena;
-use crate::nodes::gnode::GNode;
+use crate::tree::gtree::GNodeTree;
 use crate::spatial::plateau::{BasisEdge, Plateau};
 use crate::traits::{Accumulator, Coordinate};
 
 impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
     pub(super) fn debug_assert_mirror_consistency_impl(
         &self,
-        gnodes: &Arena<GNode<C, V>>,
+        gnodes: &GNodeTree<C, V>,
         fresh: &BTreeMap<BasisEdge<C>, Plateau<C, V>>,
         label: &str,
     ) {

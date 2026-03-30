@@ -33,6 +33,10 @@ fn add_node(gnodes: &mut Arena<GNode<u8, u32>>, lo: u8, hi: u8, parent: Option<G
     GNodeId::from_index(gnodes.alloc(GNode::new_leaf(lo, hi, 0u32, parent)))
 }
 
+fn as_gnodes(nodes: Arena<GNode<u8, u32>>) -> crate::tree::gtree::GNodeTree<u8, u32> {
+    crate::tree::gtree::GNodeTree { nodes, root: GNodeId::from_index(0), node_count: 0, terminal_count: 0 }
+}
+
 #[test]
 fn with_root_creates_single_root_plateau() {
     let root_key = BasisEdge(0u8);
@@ -62,6 +66,7 @@ fn place_basis_element_rekeys_right_plateau() {
         },
     );
 
+    let gnodes = as_gnodes(gnodes);
     tracker.place_basis_element(&gnodes, left, 1);
 
     assert!(tracker.plateaus.contains_key(&BasisEdge(0)));
@@ -101,6 +106,7 @@ fn place_basis_element_merges_left_and_right_plateaus() {
         },
     );
 
+    let gnodes = as_gnodes(gnodes);
     tracker.place_basis_element(&gnodes, middle, 2);
 
     assert!(tracker.plateaus.contains_key(&BasisEdge(0)));
@@ -128,6 +134,7 @@ fn fixup_plateau_rekeys_to_min_basis_edge() {
         },
     );
 
+    let gnodes = as_gnodes(gnodes);
     tracker.fixup_plateau(&gnodes, BasisEdge(8));
 
     assert!(tracker.plateaus.contains_key(&BasisEdge(0)));
@@ -155,6 +162,7 @@ fn fixup_plateau_evacuates_non_contiguous_remainder() {
         },
     );
 
+    let gnodes = as_gnodes(gnodes);
     tracker.fixup_plateau(&gnodes, BasisEdge(0));
 
     let a_key = tracker.plateau_basis.plateau_key(a);
@@ -190,6 +198,7 @@ fn evict_ancestor_key_collects_sibling_and_survivor_for_semi_internal_parent() {
     );
 
     let mut displaced = Vec::new();
+    let gnodes = as_gnodes(gnodes);
     let key = tracker.evict_ancestor_key(&gnodes, parent, GState::SemiInternal, &mut displaced);
 
     assert_eq!(key, Some(BasisEdge(0)));
@@ -224,6 +233,7 @@ fn evacuate_adjacent_plateaus_moves_left_and_right_members() {
     }
 
     let mut displaced = Vec::new();
+    let gnodes = as_gnodes(gnodes);
     tracker.evacuate_adjacent_plateaus(&gnodes, 8, 16, 2, &mut displaced);
 
     assert!(!tracker.plateaus.contains_key(&BasisEdge(0)));
@@ -254,6 +264,7 @@ fn repair_p_i4_splits_when_child_stays_in_parent_plateau() {
         },
     );
 
+    let gnodes = as_gnodes(gnodes);
     crate::traits::PlateauTracking::repair_p_i4(&mut tracker, &gnodes);
 
     assert_eq!(tracker.plateau_basis.plateau_key(child), Some(BasisEdge(8)));
@@ -291,6 +302,7 @@ fn normalize_rebuilds_from_basis_and_merges_adjacent_equal_depth_tiles() {
     );
     tracker.plateaus_dirty = true;
 
+    let gnodes = as_gnodes(gnodes);
     crate::traits::PlateauTracking::normalize(&mut tracker, &gnodes);
 
     assert!(!tracker.plateaus_dirty);

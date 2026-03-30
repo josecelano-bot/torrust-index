@@ -1,10 +1,10 @@
 use super::super::DynamicPlateauTracker;
-use crate::arena::Arena;
+use crate::tree::gtree::GNodeTree;
 use crate::handle::GNodeId;
 use crate::nodes::gnode::{GNode, GState};
 use crate::spatial::plateau::BasisEdge;
 use crate::traits::{Accumulator, Coordinate};
-use crate::tree::gtree::{gnode_depth_from_range, uniform_contour_depth_of};
+use crate::tree::gtree::gnode_depth_from_range;
 
 impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
     fn basis_ids_snapshot(&self) -> Vec<GNodeId> {
@@ -13,7 +13,7 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
 
     fn push_normalize_element(
         &self,
-        gnodes: &Arena<GNode<C, V>>,
+        gnodes: &GNodeTree<C, V>,
         elems: &mut Vec<(GNodeId, BasisEdge<C>, u32, C, C, V)>,
         nid: GNodeId,
         depth: u32,
@@ -26,7 +26,7 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
 
     fn process_normalize_node(
         &self,
-        gnodes: &Arena<GNode<C, V>>,
+        gnodes: &GNodeTree<C, V>,
         nid: GNodeId,
         elems: &mut Vec<(GNodeId, BasisEdge<C>, u32, C, C, V)>,
         stack: &mut Vec<GNodeId>,
@@ -48,7 +48,7 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
                 }
             }
             GState::Internal => {
-                if let Some(ud) = uniform_contour_depth_of(gnodes, nid, self.n_bits) {
+                if let Some(ud) = gnodes.uniform_contour_depth_of(nid, self.n_bits) {
                     self.push_normalize_element(gnodes, elems, nid, ud);
                 } else {
                     if let Some(left) = g.left() {
@@ -64,7 +64,7 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
 
     fn collect_from_basis_root(
         &self,
-        gnodes: &Arena<GNode<C, V>>,
+        gnodes: &GNodeTree<C, V>,
         gid: GNodeId,
         elems: &mut Vec<(GNodeId, BasisEdge<C>, u32, C, C, V)>,
         seen: &mut std::collections::HashSet<GNodeId>,
@@ -80,7 +80,7 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
 
     pub(in super::super) fn collect_subtree_basis_elements(
         &self,
-        gnodes: &Arena<GNode<C, V>>,
+        gnodes: &GNodeTree<C, V>,
         gid: GNodeId,
         out: &mut Vec<(GNodeId, u32)>,
     ) {
@@ -91,7 +91,7 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
                 out.push((gid, depth));
             }
             GState::Internal => {
-                if let Some(ud) = uniform_contour_depth_of(gnodes, gid, self.n_bits) {
+                if let Some(ud) = gnodes.uniform_contour_depth_of(gid, self.n_bits) {
                     out.push((gid, ud));
                 } else {
                     if let Some(l) = g.left() {
@@ -107,7 +107,7 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
 
     pub(in super::super) fn place_sorted(
         &mut self,
-        gnodes: &Arena<GNode<C, V>>,
+        gnodes: &GNodeTree<C, V>,
         elements: &mut [(GNodeId, u32)],
     ) {
         use crate::spatial::plateau::basis_edge_of;
@@ -124,7 +124,7 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
     /// Walks upward from `gid`, merging sibling basis-element pairs into their
     /// parent whenever the subtree is uniform-depth.
     #[allow(clippy::too_many_lines)]
-    pub(in super::super) fn consolidate_basis_up(&mut self, gnodes: &Arena<GNode<C, V>>, mut gid: GNodeId) {
+    pub(in super::super) fn consolidate_basis_up(&mut self, gnodes: &GNodeTree<C, V>, mut gid: GNodeId) {
         loop {
             let Some(parent_id) = gnodes.get(gid.index()).parent() else {
                 tracing::trace!(from = gid.index(), "consolidate_basis_up: stop — no parent");
@@ -187,7 +187,7 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
                 break;
             }
 
-            let Some(uniform_depth) = uniform_contour_depth_of(gnodes, parent_id, self.n_bits)
+            let Some(uniform_depth) = gnodes.uniform_contour_depth_of(parent_id, self.n_bits)
             else {
                 tracing::trace!(
                     from = gid.index(),
@@ -231,7 +231,7 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
 
     /// Iterates every basis element and attempts to merge sibling pairs into
     /// their parent via [`consolidate_basis_up`].
-    pub(in super::super) fn consolidate_all_basis(&mut self, gnodes: &Arena<GNode<C, V>>) {
+    pub(in super::super) fn consolidate_all_basis(&mut self, gnodes: &GNodeTree<C, V>) {
         let basis_snapshot = self.basis_ids_snapshot();
         let count = basis_snapshot.len();
         let mut merged = 0u32;
@@ -265,7 +265,7 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
     /// entries; those without are recursively expanded via a DFS stack.
     pub(in super::super) fn collect_normalize_elements(
         &self,
-        gnodes: &Arena<GNode<C, V>>,
+        gnodes: &GNodeTree<C, V>,
     ) -> Vec<(GNodeId, BasisEdge<C>, u32, C, C, V)> {
         let mut elems: Vec<(GNodeId, BasisEdge<C>, u32, C, C, V)> = Vec::new();
         let mut seen = std::collections::HashSet::new();

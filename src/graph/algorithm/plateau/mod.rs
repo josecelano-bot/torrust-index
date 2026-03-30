@@ -59,6 +59,10 @@ mod tests {
         GNodeId::from_index(gnodes.alloc(GNode::new_leaf(lo, hi, 0u32, parent)))
     }
 
+    fn as_gnodes(nodes: Arena<GNode<u8, u32>>) -> crate::tree::gtree::GNodeTree<u8, u32> {
+        crate::tree::gtree::GNodeTree { nodes, root: GNodeId::from_index(0), node_count: 0, terminal_count: 0 }
+    }
+
     // ── build_plateaus ────────────────────────────────────────────────
     mod build_plateaus_fn {
         use super::*;
@@ -186,6 +190,7 @@ mod tests {
                 },
             );
 
+            let gnodes = as_gnodes(gnodes);
             PlateauTracking::on_observe(&mut tracker, &gnodes, child, 7);
 
             assert_eq!(tracker.plateaus.get(&BasisEdge(0)).map(|p| p.sum), Some(7));
@@ -202,6 +207,7 @@ mod tests {
             gnodes.get_mut(root.index()).link_right(right);
 
             let mut tracker = DynamicPlateauTracker::<u8, u32>::with_root(BasisEdge(0), 0, 0, 16, root, 4);
+            let gnodes = as_gnodes(gnodes);
             PlateauTracking::on_bootstrap_split(&mut tracker, &gnodes, root, left);
 
             assert_eq!(tracker.plateau_basis.plateau_key(root), None);
@@ -224,6 +230,7 @@ mod tests {
             gnodes.get_mut(g_id.index()).link_right(right);
 
             let mut tracker = DynamicPlateauTracker::<u8, u32>::with_root(BasisEdge(0), 0, 0, 32, root, 5);
+            let gnodes = as_gnodes(gnodes);
             PlateauTracking::on_catalytic_split(&mut tracker, &gnodes, g_id, left);
 
             assert_eq!(tracker.plateau_basis.plateau_key(root), None);
@@ -240,7 +247,7 @@ mod tests {
 
             let mut tracker = DynamicPlateauTracker::<u8, u32>::with_root(BasisEdge(0), 0, 0, 16, parent, 4);
             tracker.plateau_basis.insert(BasisEdge(0), evicted);
-
+            let gnodes = as_gnodes(gnodes);
             PlateauTracking::on_evict(
                 &mut tracker,
                 &gnodes,
@@ -265,6 +272,7 @@ mod tests {
             gnodes.get_mut(parent.index()).link_right(new_child);
 
             let mut tracker = DynamicPlateauTracker::<u8, u32>::with_root(BasisEdge(0), 0, 0, 16, parent, 4);
+            let gnodes = as_gnodes(gnodes);
             PlateauTracking::on_legacy_promotes_batched(&mut tracker, &gnodes, &[new_child]);
 
             assert!(tracker.plateaus_dirty);
@@ -279,6 +287,7 @@ mod tests {
             let lone = add_leaf(&mut gnodes, 0, 16, 3, None);
 
             let mut tracker = DynamicPlateauTracker::<u8, u32>::with_root(BasisEdge(0), 0, 0, 16, lone, 4);
+            let gnodes = as_gnodes(gnodes);
             PlateauTracking::normalize(&mut tracker, &gnodes);
 
             tracker.pending_p_i4.push((lone, BasisEdge(8)));
@@ -297,6 +306,7 @@ mod tests {
             gnodes.get_mut(root.index()).link_right(right);
 
             let mut tracker = DynamicPlateauTracker::<u8, u32>::with_root(BasisEdge(0), 0, 0, 16, root, 4);
+            let gnodes = as_gnodes(gnodes);
             PlateauTracking::on_bootstrap_split(&mut tracker, &gnodes, root, left);
 
             assert_eq!(tracker.plateau_basis.plateau_key(root), Some(BasisEdge(0)));
@@ -312,6 +322,7 @@ mod tests {
             gnodes.get_mut(root.index()).link_right(right);
 
             let mut tracker = DynamicPlateauTracker::<u8, u32>::with_root(BasisEdge(0), 0, 0, 16, root, 4);
+            let gnodes = as_gnodes(gnodes);
             PlateauTracking::on_catalytic_split(&mut tracker, &gnodes, root, left);
 
             assert!(tracker.plateau_basis.plateau_key(root).is_some());
@@ -323,6 +334,7 @@ mod tests {
             let root = add_leaf(&mut gnodes, 0, 16, 0, None);
             let mut tracker = DynamicPlateauTracker::<u8, u32>::with_root(BasisEdge(0), 0, 0, 16, root, 4);
 
+            let gnodes = as_gnodes(gnodes);
             PlateauTracking::on_legacy_promotes_batched(&mut tracker, &gnodes, &[]);
 
             assert!(!tracker.plateaus_dirty);
@@ -342,6 +354,7 @@ mod tests {
             let mut tracker = DynamicPlateauTracker::<u8, u32>::with_root(BasisEdge(0), 0, 0, 16, parent, 4);
             tracker.plateau_basis.insert(BasisEdge(0), left);
 
+            let gnodes = as_gnodes(gnodes);
             PlateauTracking::on_evict(&mut tracker, &gnodes, left, parent, GState::Internal, 0, 16);
         }
     }

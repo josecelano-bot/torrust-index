@@ -1,14 +1,14 @@
 use super::DynamicPlateauTracker;
-use crate::arena::Arena;
+use crate::tree::gtree::GNodeTree;
 use crate::handle::GNodeId;
-use crate::nodes::gnode::{GNode, GState};
+use crate::nodes::gnode::GState;
 use crate::traits::{Accumulator, Coordinate};
 use crate::tree::gtree::gnode_depth_from_range;
 
 impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
     pub(super) fn on_legacy_promotes_batched_impl(
         &mut self,
-        gnodes: &Arena<GNode<C, V>>,
+        gnodes: &GNodeTree<C, V>,
         new_gnodes: &[GNodeId],
     ) {
         if new_gnodes.is_empty() {

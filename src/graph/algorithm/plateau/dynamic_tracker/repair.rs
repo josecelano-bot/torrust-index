@@ -1,12 +1,12 @@
 use super::DynamicPlateauTracker;
-use crate::arena::Arena;
+use crate::tree::gtree::GNodeTree;
 use crate::handle::GNodeId;
-use crate::nodes::gnode::{GNode, GState};
+use crate::nodes::gnode::GState;
 use crate::spatial::plateau::BasisEdge;
 use crate::traits::{Accumulator, Coordinate};
 
 impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
-    pub(super) fn repair_p_i4_impl(&mut self, gnodes: &Arena<GNode<C, V>>) {
+    pub(super) fn repair_p_i4_impl(&mut self, gnodes: &GNodeTree<C, V>) {
         let span = tracing::debug_span!(
             "repair_p_i4",
             pending = self.pending_p_i4.len(),

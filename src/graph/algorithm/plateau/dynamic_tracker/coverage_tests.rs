@@ -23,6 +23,10 @@ fn add_node(gnodes: &mut Arena<GNode<u8, u32>>, lo: u8, hi: u8, parent: Option<G
     GNodeId::from_index(gnodes.alloc(GNode::new_leaf(lo, hi, 0u32, parent)))
 }
 
+fn as_gnodes(nodes: Arena<GNode<u8, u32>>) -> crate::tree::gtree::GNodeTree<u8, u32> {
+    crate::tree::gtree::GNodeTree { nodes, root: GNodeId::from_index(0), node_count: 0, terminal_count: 0 }
+}
+
 #[test]
 fn collect_normalize_elements_expands_non_uniform_internal_subtree() {
     let mut gnodes = Arena::new();
@@ -37,6 +41,7 @@ fn collect_normalize_elements_expands_non_uniform_internal_subtree() {
 
     let mut tracker = DynamicPlateauTracker::<u8, u32>::with_root(BasisEdge(0), 0, 0, 16, root, 4);
     tracker.plateau_basis.insert(BasisEdge(8), right);
+    let gnodes = as_gnodes(gnodes);
     let elems = tracker.collect_normalize_elements(&gnodes);
 
     assert!(elems.iter().any(|e| e.0 == left));
@@ -59,6 +64,7 @@ fn on_legacy_promotes_batched_skips_internal_existing_child() {
     gnodes.get_mut(existing_internal.index()).link_right(ex_right);
 
     let mut tracker = DynamicPlateauTracker::<u8, u32>::with_root(BasisEdge(0), 0, 0, 16, parent, 4);
+    let gnodes = as_gnodes(gnodes);
     PlateauTracking::on_legacy_promotes_batched(&mut tracker, &gnodes, &[new_child]);
 
     assert!(tracker.plateau_basis.plateau_key(new_child).is_some());
@@ -83,6 +89,7 @@ fn recompute_sums_refreshes_plateau_totals_from_basis() {
         },
     );
 
+    let gnodes = as_gnodes(gnodes);
     PlateauTracking::recompute_sums(&mut tracker, &gnodes, "test");
 
     assert_eq!(tracker.plateaus.get(&BasisEdge(0)).map(|p| p.sum), Some(5));
@@ -109,6 +116,7 @@ fn debug_assert_mirror_consistency_reports_detailed_divergence() {
         },
     );
 
+    let gnodes = as_gnodes(gnodes);
     PlateauTracking::debug_assert_mirror_consistency(&tracker, &gnodes, &fresh, "coverage");
 }
 
@@ -125,6 +133,7 @@ fn set_dirty_plateaus_and_equal_mirror_path_are_exercised() {
     assert_eq!(plateaus.len(), 1);
 
     let fresh = tracker.plateaus.clone();
+    let gnodes = as_gnodes(gnodes);
     PlateauTracking::debug_assert_mirror_consistency(&tracker, &gnodes, &fresh, "equal");
 }
 
@@ -145,6 +154,7 @@ fn repair_p_i4_guard_paths_handle_mismatch_unoccupied_and_non_semiinternal() {
     // 3) occupied but terminal (non-semiinternal) -> third continue branch
     tracker.pending_p_i4.push((root, BasisEdge(0)));
 
+    let gnodes = as_gnodes(gnodes);
     PlateauTracking::repair_p_i4(&mut tracker, &gnodes);
     assert_eq!(tracker.plateau_basis.plateau_key(root), Some(BasisEdge(0)));
 }
@@ -161,6 +171,7 @@ fn legacy_promote_with_parent_in_basis_executes_fixup_branch() {
     let mut tracker = DynamicPlateauTracker::<u8, u32>::with_root(BasisEdge(0), 0, 0, 16, parent, 4);
     assert_eq!(tracker.plateau_basis.plateau_key(parent), Some(BasisEdge(0)));
 
+    let gnodes = as_gnodes(gnodes);
     PlateauTracking::on_legacy_promotes_batched(&mut tracker, &gnodes, &[promoted]);
 
     assert!(tracker.plateau_basis.basis_count() >= 1);
@@ -181,7 +192,7 @@ fn on_evict_with_ancestor_displacement_executes_phase6_replacement() {
     gnodes.get_mut(parent.index()).link_right(survivor);
 
     let mut tracker = DynamicPlateauTracker::<u8, u32>::with_root(BasisEdge(0), 0, 0, 32, root, 5);
-
+    let gnodes = as_gnodes(gnodes);
     PlateauTracking::on_evict(
         &mut tracker,
         &gnodes,

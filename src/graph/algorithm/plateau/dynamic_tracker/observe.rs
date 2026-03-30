@@ -1,11 +1,10 @@
 use super::DynamicPlateauTracker;
-use crate::arena::Arena;
+use crate::tree::gtree::GNodeTree;
 use crate::handle::GNodeId;
-use crate::nodes::gnode::GNode;
 use crate::traits::{Accumulator, Coordinate};
 
 impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
-    pub(super) fn on_observe_impl(&mut self, gnodes: &Arena<GNode<C, V>>, g_id: GNodeId, value: V) {
+    pub(super) fn on_observe_impl(&mut self, gnodes: &GNodeTree<C, V>, g_id: GNodeId, value: V) {
         let mut cur = Some(g_id);
         while let Some(id) = cur {
             if let Some(key) = self.plateau_basis.plateau_key(id) {

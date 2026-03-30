@@ -1,13 +1,12 @@
 use super::DynamicPlateauTracker;
-use crate::arena::Arena;
-use crate::nodes::gnode::GNode;
+use crate::tree::gtree::GNodeTree;
 use crate::traits::{Accumulator, Coordinate, Inspectable};
 
 // ── Inspectable-bounded debug helpers ────────────────────────────────────────
 
 impl<C: Coordinate, V: Accumulator + Inspectable> DynamicPlateauTracker<C, V> {
     #[allow(clippy::float_cmp)]
-    pub(crate) fn debug_check_sums(&self, gnodes: &Arena<GNode<C, V>>, label: &str) {
+    pub(crate) fn debug_check_sums(&self, gnodes: &GNodeTree<C, V>, label: &str) {
         if !cfg!(debug_assertions) && !tracing::enabled!(tracing::Level::DEBUG) {
             return;
         }

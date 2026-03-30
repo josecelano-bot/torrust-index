@@ -1,7 +1,7 @@
 use super::super::DynamicPlateauTracker;
-use crate::arena::Arena;
+use crate::tree::gtree::GNodeTree;
 use crate::handle::GNodeId;
-use crate::nodes::gnode::{GNode, GState};
+use crate::nodes::gnode::GState;
 use crate::spatial::plateau::{BasisEdge, Plateau};
 use crate::traits::{Accumulator, Coordinate};
 
@@ -10,7 +10,7 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
     /// with adjacent same-depth plateaus where possible.
     pub(in super::super) fn place_basis_element(
         &mut self,
-        gnodes: &Arena<GNode<C, V>>,
+        gnodes: &GNodeTree<C, V>,
         gnode: GNodeId,
         depth: u32,
     ) {
@@ -93,7 +93,7 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
     /// `rk` into `lk` at the same time.
     pub(in super::super) fn place_merge_both(
         &mut self,
-        gnodes: &Arena<GNode<C, V>>,
+        gnodes: &GNodeTree<C, V>,
         lk: BasisEdge<C>,
         rk: BasisEdge<C>,
         gnode: GNodeId,
@@ -112,7 +112,7 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
     /// Extends the existing left plateau `lk` to include `gnode`.
     pub(in super::super) fn place_extend_left(
         &mut self,
-        gnodes: &Arena<GNode<C, V>>,
+        gnodes: &GNodeTree<C, V>,
         lk: BasisEdge<C>,
         gnode: GNodeId,
     ) {
@@ -124,7 +124,7 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
     /// Re-keys the right plateau `rk` to `key` and inserts `gnode` into it.
     pub(in super::super) fn place_rekey_right(
         &mut self,
-        gnodes: &Arena<GNode<C, V>>,
+        gnodes: &GNodeTree<C, V>,
         key: BasisEdge<C>,
         rk: BasisEdge<C>,
         gnode: GNodeId,
@@ -158,7 +158,7 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
     /// the key already exists.
     pub(in super::super) fn place_new_plateau(
         &mut self,
-        gnodes: &Arena<GNode<C, V>>,
+        gnodes: &GNodeTree<C, V>,
         key: BasisEdge<C>,
         gnode: GNodeId,
         depth: u32,

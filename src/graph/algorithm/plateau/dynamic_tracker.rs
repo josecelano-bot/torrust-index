@@ -12,9 +12,9 @@
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 
-use crate::arena::Arena;
+use crate::tree::gtree::GNodeTree;
 use crate::handle::GNodeId;
-use crate::nodes::gnode::{GNode, GState};
+use crate::nodes::gnode::GState;
 use crate::spatial::plateau::{BasisEdge, Plateau};
 use crate::spatial::plateau_basis::PlateauBasis;
 use crate::traits::{Accumulator, Coordinate, PlateauTracking};
@@ -96,26 +96,26 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
 // ── PlateauTracking impl ─────────────────────────────────────────────────────
 
 impl<C: Coordinate, V: Accumulator> PlateauTracking<C, V> for DynamicPlateauTracker<C, V> {
-    fn on_observe(&mut self, gnodes: &Arena<GNode<C, V>>, g_id: GNodeId, value: V) {
+    fn on_observe(&mut self, gnodes: &GNodeTree<C, V>, g_id: GNodeId, value: V) {
         self.on_observe_impl(gnodes, g_id, value);
     }
 
     fn on_bootstrap_split(
         &mut self,
-        gnodes: &Arena<GNode<C, V>>,
+        gnodes: &GNodeTree<C, V>,
         g_id: GNodeId,
         _left_id: GNodeId,
     ) {
         self.on_bootstrap_split_impl(gnodes, g_id);
     }
 
-    fn on_catalytic_split(&mut self, gnodes: &Arena<GNode<C, V>>, g_id: GNodeId, left_id: GNodeId) {
+    fn on_catalytic_split(&mut self, gnodes: &GNodeTree<C, V>, g_id: GNodeId, left_id: GNodeId) {
         self.on_catalytic_split_impl(gnodes, g_id, left_id);
     }
 
     fn on_evict(
         &mut self,
-        gnodes: &Arena<GNode<C, V>>,
+        gnodes: &GNodeTree<C, V>,
         gnode_id: GNodeId,
         parent_id: GNodeId,
         parent_state_after: GState,
@@ -132,20 +132,20 @@ impl<C: Coordinate, V: Accumulator> PlateauTracking<C, V> for DynamicPlateauTrac
         );
     }
 
-    fn on_legacy_promotes_batched(&mut self, gnodes: &Arena<GNode<C, V>>, new_gnodes: &[GNodeId]) {
+    fn on_legacy_promotes_batched(&mut self, gnodes: &GNodeTree<C, V>, new_gnodes: &[GNodeId]) {
         self.on_legacy_promotes_batched_impl(gnodes, new_gnodes);
     }
 
     #[allow(clippy::too_many_lines, clippy::float_cmp)]
-    fn normalize(&mut self, gnodes: &Arena<GNode<C, V>>) {
+    fn normalize(&mut self, gnodes: &GNodeTree<C, V>) {
         self.normalize_impl(gnodes);
     }
 
-    fn repair_p_i4(&mut self, gnodes: &Arena<GNode<C, V>>) {
+    fn repair_p_i4(&mut self, gnodes: &GNodeTree<C, V>) {
         self.repair_p_i4_impl(gnodes);
     }
 
-    fn recompute_sums(&mut self, gnodes: &Arena<GNode<C, V>>, label: &str) {
+    fn recompute_sums(&mut self, gnodes: &GNodeTree<C, V>, label: &str) {
         #[cfg(not(debug_assertions))]
         let _ = label;
 
@@ -182,7 +182,7 @@ impl<C: Coordinate, V: Accumulator> PlateauTracking<C, V> for DynamicPlateauTrac
 
     fn debug_assert_mirror_consistency(
         &self,
-        gnodes: &Arena<GNode<C, V>>,
+        gnodes: &GNodeTree<C, V>,
         fresh: &BTreeMap<BasisEdge<C>, Plateau<C, V>>,
         label: &str,
     ) {

@@ -1,12 +1,11 @@
 use super::DynamicPlateauTracker;
-use crate::arena::Arena;
+use crate::tree::gtree::GNodeTree;
 use crate::handle::GNodeId;
-use crate::nodes::gnode::GNode;
 use crate::traits::{Accumulator, Coordinate};
 use crate::tree::gtree::gnode_depth_from_range;
 
 impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
-    pub(super) fn on_bootstrap_split_impl(&mut self, gnodes: &Arena<GNode<C, V>>, g_id: GNodeId) {
+    pub(super) fn on_bootstrap_split_impl(&mut self, gnodes: &GNodeTree<C, V>, g_id: GNodeId) {
         let _span =
             tracing::debug_span!("plateau_after_bootstrap_split", g_id = g_id.index(),).entered();
 

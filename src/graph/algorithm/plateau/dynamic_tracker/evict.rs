@@ -1,7 +1,7 @@
 use super::DynamicPlateauTracker;
-use crate::arena::Arena;
+use crate::tree::gtree::GNodeTree;
 use crate::handle::GNodeId;
-use crate::nodes::gnode::{GNode, GState};
+use crate::nodes::gnode::GState;
 use crate::spatial::range::CoordinateRange;
 use crate::traits::{Accumulator, Coordinate};
 use crate::tree::gtree::gnode_depth_from_range;
@@ -9,7 +9,7 @@ use crate::tree::gtree::gnode_depth_from_range;
 impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
     pub(super) fn on_evict_impl(
         &mut self,
-        gnodes: &Arena<GNode<C, V>>,
+        gnodes: &GNodeTree<C, V>,
         gnode_id: GNodeId,
         parent_id: GNodeId,
         parent_state_after: GState,
