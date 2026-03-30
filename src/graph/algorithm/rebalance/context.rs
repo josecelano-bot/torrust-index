@@ -1,7 +1,6 @@
-use crate::arena::Arena;
 use crate::handle::VNodeId;
-use crate::nodes::vnode::VNode;
 use crate::traits::Accumulator;
+use crate::tree::vtree::VTree;
 
 pub use super::super::fmt::{Ctx, Nd};
 
@@ -35,6 +34,5 @@ impl EscalationContext {
 }
 
 pub struct VTreeMutContext<'a, V: Accumulator> {
-	pub vnodes: &'a mut Arena<VNode<V>>,
-	pub violations: &'a mut Vec<VNodeId>,
+    pub vtree: &'a mut VTree<V>,
 }

@@ -41,7 +41,7 @@ fn escalate_contract_parent<V: Accumulator>(
     tree: &mut VTreeMutContext<'_, V>,
     ctx: &mut EscalationContext,
 ) -> Option<VNodeId> {
-    let (vnodes, violations) = (&mut *tree.vnodes, &mut *tree.violations);
+    let (vnodes, violations) = (&mut tree.vtree.nodes, &mut tree.vtree.violations);
     let merged = contract(vnodes, ctx.parent_id);
     let mut queue = ViolationQueue::new(violations);
     queue.push_side_effect(vnodes, ctx.parent_id);
@@ -71,7 +71,7 @@ fn escalate_try_contract_grandparent<V: Accumulator>(
     tree: &mut VTreeMutContext<'_, V>,
     ctx: &mut EscalationContext,
 ) -> bool {
-    let (vnodes, violations) = (&mut *tree.vnodes, &mut *tree.violations);
+    let (vnodes, violations) = (&mut tree.vtree.nodes, &mut tree.vtree.violations);
     if structural_child_count(vnodes, ctx.grandparent_id) == 3 {
         let g_merged = contract(vnodes, ctx.grandparent_id);
         let mut queue = ViolationQueue::new(violations);
@@ -100,7 +100,7 @@ fn escalate_skip_promote<V: Accumulator>(
     tree: &mut VTreeMutContext<'_, V>,
     ctx: &EscalationContext,
 ) {
-    let (vnodes, violations) = (&mut *tree.vnodes, &mut *tree.violations);
+    let (vnodes, violations) = (&mut tree.vtree.nodes, &mut tree.vtree.violations);
     if let Some(g_id) = vnodes.get(ctx.parent_id.index()).parent() {
         skip_promote(vnodes, ctx.heaviest_id);
         let mut queue = ViolationQueue::new(violations);
@@ -117,49 +117,50 @@ fn escalate_after_promote<V: Accumulator>(
     tree: &mut VTreeMutContext<'_, V>,
     p: VNodeId,
 ) {
-    let vnodes = &mut *tree.vnodes;
     // Phase 1: Identify heaviest child; early-return if no violation.
-    let p_node = vnodes.get(p.index());
-    if !p_node.is_structural_triple() {
-        return;
-    }
-    let heaviest = match p_node.kind() {
-        VKind::Structural { children, .. } => children.get(children.heaviest_child_index()).0,
-        VKind::Entry { .. } => return,
-    };
+    // Scope the shared borrow so it is dropped before the mutable helper calls.
+    let (heaviest, h_direct, g) = {
+        let vnodes = &tree.vtree.nodes;
+        let p_node = vnodes.get(p.index());
+        if !p_node.is_structural_triple() {
+            return;
+        }
+        let heaviest = match p_node.kind() {
+            VKind::Structural { children, .. } => children.get(children.heaviest_child_index()).0,
+            VKind::Entry { .. } => return,
+        };
+        let h_direct = is_violated(vnodes, heaviest);
+        let h_indirect = !h_direct && any_child_violated(vnodes, heaviest);
+        if !h_direct && !h_indirect {
+            return;
+        }
+        let Some(g) = vnodes.get(p.index()).parent() else {
+            return;
+        };
+        (heaviest, h_direct, g)
+    }; // shared borrow of tree.vtree.nodes dropped here
 
-    let h_direct = is_violated(vnodes, heaviest);
-    let h_indirect = !h_direct && any_child_violated(vnodes, heaviest);
-    if !h_direct && !h_indirect {
-        return;
-    }
-
-    let Some(g) = vnodes.get(p.index()).parent() else {
-        return;
-    };
     let _span = tracing::debug_span!(
         "escalate",
-        h = %Nd(vnodes, heaviest),
+        h = %Nd(&tree.vtree.nodes, heaviest),
         reason = if h_direct { "direct" } else { "indirect" },
     )
     .entered();
 
-    let violations = &mut *tree.violations;
-    let mut tree = VTreeMutContext { vnodes, violations };
     let mut ctx = EscalationContext::new(p, g, heaviest, h_direct);
 
     // Phase 2: Contract 3-child parent `p` and propagate violations.
-    let Some(_merged) = escalate_contract_parent(&mut tree, &mut ctx) else {
+    let Some(_merged) = escalate_contract_parent(tree, &mut ctx) else {
         return;
     };
 
     // Phase 3: Optionally contract grandparent `g` if it has 3 children.
-    if escalate_try_contract_grandparent(&mut tree, &mut ctx) {
+    if escalate_try_contract_grandparent(tree, &mut ctx) {
         return;
     }
 
     // Phase 4: Skip-promote fallback.
-    escalate_skip_promote(&mut tree, &ctx);
+    escalate_skip_promote(tree, &ctx);
 }
 
 /// Phase 1 of `resolve`: if the parent of `c` is a 3-child node, contract it
@@ -170,7 +171,7 @@ fn resolve_try_contract_parent<V: Accumulator>(
     p: VNodeId,
     c: VNodeId,
 ) -> bool {
-    let (vnodes, violations) = (&mut *tree.vnodes, &mut *tree.violations);
+    let (vnodes, violations) = (&mut tree.vtree.nodes, &mut tree.vtree.violations);
     if structural_child_count(vnodes, p) == 3 {
         tracing::debug!(p = %Nd(vnodes, p), "phase 1: contracting 3-node parent");
         let merged = contract(vnodes, p);
@@ -199,7 +200,7 @@ fn resolve_path_b<C: Coordinate, V: Accumulator>(
     g: VNodeId,
     depth_evict: u32,
 ) -> Option<GNodeId> {
-    let (vnodes, violations) = (&mut *tree.vnodes, &mut *tree.violations);
+    let (vnodes, violations) = (&mut tree.vtree.nodes, &mut tree.vtree.violations);
     // Optional grandparent contraction before the promote attempt.
     let g_merged = if structural_child_count(vnodes, g) == 3 {
         let merged = contract(vnodes, g);
@@ -277,9 +278,9 @@ pub fn resolve<C: Coordinate, V: Accumulator>(
     depth_evict: u32,
 ) -> Option<GNodeId> {
     let _span = tracing::debug_span!("resolve", node = c.index()).entered();
-    tracing::debug!(ctx = %Ctx(tree.vnodes, c), "begin");
+    tracing::debug!(ctx = %Ctx(&tree.vtree.nodes, c), "begin");
 
-    let Some(p) = tree.vnodes.get(c.index()).parent() else {
+    let Some(p) = tree.vtree.nodes.get(c.index()).parent() else {
         tracing::trace!("no parent — nothing to resolve");
         return None;
     };
@@ -290,28 +291,28 @@ pub fn resolve<C: Coordinate, V: Accumulator>(
     }
 
     // Path A: standard promote.
-    if tree.vnodes.get(c.index()).is_structural_pair() {
+    if tree.vtree.nodes.get(c.index()).is_structural_pair() {
         tracing::debug!("phase 2: standard promote");
-        standard_promote(tree.vnodes, c);
-        let mut queue = ViolationQueue::new(tree.violations);
-        queue.push_side_effect(tree.vnodes, p);
-        queue.push_promoted(tree.vnodes, p);
+        standard_promote(&mut tree.vtree.nodes, c);
+        let mut queue = ViolationQueue::new(&mut tree.vtree.violations);
+        queue.push_side_effect(&tree.vtree.nodes, p);
+        queue.push_promoted(&tree.vtree.nodes, p);
         escalate_after_promote(tree, p);
         return None;
     }
 
     // Path B: skip / legacy promote.
     tracing::debug!("phase 2: skip promote path");
-    let Some(g) = tree.vnodes.get(p.index()).parent() else {
+    let Some(g) = tree.vtree.nodes.get(p.index()).parent() else {
         tracing::trace!("no grandparent — cannot skip-promote");
         return None;
     };
 
     let result = resolve_path_b(tree, gnodes, c, p, g, depth_evict);
 
-    if tree.vnodes.is_occupied(c.index()) && is_violated(tree.vnodes, c) {
+    if tree.vtree.nodes.is_occupied(c.index()) && is_violated(&tree.vtree.nodes, c) {
         tracing::warn!(
-            node = %Ctx(tree.vnodes, c),
+            node = %Ctx(&tree.vtree.nodes, c),
             "resolve() returning with node STILL violated",
         );
     }
