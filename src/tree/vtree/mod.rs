@@ -62,6 +62,19 @@ pub struct VTree<V: Accumulator> {
     pub(crate) violations: Vec<VNodeId>,
 }
 
+#[derive(Debug, Clone, Copy)]
+enum RemoveLeafCase {
+    Root,
+    Shrink {
+        parent: VNodeId,
+    },
+    Collapse {
+        parent: VNodeId,
+        sibling: VNodeId,
+        grandparent: Option<VNodeId>,
+    },
+}
+
 // ── VTree methods ─────────────────────────────────────────────────────────────
 
 impl<V: Accumulator> VTree<V> {
@@ -91,13 +104,29 @@ impl<V: Accumulator> VTree<V> {
             gtree.nodes.clear_entry(*gnode);
         }
 
-        let parent = self.nodes.get(v_id.index()).parent();
+        match self.classify_remove_leaf_case(v_id) {
+            RemoveLeafCase::Root => {
+                span.record("case", "root");
+                self.remove_root_leaf(v_id);
+            }
+            RemoveLeafCase::Shrink { parent } => {
+                span.record("case", "shrink");
+                self.remove_from_three_child_parent(parent, v_id);
+            }
+            RemoveLeafCase::Collapse {
+                parent,
+                sibling,
+                grandparent,
+            } => {
+                span.record("case", "collapse");
+                self.collapse_two_child_parent(parent, sibling, grandparent, v_id);
+            }
+        }
+    }
 
-        let Some(p_id) = parent else {
-            span.record("case", "root");
-            self.nodes.dealloc(v_id.index());
-            self.nodes.root = None;
-            return;
+    fn classify_remove_leaf_case(&self, v_id: VNodeId) -> RemoveLeafCase {
+        let Some(p_id) = self.nodes.get(v_id.index()).parent() else {
+            return RemoveLeafCase::Root;
         };
 
         let p = self.nodes.get(p_id.index());
@@ -107,30 +136,54 @@ impl<V: Accumulator> VTree<V> {
         };
 
         if p_child_count == 3 {
-            span.record("case", "shrink");
-            self.remove_structural_child(p_id, v_id);
-            self.recompute_and_propagate_v_sums(p_id);
-            self.propagate_evictable(p_id);
-            self.nodes.dealloc(v_id.index());
-            return;
+            return RemoveLeafCase::Shrink { parent: p_id };
         }
 
-        span.record("case", "collapse");
-        let sole_id = self.nodes.sibling_of(p_id, v_id).0;
-        let grandparent = self.nodes.get(p_id.index()).parent();
+        let sibling = self.nodes.sibling_of(p_id, v_id).0;
+        let grandparent = p.parent();
+        RemoveLeafCase::Collapse {
+            parent: p_id,
+            sibling,
+            grandparent,
+        }
+    }
 
+    fn remove_root_leaf(&mut self, v_id: VNodeId) {
+        self.nodes.dealloc(v_id.index());
+        self.nodes.root = None;
+    }
+
+    fn remove_from_three_child_parent(&mut self, p_id: VNodeId, v_id: VNodeId) {
+        self.remove_structural_child(p_id, v_id);
+        self.finalize_after_parent_change(p_id);
+        self.nodes.dealloc(v_id.index());
+    }
+
+    fn collapse_two_child_parent(
+        &mut self,
+        p_id: VNodeId,
+        sole_id: VNodeId,
+        grandparent: Option<VNodeId>,
+        v_id: VNodeId,
+    ) {
         self.nodes.get_mut(sole_id.index()).set_parent_opt(grandparent);
 
-        self.nodes.root = grandparent.map_or(Some(sole_id), |g_id| {
-            let sole_int = self.nodes.get(sole_id.index()).intensity();
-            self.replace_structural_child(g_id, p_id, sole_id, sole_int);
-            self.recompute_and_propagate_v_sums(g_id);
-            self.propagate_evictable(g_id);
-            self.nodes.root
-        });
+        match grandparent {
+            None => self.nodes.root = Some(sole_id),
+            Some(g_id) => {
+                let sole_int = self.nodes.get(sole_id.index()).intensity();
+                self.replace_structural_child(g_id, p_id, sole_id, sole_int);
+                self.finalize_after_parent_change(g_id);
+            }
+        }
 
         self.nodes.dealloc(p_id.index());
         self.nodes.dealloc(v_id.index());
+    }
+
+    fn finalize_after_parent_change(&mut self, parent_id: VNodeId) {
+        self.recompute_and_propagate_v_sums(parent_id);
+        self.propagate_evictable(parent_id);
     }
 
     // ── Sum / intensity propagation ───────────────────────────────────────
@@ -259,10 +312,15 @@ mod tests {
     use super::{VNodeTree, VTree};
     use crate::arena::Arena;
     use crate::handle::{GNodeId, VNodeId};
+    use crate::nodes::gnode::GNode;
     use crate::nodes::vnode::{Children, VKind, VNode};
 
     fn entry_vnode(intensity: u32, parent: Option<VNodeId>) -> VNode<u32> {
         VNode::new_entry(intensity, parent, GNodeId::from_index(0), true, true)
+    }
+
+    fn entry_vnode_for(gnode: GNodeId, intensity: u32, parent: Option<VNodeId>) -> VNode<u32> {
+        VNode::new_entry(intensity, parent, gnode, true, true)
     }
 
     // ── v_depth ──────────────────────────────────────────────────────────
@@ -353,7 +411,6 @@ mod tests {
     // ── vtree_remove_leaf ─────────────────────────────────────────────────
     mod vtree_remove_leaf_fn {
         use super::*;
-        use crate::nodes::gnode::GNode;
         use crate::tree::gtree::{GNodeTree, GTree};
 
         /// Minimal G-tree with one Terminal `GNode` at index 0.
@@ -390,6 +447,27 @@ mod tests {
             vtree.remove_leaf(&mut gtree, v_root);
             assert!(vtree.nodes.root.is_none());
             assert!(!vtree.nodes.is_occupied(v_root.index()));
+        }
+
+        #[test]
+        fn root_removal_clears_gnode_entry_link() {
+            let mut vnodes: Arena<VNode<u32>> = Arena::new();
+            let mut gtree = gtree_with_one_node();
+            let g_root = gtree.nodes.root;
+            let v_root = VNodeId::from_index(vnodes.alloc(entry_vnode_for(g_root, 10, None)));
+
+            gtree.nodes.assign_entry(g_root, v_root);
+            assert_eq!(gtree.nodes.get(g_root.index()).entry(), Some(v_root));
+
+            let mut vnode_tree = VNodeTree::from(vnodes);
+            vnode_tree.root = Some(v_root);
+            let mut vtree = VTree {
+                nodes: vnode_tree,
+                violations: Vec::new(),
+            };
+
+            vtree.remove_leaf(&mut gtree, v_root);
+            assert_eq!(gtree.nodes.get(g_root.index()).entry(), None);
         }
 
         // Shrink case: parent has 3 children → remove one, parent shrinks to 2.
@@ -460,6 +538,61 @@ mod tests {
             assert!(!vtree.nodes.is_occupied(target.index()));
             assert!(!vtree.nodes.is_occupied(parent_id.index())); // parent collapsed
             assert!(vtree.nodes.get(sibling.index()).parent().is_none());
+        }
+
+        // Collapse / with grandparent: parent is removed and sibling is linked into grandparent.
+        #[test]
+        fn collapse_with_grandparent_replaces_parent_in_grandparent() {
+            let mut vnodes: Arena<VNode<u32>> = Arena::new();
+            let mut gtree = gtree_with_one_node();
+
+            let target = VNodeId::from_index(vnodes.alloc(entry_vnode(5, None)));
+            let sibling = VNodeId::from_index(vnodes.alloc(entry_vnode(5, None)));
+            let uncle = VNodeId::from_index(vnodes.alloc(entry_vnode(4, None)));
+
+            let parent_id = VNodeId::from_index(vnodes.alloc(VNode::new_structural(
+                10,
+                None,
+                Children::new_2((target, 5u32), (sibling, 5u32)),
+                true,
+            )));
+
+            let grandparent_id = VNodeId::from_index(vnodes.alloc(VNode::new_structural(
+                14,
+                None,
+                Children::new_2((parent_id, 10u32), (uncle, 4u32)),
+                true,
+            )));
+
+            vnodes.get_mut(target.index()).set_parent(parent_id);
+            vnodes.get_mut(sibling.index()).set_parent(parent_id);
+            vnodes.get_mut(uncle.index()).set_parent(grandparent_id);
+            vnodes.get_mut(parent_id.index()).set_parent(grandparent_id);
+
+            let mut vnode_tree = VNodeTree::from(vnodes);
+            vnode_tree.root = Some(grandparent_id);
+            let mut vtree = VTree {
+                nodes: vnode_tree,
+                violations: Vec::new(),
+            };
+
+            vtree.remove_leaf(&mut gtree, target);
+
+            assert_eq!(vtree.nodes.root, Some(grandparent_id));
+            assert!(!vtree.nodes.is_occupied(target.index()));
+            assert!(!vtree.nodes.is_occupied(parent_id.index()));
+            assert_eq!(vtree.nodes.get(sibling.index()).parent(), Some(grandparent_id));
+
+            match vtree.nodes.get(grandparent_id.index()).kind() {
+                VKind::Structural { children, .. } => {
+                    assert_eq!(children.len(), 2);
+                    let child_ids: Vec<_> = children.iter().map(|(id, _)| id).collect();
+                    assert!(child_ids.contains(&sibling));
+                    assert!(child_ids.contains(&uncle));
+                    assert!(!child_ids.contains(&parent_id));
+                }
+                _ => panic!("expected Structural"),
+            }
         }
     }
 }
