@@ -41,7 +41,7 @@
 use crate::arena::Arena;
 use crate::handle::{GNodeId, VNodeId};
 use crate::nodes::gnode::GNode;
-use crate::nodes::vnode::{VKind, VNode};
+use crate::nodes::vnode::{Children, VKind, VNode};
 use crate::traits::{Accumulator, Coordinate};
 
 mod traversal;
@@ -201,6 +201,23 @@ impl<V: Accumulator> VTree<V> {
 
     pub(crate) fn recompute_and_sync(&mut self, id: VNodeId) {
         recompute_and_sync_parent_slot(&mut self.nodes, id);
+    }
+
+    /// Allocates a new 2-child structural node whose children are `a` and `b`,
+    /// linking both children back to the new node. Returns the new node's id.
+    pub(crate) fn alloc_structural_2(&mut self, a: VNodeId, b: VNodeId) -> VNodeId {
+        let a_int = self.nodes.get(a.index()).intensity();
+        let b_int = self.nodes.get(b.index()).intensity();
+        let s = VNode::new_structural(
+            V::add(a_int, b_int),
+            None,
+            Children::new_2((a, a_int), (b, b_int)),
+            true,
+        );
+        let s_id = VNodeId::from_index(self.nodes.alloc(s));
+        self.nodes.get_mut(a.index()).set_parent(s_id);
+        self.nodes.get_mut(b.index()).set_parent(s_id);
+        s_id
     }
 
     // ── Eviction candidate scan ───────────────────────────────────────────

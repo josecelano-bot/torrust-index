@@ -6,8 +6,9 @@ use crate::graph::algorithm::violation_push::{
 };
 use crate::handle::{GNodeId, VNodeId};
 use crate::nodes::gnode::GNode;
-use crate::nodes::vnode::{Children, VNode};
+use crate::nodes::vnode::{VNode};
 use crate::traits::{Accumulator, Coordinate, Inspectable};
+use crate::tree::vtree::VTree;
 
 impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N> {
     pub(super) fn split_candidate_entry(&self, g_id: GNodeId) -> Option<VNodeId> {
@@ -48,8 +49,8 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
 
     pub(super) fn allocate_split_children(&mut self, g_id: GNodeId) -> SplitChildren {
         let (left_id, right_id) = self.gtree.allocate_children(g_id);
-        let left_entry_id = alloc_v_entry(&mut self.vtree.nodes, &mut self.gtree.nodes, left_id);
-        let right_entry_id = alloc_v_entry(&mut self.vtree.nodes, &mut self.gtree.nodes, right_id);
+        let left_entry_id = alloc_v_entry(&mut self.vtree, &mut self.gtree.nodes, left_id);
+        let right_entry_id = alloc_v_entry(&mut self.vtree, &mut self.gtree.nodes, right_id);
 
         SplitChildren {
             left_id,
@@ -72,31 +73,13 @@ pub(super) struct SplitChildren {
 }
 
 pub(super) fn alloc_v_entry<C: Coordinate, V: Accumulator>(
-    vnodes: &mut Arena<VNode<V>>,
+    vtree: &mut VTree<V>,
     gnodes: &mut Arena<GNode<C, V>>,
     gnode: GNodeId,
 ) -> VNodeId {
     let e = VNode::new_entry(V::zero(), None, gnode, true, true);
-    let e_id = VNodeId::from_index(vnodes.alloc(e));
+    let e_id = VNodeId::from_index(vtree.nodes.alloc(e));
     gnodes.get_mut(gnode.index()).assign_entry(e_id);
     e_id
 }
 
-pub(super) fn alloc_v_structural_2<V: Accumulator>(
-    vnodes: &mut Arena<VNode<V>>,
-    a: VNodeId,
-    b: VNodeId,
-) -> VNodeId {
-    let a_int = vnodes.get(a.index()).intensity();
-    let b_int = vnodes.get(b.index()).intensity();
-    let s = VNode::new_structural(
-        V::add(a_int, b_int),
-        None,
-        Children::new_2((a, a_int), (b, b_int)),
-        true,
-    );
-    let s_id = VNodeId::from_index(vnodes.alloc(s));
-    vnodes.get_mut(a.index()).set_parent(s_id);
-    vnodes.get_mut(b.index()).set_parent(s_id);
-    s_id
-}

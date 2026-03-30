@@ -4,7 +4,6 @@ use crate::nodes::vnode::{Children, VNode};
 use crate::traits::{Accumulator, Coordinate, Inspectable};
 
 mod helpers;
-use helpers::alloc_v_structural_2;
 
 impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N> {
     pub(crate) fn attempt_split(&mut self, g_id: GNodeId) {
@@ -40,11 +39,7 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
 
         let children = self.allocate_split_children(g_id);
 
-        let cs_id = alloc_v_structural_2(
-            &mut self.vtree.nodes,
-            children.left_entry_id,
-            children.right_entry_id,
-        );
+        let cs_id = self.vtree.alloc_structural_2(children.left_entry_id, children.right_entry_id);
 
         let entry_int = self.vtree.nodes.get(entry_id.index()).intensity();
         let root_structural = VNode::new_structural(
