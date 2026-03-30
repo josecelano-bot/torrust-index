@@ -48,11 +48,6 @@ mod traversal;
 use traversal::compute_has_evictable;
 use traversal::v_depth;
 
-mod mutation;
-pub use mutation::{
-    add_child_to_structural, remove_child_from_structural, replace_child_in_parent,
-    set_entry_flags, set_has_evictable,
-};
 
 // ── VTree ────────────────────────────────────────────────────────────────────
 
@@ -173,16 +168,22 @@ impl<V: Accumulator> VTree<V> {
         is_exposed_value: bool,
         is_evictable_value: bool,
     ) {
-        set_entry_flags(
-            &mut self.nodes,
-            entry_id,
-            is_exposed_value,
-            is_evictable_value,
-        );
+        if let VKind::Entry {
+            is_exposed,
+            is_evictable,
+            ..
+        } = self.nodes.get_mut(entry_id.index()).kind_mut()
+        {
+            *is_exposed = is_exposed_value;
+            *is_evictable = is_evictable_value;
+        }
     }
 
     pub(crate) fn add_structural_child(&mut self, parent: VNodeId, child: VNodeId, intensity: V) {
-        add_child_to_structural(&mut self.nodes, parent, child, intensity);
+        let p = self.nodes.get_mut(parent.index());
+        if let VKind::Structural { children, .. } = p.kind_mut() {
+            children.add_child(child, intensity);
+        }
     }
 
     pub(crate) fn replace_structural_child(
@@ -192,11 +193,17 @@ impl<V: Accumulator> VTree<V> {
         new_child: VNodeId,
         new_intensity: V,
     ) {
-        replace_child_in_parent(&mut self.nodes, parent, old_child, new_child, new_intensity);
+        let p = self.nodes.get_mut(parent.index());
+        if let VKind::Structural { children, .. } = p.kind_mut() {
+            children.replace_child(old_child, new_child, new_intensity);
+        }
     }
 
     pub(crate) fn remove_structural_child(&mut self, parent: VNodeId, child: VNodeId) {
-        remove_child_from_structural(&mut self.nodes, parent, child);
+        let p = self.nodes.get_mut(parent.index());
+        if let VKind::Structural { children, .. } = p.kind_mut() {
+            children.remove_child(child);
+        }
     }
 
     pub(crate) fn recompute_and_sync(&mut self, id: VNodeId) {
@@ -337,7 +344,7 @@ fn recompute_v_postorder<V: Accumulator>(vnodes: &mut Arena<VNode<V>>, id: VNode
     vnodes.get_mut(id.index()).set_intensity(total);
 }
 
-pub fn propagate_evictable_flags<V: Accumulator>(
+fn propagate_evictable_flags<V: Accumulator>(
     vnodes: &mut Arena<VNode<V>>,
     start: VNodeId,
 ) {
@@ -359,7 +366,10 @@ pub fn propagate_evictable_flags<V: Accumulator>(
                 }
 
                 let parent = node.parent();
-                set_has_evictable(vnodes, id, new_flag);
+                let node_mut = vnodes.get_mut(id.index());
+                if let VKind::Structural { has_evictable, .. } = node_mut.kind_mut() {
+                    *has_evictable = new_flag;
+                }
                 current = parent;
             }
         }
@@ -413,7 +423,7 @@ fn recompute_structural_intensity<V: Accumulator>(vnodes: &mut Arena<VNode<V>>, 
 
 /// Recomputes the structural intensity of `child_id` and immediately updates
 /// the cached intensity slot in its parent (if any).
-pub fn recompute_and_sync_parent_slot<V: Accumulator>(
+fn recompute_and_sync_parent_slot<V: Accumulator>(
     vnodes: &mut Arena<VNode<V>>,
     child_id: VNodeId,
 ) {
