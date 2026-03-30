@@ -212,13 +212,26 @@ fn sibling_of<V: Accumulator>(
     let p_node = vnodes.get(parent.index());
     match &p_node.kind() {
         VKind::Structural { children, .. } => {
-            for i in 0..children.len() {
-                let (id, int) = children.get(i);
-                if id != child {
-                    return (id, int);
-                }
+            assert_eq!(
+                children.len(),
+                2,
+                "sibling_of: parent must be a 2-child structural node"
+            );
+
+            let (id0, int0) = children.get(0);
+            let (id1, int1) = children.get(1);
+
+            if id0 == child {
+                (id1, int1)
+            } else if id1 == child {
+                (id0, int0)
+            } else {
+                panic!(
+                    "sibling_of: child {} not found in parent {}",
+                    child.index(),
+                    parent.index()
+                );
             }
-            panic!("sibling_of: child not found in parent");
         }
         VKind::Entry { .. } => panic!("sibling_of: parent must be structural"),
     }
