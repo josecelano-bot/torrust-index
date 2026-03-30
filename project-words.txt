@@ -1,0 +1,134 @@
+# Project-specific dictionary for cspell
+# Add words here that are valid in this codebase but not in standard dictionaries.
+
+# ----------------------------
+# Project / company names
+# ----------------------------
+Cyberneering
+cyberneering
+torrust
+Torrust
+
+# ----------------------------
+# Rust ecosystem / crate names
+# ----------------------------
+btreemap
+clippy
+crossterm
+dedup
+impls
+INSTA
+insta
+newtype
+ratatui
+rstest
+serde
+usize
+vecs
+
+# ----------------------------
+# British English spellings
+# ----------------------------
+amortised
+artefacts
+behaviour
+colour
+Colour
+colours
+Colours
+materialises
+normalisation
+normalise
+Normalise
+normalised
+penalised
+serialises
+stabilise
+visualiser
+
+# ----------------------------
+# Algorithms / complexity metrics
+# ----------------------------
+Cabe
+Fenwick
+Gries
+halstead
+Halstead
+ltrimstr
+Misra
+nargs
+nexits
+rtrimstr
+sloc
+SLOC
+
+# ----------------------------
+# Domain / project-specific terms
+# ----------------------------
+attenuatable
+Attenuatable
+browsable
+diagnoser
+disjointness
+elif
+elems
+evictable
+Evictable
+fanout
+freelist
+gnode
+gnodes
+gtree
+inspectable
+Inspectable
+keyspace
+hotspot
+hotspots
+Hotspots
+maximality
+modif
+overindented
+proratable
+Proratable
+pewei
+Pewei
+postorder
+preorder
+reparent
+reqs
+sampleable
+semiinternal
+Subtrait
+UFCS
+unparented
+vecs
+ventry
+visualiser
+vnode
+vnodes
+vtree
+weighable
+Weighable
+
+# ----------------------------
+# Graphviz / DOT attributes
+# ----------------------------
+fontname
+fontsize
+Graphviz
+rankdir
+tsvg
+Tsvg
+
+# ----------------------------
+# Tools / external programs
+# ----------------------------
+Accum
+Deque
+Djava
+
+# ----------------------------
+# Miscellaneous abbreviations / shortcuts
+# ----------------------------
+nullglob
+undercount

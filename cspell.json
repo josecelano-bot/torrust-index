@@ -1,0 +1,29 @@
+{
+  "version": "0.2",
+  "language": "en",
+  "files": [
+    "**/*.rs",
+    "**/*.md",
+    "**/*.toml",
+    "**/*.sh",
+    "**/*.txt",
+    "**/*.json"
+  ],
+  "ignorePaths": [
+    ".git/**",
+    "target/**",
+    "Cargo.lock",
+    "metrics-output/**",
+    "docs/snapshots/**"
+  ],
+  "dictionaryDefinitions": [
+    {
+      "name": "project-words",
+      "path": "./project-words.txt",
+      "addWords": true
+    }
+  ],
+  "dictionaries": [
+    "project-words"
+  ]
+}
