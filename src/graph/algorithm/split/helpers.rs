@@ -39,7 +39,7 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
             p = %Nd(&self.vtree.nodes, p_id),
         )
         .entered();
-        let merged = contract(&mut self.vtree.nodes, p_id);
+        let merged = contract(&mut self.vtree, p_id);
         let mut queue = ViolationQueue::new(&mut self.vtree.violations);
         queue.push_side_effect(&self.vtree.nodes, p_id);
         queue.push_side_effect(&self.vtree.nodes, merged);

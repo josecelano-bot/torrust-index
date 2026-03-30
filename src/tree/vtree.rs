@@ -199,6 +199,10 @@ impl<V: Accumulator> VTree<V> {
         remove_child_from_structural(&mut self.nodes, parent, child);
     }
 
+    pub(crate) fn recompute_and_sync(&mut self, id: VNodeId) {
+        recompute_and_sync_parent_slot(&mut self.nodes, id);
+    }
+
     // ── Eviction candidate scan ───────────────────────────────────────────
 
     /// Returns all V-entry nodes eligible for eviction.

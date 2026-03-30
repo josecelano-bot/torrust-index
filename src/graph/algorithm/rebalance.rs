@@ -3,7 +3,7 @@ use crate::handle::{GNodeId, VNodeId};
 use crate::nodes::gnode::GNode;
 use crate::nodes::vnode::{Children, VKind, VNode};
 use crate::traits::{Accumulator, Coordinate, Inspectable};
-use crate::tree::vtree::{VTree, propagate_evictable_flags};
+use crate::tree::vtree::VTree;
 
 mod context;
 mod resolve;
@@ -44,16 +44,16 @@ pub fn is_violated<V: Accumulator>(vnodes: &Arena<VNode<V>>, c: VNodeId) -> bool
     max_uncle_intensity(vnodes, c).is_some_and(|max_uncle| c_int > max_uncle)
 }
 
-pub fn contract<V: Accumulator>(vnodes: &mut Arena<VNode<V>>, p: VNodeId) -> VNodeId {
+pub fn contract<V: Accumulator>(vtree: &mut VTree<V>, p: VNodeId) -> VNodeId {
     let _span = tracing::debug_span!(
         "contract",
-        p = %Nd(vnodes, p),
-        children = %Ch(vnodes, p),
+        p = %Nd(&vtree.nodes, p),
+        children = %Ch(&vtree.nodes, p),
     )
     .entered();
 
     let (heaviest_idx, children_data) = {
-        let node = vnodes.get(p.index());
+        let node = vtree.nodes.get(p.index());
         let children = match &node.kind() {
             VKind::Structural { children, .. } => children,
             VKind::Entry { .. } => panic!("contract: p must be structural"),
@@ -74,8 +74,8 @@ pub fn contract<V: Accumulator>(vnodes: &mut Arena<VNode<V>>, p: VNodeId) -> VNo
     let (a_id, a_int) = merge[0];
     let (b_id, b_int) = merge[1];
 
-    let a_terminal = node_has_evictable(vnodes, a_id);
-    let b_terminal = node_has_evictable(vnodes, b_id);
+    let a_terminal = node_has_evictable(&vtree.nodes, a_id);
+    let b_terminal = node_has_evictable(&vtree.nodes, b_id);
 
     let merged = VNode::new_structural(
         V::add(a_int, b_int),
@@ -83,16 +83,16 @@ pub fn contract<V: Accumulator>(vnodes: &mut Arena<VNode<V>>, p: VNodeId) -> VNo
         Children::new_2((a_id, a_int), (b_id, b_int)),
         a_terminal || b_terminal,
     );
-    let m_id = VNodeId::from_index(vnodes.alloc(merged));
+    let m_id = VNodeId::from_index(vtree.nodes.alloc(merged));
 
-    vnodes.get_mut(a_id.index()).set_parent(m_id);
-    vnodes.get_mut(b_id.index()).set_parent(m_id);
+    vtree.nodes.get_mut(a_id.index()).set_parent(m_id);
+    vtree.nodes.get_mut(b_id.index()).set_parent(m_id);
 
     let merged_int = V::add(a_int, b_int);
-    let iso_terminal = node_has_evictable(vnodes, isolate.0);
+    let iso_terminal = node_has_evictable(&vtree.nodes, isolate.0);
     let m_terminal = a_terminal || b_terminal;
 
-    let p_node = vnodes.get_mut(p.index());
+    let p_node = vtree.nodes.get_mut(p.index());
     if let VKind::Structural {
         children,
         has_evictable,
@@ -102,11 +102,11 @@ pub fn contract<V: Accumulator>(vnodes: &mut Arena<VNode<V>>, p: VNodeId) -> VNo
         *has_evictable = iso_terminal || m_terminal;
     }
 
-    propagate_evictable_flags(vnodes, p);
+    vtree.propagate_evictable(p);
 
     tracing::debug!(
-        merged = %Nd(vnodes, m_id),
-        result = %Ch(vnodes, p),
+        merged = %Nd(&vtree.nodes, m_id),
+        result = %Ch(&vtree.nodes, p),
         "complete",
     );
     m_id

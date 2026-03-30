@@ -17,27 +17,25 @@ use crate::handle::{GNodeId, VNodeId};
 use crate::nodes::gnode::GNode;
 use crate::nodes::vnode::{Children, VKind, VNode};
 use crate::traits::{Accumulator, Coordinate};
-use crate::tree::vtree::{
-    propagate_evictable_flags, recompute_and_sync_parent_slot,
-    replace_child_in_parent, set_entry_flags,
-};
+use crate::tree::vtree::VTree;
 
 use super::rebalance::{Ch, Nd, node_has_evictable};
 
-pub fn standard_promote<V: Accumulator>(vnodes: &mut Arena<VNode<V>>, c: VNodeId) {
-    let p = vnodes
+pub fn standard_promote<V: Accumulator>(vtree: &mut VTree<V>, c: VNodeId) {
+    let p = vtree
+        .nodes
         .get(c.index())
         .parent()
         .expect("standard_promote: c must have a parent");
     let _span = tracing::debug_span!(
         "standard_promote",
-        c = %Nd(vnodes, c),
-        children = %Ch(vnodes, c),
+        c = %Nd(&vtree.nodes, c),
+        children = %Ch(&vtree.nodes, c),
     )
     .entered();
 
     let (c1_id, c1_int, c2_id, c2_int) = {
-        let node = vnodes.get(c.index());
+        let node = vtree.nodes.get(c.index());
         match &node.kind() {
             VKind::Structural { children, .. } => {
                 assert!(children.len() == 2, "standard_promote: c must be a 2-node");
@@ -49,13 +47,13 @@ pub fn standard_promote<V: Accumulator>(vnodes: &mut Arena<VNode<V>>, c: VNodeId
         }
     };
 
-    let sibling_id = sibling_of(vnodes, p, c);
+    let sibling_id = sibling_of(&vtree.nodes, p, c);
 
-    let sib_terminal = node_has_evictable(vnodes, sibling_id.0);
-    let c1_terminal = node_has_evictable(vnodes, c1_id);
-    let c2_terminal = node_has_evictable(vnodes, c2_id);
+    let sib_terminal = node_has_evictable(&vtree.nodes, sibling_id.0);
+    let c1_terminal = node_has_evictable(&vtree.nodes, c1_id);
+    let c2_terminal = node_has_evictable(&vtree.nodes, c2_id);
 
-    let p_node = vnodes.get_mut(p.index());
+    let p_node = vtree.nodes.get_mut(p.index());
     if let VKind::Structural {
         children,
         has_evictable,
@@ -65,44 +63,46 @@ pub fn standard_promote<V: Accumulator>(vnodes: &mut Arena<VNode<V>>, c: VNodeId
         *has_evictable = c1_terminal || c2_terminal || sib_terminal;
     }
 
-    vnodes.get_mut(c1_id.index()).set_parent(p);
-    vnodes.get_mut(c2_id.index()).set_parent(p);
+    vtree.nodes.get_mut(c1_id.index()).set_parent(p);
+    vtree.nodes.get_mut(c2_id.index()).set_parent(p);
 
-    vnodes.dealloc(c.index());
+    vtree.nodes.dealloc(c.index());
 
-    propagate_evictable_flags(vnodes, p);
+    vtree.propagate_evictable(p);
 
-    tracing::debug!(result = %Ch(vnodes, p), "c destroyed, p is 3-node");
+    tracing::debug!(result = %Ch(&vtree.nodes, p), "c destroyed, p is 3-node");
 }
 
-pub fn skip_promote<V: Accumulator>(vnodes: &mut Arena<VNode<V>>, c: VNodeId) -> Option<VNodeId> {
-    let p = vnodes
+pub fn skip_promote<V: Accumulator>(vtree: &mut VTree<V>, c: VNodeId) -> Option<VNodeId> {
+    let p = vtree
+        .nodes
         .get(c.index())
         .parent()
         .expect("skip_promote: c must have a parent");
-    let g = vnodes
+    let g = vtree
+        .nodes
         .get(p.index())
         .parent()
         .expect("skip_promote: p must have a grandparent");
     let _span = tracing::debug_span!(
         "skip_promote",
-        c = %Nd(vnodes, c),
+        c = %Nd(&vtree.nodes, c),
         p = p.index(),
         g = g.index(),
     )
     .entered();
 
-    let (s_id, s_int) = sibling_of(vnodes, p, c);
+    let (s_id, s_int) = sibling_of(&vtree.nodes, p, c);
 
-    let c_int = vnodes.get(c.index()).intensity();
+    let c_int = vtree.nodes.get(c.index()).intensity();
 
-    let (u_id, u_int) = sibling_of(vnodes, g, p);
+    let (u_id, u_int) = sibling_of(&vtree.nodes, g, p);
 
-    let c_terminal = node_has_evictable(vnodes, c);
-    let s_terminal = node_has_evictable(vnodes, s_id);
-    let u_terminal = node_has_evictable(vnodes, u_id);
+    let c_terminal = node_has_evictable(&vtree.nodes, c);
+    let s_terminal = node_has_evictable(&vtree.nodes, s_id);
+    let u_terminal = node_has_evictable(&vtree.nodes, u_id);
 
-    let g_node = vnodes.get_mut(g.index());
+    let g_node = vtree.nodes.get_mut(g.index());
     if let VKind::Structural {
         children,
         has_evictable,
@@ -112,34 +112,36 @@ pub fn skip_promote<V: Accumulator>(vnodes: &mut Arena<VNode<V>>, c: VNodeId) ->
         *has_evictable = c_terminal || s_terminal || u_terminal;
     }
 
-    vnodes.get_mut(c.index()).set_parent(g);
-    vnodes.get_mut(s_id.index()).set_parent(g);
+    vtree.nodes.get_mut(c.index()).set_parent(g);
+    vtree.nodes.get_mut(s_id.index()).set_parent(g);
 
-    vnodes.dealloc(p.index());
+    vtree.nodes.dealloc(p.index());
 
-    propagate_evictable_flags(vnodes, g);
+    vtree.propagate_evictable(g);
 
-    tracing::debug!(result = %Ch(vnodes, g), "p destroyed, g is 3-node");
+    tracing::debug!(result = %Ch(&vtree.nodes, g), "p destroyed, g is 3-node");
 
     None
 }
 
 #[allow(clippy::too_many_lines)]
 pub fn legacy_promote<C: Coordinate, V: Accumulator>(
-    vnodes: &mut Arena<VNode<V>>,
+    vtree: &mut VTree<V>,
     gnodes: &mut Arena<GNode<C, V>>,
     c: VNodeId,
 ) -> GNodeId {
-    let p = vnodes
+    let p = vtree
+        .nodes
         .get(c.index())
         .parent()
         .expect("legacy_promote: c must have a parent");
-    let g = vnodes
+    let g = vtree
+        .nodes
         .get(p.index())
         .parent()
         .expect("legacy_promote: p must have a grandparent");
 
-    let gnode_id = match &vnodes.get(c.index()).kind() {
+    let gnode_id = match &vtree.nodes.get(c.index()).kind() {
         VKind::Entry { gnode, .. } => *gnode,
         VKind::Structural { .. } => panic!("legacy_promote: c must be an entry"),
     };
@@ -151,7 +153,7 @@ pub fn legacy_promote<C: Coordinate, V: Accumulator>(
 
     let _span = tracing::debug_span!(
         "legacy_promote",
-        c = %Nd(vnodes, c),
+        c = %Nd(&vtree.nodes, c),
         p = p.index(),
         g = g.index(),
         gnode = gnode_id.index(),
@@ -179,20 +181,20 @@ pub fn legacy_promote<C: Coordinate, V: Accumulator>(
     }
 
     let ne = VNode::new_entry(V::zero(), Some(p), new_child_id, true, true);
-    let ne_id = VNodeId::from_index(vnodes.alloc(ne));
+    let ne_id = VNodeId::from_index(vtree.nodes.alloc(ne));
     gnodes.get_mut(new_child_id.index()).assign_entry(ne_id);
 
-    let c_int = vnodes.get(c.index()).intensity();
-    replace_child_in_parent(vnodes, p, c, ne_id, V::zero());
+    let c_int = vtree.nodes.get(c.index()).intensity();
+    vtree.replace_structural_child(p, c, ne_id, V::zero());
 
-    let (u_id, u_int) = sibling_of(vnodes, g, p);
+    let (u_id, u_int) = sibling_of(&vtree.nodes, g, p);
 
     let c_evictable = false;
-    let p_evictable = node_has_evictable(vnodes, p);
-    let u_evictable = node_has_evictable(vnodes, u_id);
+    let p_evictable = node_has_evictable(&vtree.nodes, p);
+    let u_evictable = node_has_evictable(&vtree.nodes, u_id);
 
-    let p_int = vnodes.get(p.index()).intensity();
-    let g_node = vnodes.get_mut(g.index());
+    let p_int = vtree.nodes.get(p.index()).intensity();
+    let g_node = vtree.nodes.get_mut(g.index());
     if let VKind::Structural {
         children,
         has_evictable,
@@ -202,14 +204,14 @@ pub fn legacy_promote<C: Coordinate, V: Accumulator>(
         *has_evictable = c_evictable || p_evictable || u_evictable;
     }
 
-    vnodes.get_mut(c.index()).set_parent(g);
+    vtree.nodes.get_mut(c.index()).set_parent(g);
 
-    set_entry_flags(vnodes, c, false, false);
+    vtree.set_entry_flags(c, false, false);
 
-    recompute_and_sync_parent_slot(vnodes, p);
+    vtree.recompute_and_sync(p);
 
-    propagate_evictable_flags(vnodes, p);
-    propagate_evictable_flags(vnodes, g);
+    vtree.propagate_evictable(p);
+    vtree.propagate_evictable(g);
 
     tracing::debug!(
         new_gnode = new_child_id.index(),
@@ -246,26 +248,35 @@ mod tests {
     use crate::arena::Arena;
     use crate::handle::{GNodeId, VNodeId};
     use crate::nodes::vnode::{Children, VKind, VNode};
+    use crate::tree::vtree::VTree;
+
+    fn make_vtree<V: crate::traits::Accumulator>() -> VTree<V> {
+        VTree {
+            nodes: Arena::new(),
+            root: None,
+            violations: Vec::new(),
+        }
+    }
 
     #[test]
     fn standard_promote_replaces_child_pair_with_grandchildren() {
-        let mut vnodes: Arena<VNode<u64>> = Arena::new();
+        let mut vtree: VTree<u64> = make_vtree();
 
-        let e1 = VNodeId::from_index(vnodes.alloc(VNode::new_entry(
+        let e1 = VNodeId::from_index(vtree.nodes.alloc(VNode::new_entry(
             2,
             None,
             GNodeId::from_index(0),
             false,
             true,
         )));
-        let e2 = VNodeId::from_index(vnodes.alloc(VNode::new_entry(
+        let e2 = VNodeId::from_index(vtree.nodes.alloc(VNode::new_entry(
             3,
             None,
             GNodeId::from_index(1),
             false,
             false,
         )));
-        let s = VNodeId::from_index(vnodes.alloc(VNode::new_entry(
+        let s = VNodeId::from_index(vtree.nodes.alloc(VNode::new_entry(
             5,
             None,
             GNodeId::from_index(2),
@@ -273,27 +284,27 @@ mod tests {
             true,
         )));
 
-        let c = VNodeId::from_index(vnodes.alloc(VNode::new_structural(
+        let c = VNodeId::from_index(vtree.nodes.alloc(VNode::new_structural(
             5,
             None,
             Children::new_2((e1, 2), (e2, 3)),
             true,
         )));
-        vnodes.get_mut(e1.index()).set_parent(c);
-        vnodes.get_mut(e2.index()).set_parent(c);
+        vtree.nodes.get_mut(e1.index()).set_parent(c);
+        vtree.nodes.get_mut(e2.index()).set_parent(c);
 
-        let p = VNodeId::from_index(vnodes.alloc(VNode::new_structural(
+        let p = VNodeId::from_index(vtree.nodes.alloc(VNode::new_structural(
             10,
             None,
             Children::new_2((c, 5), (s, 5)),
             true,
         )));
-        vnodes.get_mut(c.index()).set_parent(p);
-        vnodes.get_mut(s.index()).set_parent(p);
+        vtree.nodes.get_mut(c.index()).set_parent(p);
+        vtree.nodes.get_mut(s.index()).set_parent(p);
 
-        standard_promote(&mut vnodes, c);
+        standard_promote(&mut vtree, c);
 
-        let p_node = vnodes.get(p.index());
+        let p_node = vtree.nodes.get(p.index());
         match p_node.kind() {
             VKind::Structural { children, .. } => {
                 assert_eq!(children.get(0).0, e1);
@@ -303,30 +314,30 @@ mod tests {
             VKind::Entry { .. } => panic!("parent should remain structural"),
         }
 
-        assert_eq!(vnodes.get(e1.index()).parent(), Some(p));
-        assert_eq!(vnodes.get(e2.index()).parent(), Some(p));
-        assert!(!vnodes.is_occupied(c.index()));
+        assert_eq!(vtree.nodes.get(e1.index()).parent(), Some(p));
+        assert_eq!(vtree.nodes.get(e2.index()).parent(), Some(p));
+        assert!(!vtree.nodes.is_occupied(c.index()));
     }
 
     #[test]
     fn skip_promote_lifts_child_and_sibling_to_grandparent() {
-        let mut vnodes: Arena<VNode<u64>> = Arena::new();
+        let mut vtree: VTree<u64> = make_vtree();
 
-        let c = VNodeId::from_index(vnodes.alloc(VNode::new_entry(
+        let c = VNodeId::from_index(vtree.nodes.alloc(VNode::new_entry(
             4,
             None,
             GNodeId::from_index(10),
             false,
             true,
         )));
-        let s = VNodeId::from_index(vnodes.alloc(VNode::new_entry(
+        let s = VNodeId::from_index(vtree.nodes.alloc(VNode::new_entry(
             3,
             None,
             GNodeId::from_index(11),
             false,
             false,
         )));
-        let u = VNodeId::from_index(vnodes.alloc(VNode::new_entry(
+        let u = VNodeId::from_index(vtree.nodes.alloc(VNode::new_entry(
             8,
             None,
             GNodeId::from_index(12),
@@ -334,28 +345,28 @@ mod tests {
             true,
         )));
 
-        let p = VNodeId::from_index(vnodes.alloc(VNode::new_structural(
+        let p = VNodeId::from_index(vtree.nodes.alloc(VNode::new_structural(
             7,
             None,
             Children::new_2((c, 4), (s, 3)),
             true,
         )));
-        vnodes.get_mut(c.index()).set_parent(p);
-        vnodes.get_mut(s.index()).set_parent(p);
+        vtree.nodes.get_mut(c.index()).set_parent(p);
+        vtree.nodes.get_mut(s.index()).set_parent(p);
 
-        let g = VNodeId::from_index(vnodes.alloc(VNode::new_structural(
+        let g = VNodeId::from_index(vtree.nodes.alloc(VNode::new_structural(
             15,
             None,
             Children::new_2((p, 7), (u, 8)),
             true,
         )));
-        vnodes.get_mut(p.index()).set_parent(g);
-        vnodes.get_mut(u.index()).set_parent(g);
+        vtree.nodes.get_mut(p.index()).set_parent(g);
+        vtree.nodes.get_mut(u.index()).set_parent(g);
 
-        let new_g = skip_promote(&mut vnodes, c);
+        let new_g = skip_promote(&mut vtree, c);
         assert!(new_g.is_none());
 
-        let g_node = vnodes.get(g.index());
+        let g_node = vtree.nodes.get(g.index());
         match g_node.kind() {
             VKind::Structural { children, .. } => {
                 assert_eq!(children.get(0).0, c);
@@ -365,8 +376,8 @@ mod tests {
             VKind::Entry { .. } => panic!("grandparent should remain structural"),
         }
 
-        assert_eq!(vnodes.get(c.index()).parent(), Some(g));
-        assert_eq!(vnodes.get(s.index()).parent(), Some(g));
-        assert!(!vnodes.is_occupied(p.index()));
+        assert_eq!(vtree.nodes.get(c.index()).parent(), Some(g));
+        assert_eq!(vtree.nodes.get(s.index()).parent(), Some(g));
+        assert!(!vtree.nodes.is_occupied(p.index()));
     }
 }
