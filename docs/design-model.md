@@ -1,315 +1,293 @@
 # Design Model
 
-This document provides a high-level structural model of `torrust-mudlark` — types,
-traits, dependencies, and relationships — without implementation details (function
-bodies). It is the basis for reasoning about coupling, cohesion, and architecture
-changes.
-
----
+This document describes the current high-level structure of `torrust-mudlark`
+after the recent refactors. It focuses on the public surface, the main runtime
+objects, module boundaries, and the responsibilities now assigned to each layer.
 
 ## 1. Public API surface
 
-```
+```text
 torrust-mudlark
-├── GvGraph<C: Coordinate, V: Accumulator, const N: u32>   ← main type
-├── Config<V: Accumulator>
-├── GNodeId                                                 ← opaque handle
-├── GState                                                  ← Terminal | SemiInternal | Internal
-├── GNodeChildren                                           ← { left?, right? }
-│
-│   ── Read/query views ──
-├── Node<C, V>
-├── Span<C, V>
-├── Cell<C, V>
-├── Plateau<C, V>
-├── BasisEdge<C>
-├── BasisElement<C, V>
-├── ContourRange<C, V>
-├── ContourRangeEnergy<V>
-│
-│   ── Layered snapshot ──
-├── Pewei<C, V>
-│   ├── Layer<C, V>
-│   │   ├── Transition<C, V>
-│   │   └── Terminal<C, V>
-│
-│   ── Trait abstractions ──
-└── traits::{
-      Coordinate, Accumulator,
-      Attenuatable, Weighable, Proratable, Inspectable,
-      Observation, ScalableObservation,
-      Rng,
-      SpatialRead, SpatialWrite,
-      TemporalDecay, WeightedSampler
-    }
+|- GvGraph<C, V, const N: u32, T = DefaultTracker<C, V>>
+|- DefaultGraph<C, V, const N: u32>
+|- Config<V>
+|- StructuralConfig
+|- GNodeId
+|- GState
+|- GNodeChildren
+|
+|- Read / query DTOs
+|  |- Node<C, V>
+|  |- Span<C, V>
+|  |- Cell<C, V>
+|  |- Plateau<C, V>
+|  |- BasisEdge<C>
+|  |- BasisElement<C, V>
+|  |- ContourRange<C, V>
+|  `- ContourRangeEnergy<V>
+|
+|- Layered snapshot types
+|  |- Pewei<C, V>
+|  |- Layer<C, V>
+|  |- Transition<C, V>
+|  `- Terminal<C, V>
+|
+`- Traits
+   |- Coordinate
+   |- Accumulator
+   |- Attenuatable
+   |- Weighable
+   |- Proratable
+   |- Inspectable
+   |- Observation
+   |- ScalableObservation
+   |- Rng
+   |- SpatialRead
+   |- SpatialWrite
+   |- TemporalDecay
+   |- WeightedSampler
+   |- PlateauRead              (feature-gated)
+   `- PlateauTracking          (feature-gated)
 ```
 
----
+`GvGraph<C, V, N>` is the main user-facing type. `DefaultGraph<C, V, N>` is the
+tracker-specialized alias intended for callers that do not want to name the
+fourth type parameter.
 
-## 2. Trait hierarchy
+## 2. Trait model
 
+`GvGraph` is exposed through thin adapters in `src/graph/traits.rs`.
+
+| Trait | Implemented for | Bounds on `V` | Main method |
+| --- | --- | --- | --- |
+| `SpatialRead` | `GvGraph<C, V, N>` | `Accumulator + Inspectable` | `get(coord)` |
+| `SpatialWrite` | `GvGraph<C, V, N>` | `Accumulator + Inspectable` | `observe(coord, delta)` |
+| `TemporalDecay` | `GvGraph<C, V, N>` | `Accumulator + Attenuatable + Inspectable` | `decay(root, attenuation, q)` |
+| `WeightedSampler` | `GvGraph<C, V, N>` | `Accumulator + Inspectable + Weighable` | `sample(rng)` |
+| `PlateauRead` | `GvGraph<..., DynamicPlateauTracker<...>>` | `Accumulator + Inspectable` | `plateaus()` |
+
+The plateau read surface is only available when the
+`dynamic-contour-tracking` feature is enabled.
+
+## 3. Runtime objects
+
+### 3.1 Core storage
+
+```text
+Arena<T>
+  slots: Vec<T>
+  occupied: bitset
+  free: freelist
+  count: u32
+
+GNodeId / VNodeId
+  opaque handles backed by NonZeroU32
 ```
-Accumulator (zero, add, sub)
-├── Attenuatable   – attenuate(factor: f64) → Self
-├── Weighable      – weight() → f64
-├── Proratable     – prorate(portion, total) → Self  /  scale_by(f64) → Self
-└── Inspectable    – to_f64_approx() → f64  /  from_f64(f64) → Self
 
-Coordinate (midpoint, width, domain_max, total_cmp, …)
+### 3.2 G-tree nodes
 
-Observation<V: Accumulator>   – accumulate(current: V, delta: Self) → V
-└── ScalableObservation<V>    – scale(current: V, factor: Self) → V
-
-Rng                           – next_f64() → f64
-
-SpatialRead { Coord, Accum }  – get(coord) → Cell  /  plateaus() → Cow<BTreeMap<…>>
-└── SpatialWrite              – observe(coord, delta: O: Observation)
-└── TemporalDecay             – decay(root: GNodeId, attenuation, q)
-└── WeightedSampler           – sample(rng) → Option<Cell>
-```
-
-`GvGraph<C,V,N>` implements **SpatialRead + SpatialWrite + TemporalDecay + WeightedSampler**
-when the appropriate Accumulator sub-traits are satisfied.
-
-| Method       | Required bounds on V                       |
-| ------------ | ------------------------------------------ |
-| `get`        | `Accumulator`                              |
-| `observe`    | `Accumulator + Inspectable`                |
-| `decay`      | `Accumulator + Attenuatable + Inspectable` |
-| `sample`     | `Accumulator + Inspectable + Weighable`    |
-| `plateaus()` | `Accumulator + Inspectable`                |
-
----
-
-## 3. Data types and fields
-
-### 3.1 Core nodes
-
-```
-Arena<T: Default>
-  slots:    Vec<T>
-  occupied: Vec<u64>    ← bitset
-  free:     Vec<u32>    ← freelist of slot indices
-  count:    u32
-
-GNodeId(NonZeroU32)     ← index = value - 1
-VNodeId(NonZeroU32)     ← index = value - 1
-
+```text
 GNode<C, V>
-  lo, hi:    C               ← spatial interval
-  sum, own:  V               ← aggregated / own value
-  left?:     GNodeId
-  right?:    GNodeId
-  parent?:   GNodeId
-  entry?:    VNodeId         ← back-pointer to V-tree
+  lo, hi: C
+  sum, own: V
+  left?: GNodeId
+  right?: GNodeId
+  parent?: GNodeId
+  entry?: VNodeId
 
+GState
+  Terminal
+  SemiInternal
+  Internal
+```
+
+The `entry` field is a back-reference into the V-tree. A G-node does not embed
+the V-node; it only points at the corresponding entry node.
+
+### 3.3 V-tree nodes
+
+```text
 VNode<V>
-  intensity:     V
-  parent?:       VNodeId
-  cached_depth:  AtomicU32   ← lazily invalidated cache
-  kind:          VKind<V>
+  intensity: V
+  parent?: VNodeId
+  kind: VKind<V>
 
 VKind<V>
-  = Entry     { gnode: GNodeId, is_exposed: bool, is_evictable: bool }
-  | Structural { children: PackedChildren<V>,      has_evictable: bool }
+  Entry {
+    gnode: GNodeId,
+    is_exposed: bool,
+    is_evictable: bool,
+  }
 
-PackedChildren<V>
-  intensities: [V; 3]
-  ids:         [Option<VNodeId>; 3]
-  len:         u8             ← 2 or 3 in practice
+  Structural {
+    children: Children<V>,
+    has_evictable: bool,
+  }
+
+Children<V>
+  Pair { ids: [VNodeId; 2], intensities: [V; 2] }
+  Triple { ids: [VNodeId; 3], intensities: [V; 3] }
 ```
 
-### 3.2 Top-level graph
+The V-tree is a 2-3 tree. The child container is now an enum (`Pair` or
+`Triple`) rather than a packed variable-length structure.
 
-```
-Config<V: Accumulator>
-  split_threshold:  V
-  depth_create:     u32
-  depth_evict:      u32
-  budget?:          usize
-  alpha_relax:      f64
+### 3.4 Top-level graph and tracker strategy
+
+```text
+StructuralConfig
+  depth_create: u32
+  depth_evict: u32
+  budget?: usize
+  alpha_relax: f64
   bounded_eviction: bool
 
-GvGraph<C: Coordinate, V: Accumulator, const N: u32, T: PlateauTracking<C, V> = DefaultTracker<C, V>>
-  gtree:     GTree<C, V, N>           ← spatial partition tree (G-node arena + depth controls)
-  vtree:     VTree<V>                ← intensity aggregation tree (V-node arena + violations queue)
-  config:    Config<V>
-  tracker:   T                       ← NoopPlateauTracker or DynamicPlateauTracker depending on feature
+Config<V>
+  structural: StructuralConfig
+  split_threshold: V
 
-  DefaultGraph<C,V,N> = GvGraph<C,V,N,DefaultTracker<C,V>>
-
-  -- GTree (inside gtree) --
-  gtree.nodes:          Arena<GNode<C, V>>
-  gtree.root:           GNodeId
-  gtree.node_count:     u32
-  gtree.terminal_count: u32
-  gtree.live_depth_evict:  u32
-  gtree.live_depth_create: u32
-  gtree.depth_buffer:   u32
-  gtree.headroom:       usize
-  gtree.soft_limit?:    Option<usize>
-
-  -- VTree (inside vtree) --
-  vtree.nodes:          Arena<VNode<V>>
-  vtree.root?:          Option<VNodeId>
-  vtree.violations:     Vec<VNodeId>
+GvGraph<C, V, const N: u32, T = DefaultTracker<C, V>>
+  gtree: GTree<C, V, N>
+  vtree: VTree<V>
+  config: Config<V>
+  tracker: T
 ```
 
-### 3.3 Spatial view types (DTOs / read projections)
+`DefaultTracker<C, V>` resolves to:
 
-| Type                | Fields                                                                                         |
-| ------------------- | ---------------------------------------------------------------------------------------------- |
-| `Span<C,V>`         | start, end, intensity, depth                                                                   |
-| `Cell<C,V>`         | start, end, intensity, depth (terminal regions only)                                           |
-| `Node<C,V>`         | start, end, own, sum, depth, state, gnode_id, parent?                                          |
-| `Plateau<C,V>`      | basis_edge, start, end, depth, sum                                                             |
-| `BasisEdge<C>`      | newtype(C) with total ordering                                                                 |
-| `BasisElement<C,V>` | gnode_id, start, end, own, sum, depth, is_boundary_thatch                                      |
-| `ContourRange<C,V>` | start, end, basis[], energy, exact_energy, plateau_energy, cross_plateau_energy, plateau_count |
+- `DynamicPlateauTracker<C, V>` when `dynamic-contour-tracking` is enabled
+- `NoopPlateauTracker` otherwise
 
-### 3.4 Layered snapshot (Pewei)
+`GTree` stores structural counts and depth-gate state:
 
-```
-Pewei<C, V>
-  domain_start, domain_end: C
-  layers: Vec<Layer<C, V>>
-
-Layer<C, V>
-  transitions: Vec<Transition<C, V>>
-  terminals:   Vec<Terminal<C, V>>
-
-Transition<C, V>
-  start, end: C   baseline, total, refinement: V   depth, v_depth: u32
-
-Terminal<C, V>
-  start, end: C   intensity: V   depth, v_depth: u32
+```text
+GTree<C, V, N>
+  nodes: GNodeTree<C, V>
+  live_depth_evict: u32
+  live_depth_create: u32
+  depth_buffer: u32
+  headroom: usize
+  soft_limit?: usize
 ```
 
----
+`VTree` stores aggregation state and the rebalance queue:
 
-## 4. Module dependency graph
-
-```
-lib.rs  (public re-exports)
-│
-├─── handle              [GNodeId, VNodeId]
-│
-├─── nodes/
-│    ├── gnode           [GNode, GState, GNodeChildren]
-│    └── vnode           [VNode, VKind, PackedChildren]
-│
-├─── arena               [Arena<T>]
-│
-├─── traits/
-│    ├── coordinate      [Coordinate, DiscreteCoordinate]
-│    ├── accumulator     [Accumulator]
-│    ├── attenuatable    [Attenuatable]
-│    ├── weighable       [Weighable]
-│    ├── proratable      [Proratable]
-│    ├── inspectable     [Inspectable]
-│    ├── observation     [Observation, ScalableObservation]
-│    ├── rng             [Rng]
-│    ├── spatial_read    [SpatialRead]
-│    ├── spatial_write   [SpatialWrite]
-│    ├── temporal_decay  [TemporalDecay]
-│    └── weighted_sampler[WeightedSampler]
-│
-├─── spatial/
-│    ├── view            [Span, Cell]
-│    ├── node            [Node]
-│    ├── plateau         [Plateau, BasisEdge, basis_edge_of]
-│    ├── plateau_basis   [PlateauBasis]          ← feature-gated
-│    ├── contour_range   [ContourRange, BasisElement, ContourRangeEnergy]
-│    ├── pewei           [Pewei]
-│    └── pewei_types     [Layer, Transition, Terminal]
-│
-├─── tree/
-│    ├── gtree           [route_to_receiver, recompute_g_sums, gnode_depth_from_interval]
-│    └── vtree           [vtree_remove_leaf, propagate_v_sums, v_depth, invalidate_depth_subtree, …]
-│
-├─── graph/
-│    ├── config          [Config]
-│    ├── gv_graph        [GvGraph, uniform_contour_depth_of]
-│    ├── traits          [SpatialRead/Write/Decay/Sampler impls for GvGraph]
-│    └── algorithm/
-│         ├── observe    [GvGraph::observe — 5-phase pipeline]
-│         ├── query      [GvGraph::get, GvGraph::plateaus]
-│         ├── split      [attempt_split, bootstrap_split]
-│         ├── evict      [evict G-node, teardown V subtree]
-│         ├── rebalance  [is_violated, contract, resolve]
-│         ├── decay      [GvGraph::decay]
-│         ├── sample     [GvGraph::sample]
-│         ├── promote    [V-tree re-rooting]
-│         ├── budget     [budget cap enforcement]
-│         ├── violation_push / violation_sources
-│         └── plateau/   [plateau sync after observe / split / evict]
-│
-└─── diagnostics/
-     ├── invariants      (public) [check_* functions for external callers]
-     ├── diagnostic      [audit_violations, diagnose_missed_violation]
-     ├── display         [Display / Debug formatting helpers]
-     ├── dot             [Graphviz DOT export]
-     ├── dump            [text dump]
-     ├── plateau_audit   [audit_plateau_consistency]  ← feature-gated
-     └── plateau_invariants
+```text
+VTree<V>
+  nodes: VNodeTree<V>
+  violations: Vec<VNodeId>
 ```
 
-Dependency direction:
+## 4. Layered module architecture
 
+```text
+lib.rs
+|
+|- handle/               opaque IDs
+|- arena/                generic slot arena
+|- traits/               public trait abstractions
+|- nodes/                G-node primitives
+|- spatial/              DTOs, plateau types, contour and Pewei output
+|- tree/
+|  |- gtree/             routing, interval depth helpers, G-sum propagation
+|  `- vtree/             intensity propagation, remove-leaf logic, candidate scan
+|- graph/
+|  |- config             Config and StructuralConfig
+|  |- gv_graph           owning graph state and constructors
+|  |- traits             trait adapter impls for GvGraph
+|  `- algorithm/
+|     |- observe         main mutation orchestrator
+|     |- split/          bootstrap and catalytic split logic
+|     |- rebalance/      violation scan, resolve, contract, context
+|     |- promote         standard / skip / legacy promote
+|     |- budget          depth gates, bounded eviction loop integration
+|     |- evict           tip eviction and teardown
+|     |- decay           uniform and selective attenuation
+|     |- query/          get, range_sum, contour_range, sample helpers
+|     |- extract         Pewei reconstruction / export
+|     `- plateau/        PlateauTracking facade + implementations
+`- diagnostics/
+   |- invariants         public invariant suites
+   |- diagnostic         violation auditing / diagnosis
+   |- display, dot, dump renderers and exports
+   `- plateau_invariants plateau-specific checks
 ```
-traits  ←──  arena
-         ←──  nodes/{gnode, vnode}
-         ←──  spatial/*
-         ←──  tree/{gtree, vtree}
-         ←──  graph/{config, gv_graph}
-         ←──  graph/algorithm/*
-         ←──  diagnostics/*
+
+### Dependency direction
+
+The dependency flow remains downward:
+
+```text
+foundation -> nodes / spatial -> tree -> graph core -> graph algorithms -> diagnostics
 ```
 
-There are no upward cycles. `graph/algorithm/*` modules are the deepest layer:
-they reach into every other module.
+The main architectural change is that plateau maintenance is now abstracted
+behind the `PlateauTracking<C, V>` trait rather than being scattered across many
+feature-gated call sites.
 
----
+## 5. Key execution flows
 
-## 5. Key algorithms and their phases
+### 5.1 `observe(coord, delta)`
 
-### `observe(coord, delta)`
+The current observe pipeline is explicitly structured in 8 phases:
 
-1. Route coordinate → G-node (G-tree traversal)
-2. Accumulate `own` on G-node
-3. Propagate intensity up V-tree; enqueue violated V-nodes
-4. Recompute G-tree sums up to root
-5. Mirror plateau state (feature-gated)
-6. Attempt split if threshold crossed
-7. Process violation queue (rebalance)
+1. Route the observation to a receiving G-node and update `own`
+2. Update the backing V-entry, propagate V sums, and enqueue violated ancestors
+3. Recompute G sums up to the root
+4. Update the plateau tracker (`plateau_after_observe`)
+5. Attempt split, then rebalance queued 2-3 violations
+6. Adjust `depth_create` / `depth_evict` against the current soft limit
+7. Run evictions when over budget, then rebalance again as needed
+8. Normalize plateaus and repair the P-I4 one-hop thatch invariant
 
-### `split(g_id)`
+### 5.2 `get(coord)`
 
-- Guard: terminal, divisible midpoint, sum > threshold, V depth ≤ D_create
-- Allocate two child G-nodes, link parent
-- Insert new V-tree entry node, possibly triggering V-tree rebalance
-- Invalidate depth cache; push violations
+`get` is a fast G-tree query path:
 
-### `evict(v_id)`
+1. Clamp the coordinate into the domain
+2. Route through `gtree.nodes.route_to(coord)`
+3. Derive the visible interval, including semi-internal uncovered halves
+4. Return a `Cell<C, V>`
 
-- Guard: V depth ≥ D_evict, G-node is terminal, not exposed
-- Remove V-tree leaf, collapse parent if single-child
-- Merge G-node own value into parent G-node
-- Deallocate G-node; push violations; update counts
+### 5.3 `sample(rng)`
 
-### `decay(root, attenuation, q)`
+`sample` descends the V-tree using child intensities as weights, lands on an
+entry V-node, then projects the backing G-node interval as a `Cell`.
 
-- Collect all G-node subtrees in post-order
-- Apply `Attenuatable::attenuate` to each own value
-- Full V-tree recompute (post-order)
-- Push violations
+### 5.4 `decay(root, attenuation, q)`
 
----
+`decay` now has two distinct strategies:
 
-## 6. Feature flags
+- `q == 0.0`: uniform decay
+- `q > 0.0`: selective per-depth decay
 
-| Flag                                    | Effect                                                                                                                                                             |
-| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `dynamic-contour-tracking` (default on) | Adds `plateaus`, `plateau_basis`, `pending_p_i4`, `plateaus_dirty` to `GvGraph`; enables plateau sync algorithms and `SpatialRead::plateaus()` returning live data |
-| `rand` (default on)                     | Blanket `impl Rng for T: rand_core::Rng`                                                                                                                           |
-| `serde` (opt-in)                        | `#[derive(Serialize, Deserialize)]` on all public data types                                                                                                       |
+After attenuation, it recomputes G sums, rebuilds V intensities, resolves any
+violations, then performs the same post-mutation plateau repair path.
+
+## 6. Rebalancing and promote responsibilities
+
+Rebalancing is now split into smaller, focused modules:
+
+- `rebalance.rs`: queue loop, residual checks, shared helpers
+- `rebalance/resolve.rs`: single-violation resolution paths
+- `violation_push.rs`: source-specific violation propagation helpers
+- `promote.rs`: promote operations
+
+The three promote variants have distinct roles:
+
+- `standard_promote`: pure V-tree restructure of a structural pair
+- `skip_promote`: pure V-tree upward move of an entry
+- `legacy_promote`: the only promote path that allocates a new G-node
+
+That distinction is important for both algorithm reasoning and documentation.
+
+## 7. Feature-gated architecture
+
+| Feature | Effect |
+| --- | --- |
+| `dynamic-contour-tracking` | Enables `DynamicPlateauTracker`, `PlateauBasis`, `PlateauRead`, plateau invariants, and incremental plateau maintenance |
+| `rand` | Provides the blanket `Rng` implementation bridge for external RNG types |
+| `serde` | Adds serialization derives to public types |
+
+When `dynamic-contour-tracking` is disabled, the graph still compiles and runs,
+but plateau maintenance becomes a no-op strategy via `NoopPlateauTracker`.

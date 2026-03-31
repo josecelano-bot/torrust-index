@@ -1,5 +1,5 @@
 @startuml component-architecture
-title torrust-mudlark — Module Architecture (Component View)
+title torrust-mudlark - Module Architecture (Component View)
 
 skinparam componentStyle rectangle
 skinparam packageStyle rectangle
@@ -21,144 +21,123 @@ skinparam arrow {
 }
 skinparam linetype ortho
 
-' ─────────────────────────────────────────
-' ① Foundation — no internal dependencies
-' ─────────────────────────────────────────
-package "① Foundation" {
-    [arena\n<size:9>Memory pool (free-list)</size>] as arena
-    [handle\n<size:9>GNodeId · VNodeId</size>] as handle
-    [traits/\n<size:9>Coordinate · Accumulator\nSpatialRead/Write + 11 more</size>] as traits
+package "1. Foundation" {
+    [arena\nArena<T>\nfree-list storage] as arena
+    [handle\nGNodeId · VNodeId] as handle
+    [traits\nCoordinate · Accumulator\nObservation · Rng\nSpatialRead/Write\nTemporalDecay · WeightedSampler] as traits
 }
 
-' ─────────────────────────────────────────
-' ② Node Types
-' ─────────────────────────────────────────
-package "② Node Types  (nodes/)" {
-    [nodes/gnode\n<size:9>GNode · GState\n(Terminal/SemiInternal/Internal)</size>] as gnode
-    [nodes/vnode\n<size:9>VNode · VKind\n(Entry / Structural)</size>] as vnode
+package "2. Node Types (nodes/)" {
+    [nodes/gnode\nGNode · GState\nTerminal / SemiInternal / Internal] as gnode
+    [tree/vtree/vnode\nVNode · VKind\nChildren::Pair / Triple] as vnode
 }
 
-' ─────────────────────────────────────────
-' ③ Spatial / Output Types
-' ─────────────────────────────────────────
-package "③ Spatial / Output Types  (spatial/)" {
-    [spatial/view\n<size:9>Span · Cell</size>] as view
-    [spatial/node\n<size:9>Node (query-facing\nGNode projection)</size>] as node
-    [spatial/plateau\n<size:9>Plateau · BasisEdge</size>] as plateau
-    [spatial/plateau_basis\n<size:9>PlateauBasis\n(dynamic tracker index)</size>] as plateau_basis
-    [spatial/pewei\n<size:9>Pewei · Layer\nTransition · Terminal</size>] as pewei
-    [spatial/contour_range\n<size:9>ContourRange · BasisElement</size>] as contour_range
+package "3. Spatial Types (spatial/)" {
+    [spatial/view\nSpan · Cell] as view
+    [spatial/node\nNode projection] as node
+    [spatial/plateau\nPlateau · BasisEdge] as plateau
+    [spatial/contour_range\nContourRange · BasisElement] as contour_range
+    [spatial/plateau_basis\nPlateauBasis\nfeature-gated index] as plateau_basis
+    [spatial/pewei\nPewei · Layer\nTransition · Terminal] as pewei
 }
 
-' ─────────────────────────────────────────
-' ④ Tree Utilities
-' ─────────────────────────────────────────
-package "④ Tree Utilities  (tree/)" {
-    [tree/gtree\n<size:9>G-tree routing\ndepth · sum propagation</size>] as gtree
-    [tree/vtree\n<size:9>V-tree propagation\nevictable-flag maintenance</size>] as vtree
+package "4. Tree Utilities (tree/)" {
+    [tree/gtree\nrouting · depth helpers\nG sum propagation] as gtree
+    [tree/vtree\nintensity propagation\nviolations queue\nevictable maintenance] as vtree
 }
 
-' ─────────────────────────────────────────
-' ⑤ Core Data Structure
-' ─────────────────────────────────────────
-package "⑤ Core Data Structure  (graph/)" {
-    [graph/mod\n<size:9>thin namespace\nre-exports only</size>] as graph
-    [graph/config\n<size:9>Config · StructuralConfig\nvalidate()</size>] as graph_config
-    [graph/gv_graph\n<size:9>GvGraph · DefaultGraph\nstate + accessors</size>] as graph_core
+package "5. Core Graph State (graph/)" {
+    [graph/config\nConfig · StructuralConfig] as graph_config
+    [graph/gv_graph\nGvGraph · DefaultGraph\nDefaultTracker strategy] as graph_core
+    [graph/mod\nnamespace + re-exports] as graph_mod
 }
 
-' ─────────────────────────────────────────
-' ⑥ Algorithms
-' ─────────────────────────────────────────
-package "⑥ Algorithms  (graph/algorithm/)" {
-    [algorithm/observe\n<size:9>mutation orchestrator\nupdate→split→rebalance\n→budget→plateau</size>] as observe
-    [algorithm/split\n<size:9>bootstrap split\ncatalytic split</size>] as split
-    [algorithm/rebalance\n<size:9>2-3 tree violation\ndetection and repair</size>] as rebalance
-    [algorithm/evict\n<size:9>tip eviction\nbounded eviction loop</size>] as evict
-    [algorithm/decay\n<size:9>uniform and selective\ntemporal attenuation</size>] as decay
-    [algorithm/budget\n<size:9>depth-gate tuning\nD_create / D_evict</size>] as graph_budget
-    [algorithm/plateau\n<size:9>dynamic plateau\nmaintenance</size>] as graph_plateau
-    [algorithm/query\n<size:9>get(coord)\nsample(rng)</size>] as graph_query
-    [algorithm/extract\n<size:9>extract() to Pewei\nreconstruct()</size>] as graph_extract
+package "6. Algorithms (graph/algorithm/)" {
+    [observe\n8-phase mutation pipeline] as observe
+    [split/\nbootstrap + catalytic split] as split
+    [rebalance/\nviolation scan\nresolve + contract] as rebalance
+    [promote\nstandard · skip · legacy\nonly legacy mutates G-tree] as promote
+    [budget\ndepth-gate tuning\nlegacy-promote accounting] as graph_budget
+    [evict\ntip eviction\nbounded / unbounded batch] as evict
+    [decay\nuniform + selective decay] as decay
+    [query/\nget · range_sum · contour_range · sample] as graph_query
+    [extract\nextract / reconstruct to Pewei] as graph_extract
+    [plateau/\nPlateauTracking facade\nNoop + Dynamic tracker] as graph_plateau
+    [dynamic_tracker\nincremental plateau mirror\nfeature-gated] as dynamic_tracker
 }
 
-' ─────────────────────────────────────────
-' ⑦ Public API
-' ─────────────────────────────────────────
-package "⑦ Public API  (graph/traits.rs)" {
-    [graph/traits\n<size:9>SpatialWrite · SpatialRead\nWeightedSampler · TemporalDecay\nimplemented for GvGraph</size>] as graph_traits
+package "7. Public Trait Adapters" {
+    [graph/traits\nimpl SpatialRead / SpatialWrite\nTemporalDecay / WeightedSampler\nPlateauRead when enabled] as graph_traits
 }
 
-' ─────────────────────────────────────────
-' ⑧ Diagnostics
-' ─────────────────────────────────────────
-package "⑧ Diagnostics  (diagnostics/)" {
-    [diagnostics/invariants\n<size:9>check_all_invariants()\nG-I · V-I · D-I · P-I</size>] as invariants
-    [diagnostics/diagnostic\n<size:9>violation detection\naudit helpers</size>] as diagnostic
+package "8. Diagnostics (diagnostics/)" {
+    [diagnostics/invariants\ncheck_all_invariants\nG-I · V-I · D-I · P-I] as invariants
+    [diagnostics/diagnostic\nviolation audits\nmissed-violation diagnosis] as diagnostic
+    [diagnostics/display + dot + dump\nrendering / export helpers] as diag_render
 }
 
-' ─────────────────────────────────────────
-' Dependencies
-' ─────────────────────────────────────────
+note right of dynamic_tracker
+Enabled by the dynamic-contour-tracking feature.
+NoopPlateauTracker is used when disabled.
+end note
 
 handle --> gnode
 handle --> vnode
+traits --> graph_traits
 
+gnode --> gtree
 gnode --> node
 gnode --> plateau
-handle --> node
+vnode --> vtree
+
 view --> node
 view --> plateau
 view --> pewei
 plateau --> contour_range
+plateau_basis --> dynamic_tracker
 
 arena --> gtree
 arena --> vtree
-gnode --> gtree
-gnode --> vtree
-vnode --> vtree
-
-arena --> graph_core
-gnode --> graph_core
-vnode --> graph_core
-plateau --> graph_core
-node --> graph_core
+gtree --> graph_core
+vtree --> graph_core
 graph_config --> graph_core
-graph_core --> graph
-graph_config --> graph
+graph_core --> graph_mod
 
 graph_core --> observe
-graph_core --> split
-graph_core --> rebalance
-graph_core --> evict
 graph_core --> decay
-graph_core --> graph_budget
-graph_core --> graph_plateau
 graph_core --> graph_query
 graph_core --> graph_extract
+graph_core --> graph_plateau
+
+observe --> split
+observe --> rebalance
+observe --> graph_budget
+observe --> evict
+observe --> graph_plateau
+
+split --> rebalance
+rebalance --> promote
+graph_budget --> evict
+evict --> rebalance
+decay --> rebalance
+decay --> graph_plateau
 
 gtree --> split
 gtree --> rebalance
 gtree --> graph_query
-vtree --> split
+gtree --> graph_plateau
 vtree --> rebalance
-contour_range --> graph_query
-plateau --> graph_query
+vtree --> graph_query
 plateau --> graph_plateau
-plateau_basis --> graph_plateau
+dynamic_tracker --> graph_plateau
 pewei --> graph_extract
-
-rebalance ..> split : called by
-split ..> observe : called by
-evict ..> graph_budget : called by
-graph_budget ..> observe : called by
-graph_plateau ..> observe : called by
 
 graph_core --> graph_traits
 graph_core --> invariants
 graph_core --> diagnostic
-rebalance --> invariants
+graph_core --> diag_render
 rebalance --> diagnostic
-gtree --> invariants
+rebalance --> invariants
+graph_plateau --> invariants
 
 @enduml

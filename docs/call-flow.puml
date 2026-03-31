@@ -1,5 +1,5 @@
 @startuml call-flow
-title torrust-mudlark — Execution / Call Flow
+title torrust-mudlark - Execution / Call Flow
 
 skinparam backgroundColor #FFFFFF
 skinparam sequence {
@@ -17,62 +17,92 @@ skinparam note {
 
 actor "User code" as User
 
-box "⑦ Public API" #EEF4FF
-    participant "graph_traits" as api
+box "Public API / Trait Adapters" #EEF4FF
+    participant "graph/traits" as api
 end box
 
-box "⑤ Core Data Structure" #F4F8FF
+box "Core State" #F4F8FF
     participant "graph/gv_graph" as core
 end box
 
-box "⑥ Algorithms" #FFF5EE
+box "Algorithms" #FFF5EE
     participant "observe" as obs
     participant "split" as spl
     participant "rebalance" as reb
-    participant "graph_budget" as bud
+    participant "budget" as bud
     participant "evict" as evi
+    participant "query" as qry
+    participant "sample" as smp
     participant "decay" as dec
-    participant "graph_query" as gq
-    participant "graph_plateau" as gpl
+    participant "plateau tracker" as plt
 end box
 
-box "④ Tree Utilities" #EEFEE8
+box "Tree Utilities" #EEFEE8
     participant "gtree" as gtree
     participant "vtree" as vtree
 end box
 
-' ─────────────────────────────────────────
+note over plt
+DynamicPlateauTracker is active when the
+dynamic-contour-tracking feature is enabled.
+Otherwise the NoopPlateauTracker methods are no-ops.
+end note
+
 ' observe path
-' ─────────────────────────────────────────
 User -> api : observe(coord, delta)
 activate api
 api -> core : SpatialWrite::observe
 activate core
-core -> obs : update G-node own value\npropagate sum up G-tree
+core -> obs : observe(coord, delta)
 activate obs
 
-obs -> spl : if own >= split_threshold\nand depth < D_create
+obs -> gtree : phase 1: route_to(coord)
+activate gtree
+gtree --> obs : receiving G-node
+deactivate gtree
+
+obs -> vtree : phase 2: sync entry intensity\npropagate sums\nenqueue violated ancestors
+activate vtree
+vtree --> obs
+deactivate vtree
+
+obs -> gtree : phase 3: recompute_sums(g_id)
+activate gtree
+gtree --> obs
+deactivate gtree
+
+obs -> plt : phase 4: plateau_after_observe
+activate plt
+plt --> obs
+deactivate plt
+
+obs -> spl : phase 5a: attempt_split(g_id)
 activate spl
-spl -> reb : fix 2-3 V-tree violations\nafter node promotion
+spl -> reb : phase 5b: resolve queued 2-3 violations
 activate reb
-reb --> spl
+reb --> spl : new legacy-promote G-nodes?
 deactivate reb
 spl --> obs
 deactivate spl
 
-obs -> bud : adjust D_create / D_evict\nbased on node_count vs soft_limit
+obs -> bud : phase 6: adjust_depth_gates()
 activate bud
-bud -> evi : evict tip G-nodes\nat depth >= D_evict
-activate evi
-evi --> bud
-deactivate evi
 bud --> obs
 deactivate bud
 
-obs -> gpl : normalize plateaus\nrecompute sums + repair P-I4
-activate gpl
-gpl --> obs
-deactivate gpl
+obs -> evi : phase 7: check_evictions()\nor check_evictions_bounded()
+activate evi
+evi -> reb : rebalance after batched evictions
+activate reb
+reb --> evi
+deactivate reb
+evi --> obs
+deactivate evi
+
+obs -> plt : phase 8: normalize_plateaus()\nthen repair_p_i4()
+activate plt
+plt --> obs
+deactivate plt
 
 obs --> core
 deactivate obs
@@ -81,63 +111,65 @@ deactivate core
 api --> User
 deactivate api
 
-' ─────────────────────────────────────────
 ' get path
-' ─────────────────────────────────────────
 User -> api : get(coord)
 activate api
 api -> core : SpatialRead::get
 activate core
-core -> gq : route coord and\nreturn Cell
-activate gq
-gq -> gtree : descend G-tree\nto leaf covering coord
+core -> qry : get(coord)
+activate qry
+qry -> gtree : clamp coord\nroute_to(coord)
 activate gtree
-gtree --> gq : leaf G-node
+gtree --> qry : terminal or semi-internal G-node
 deactivate gtree
-gq --> core : Cell { start, end, intensity, depth }
-deactivate gq
+qry --> core : Cell { start, end, intensity, depth }
+deactivate qry
 core --> api
 deactivate core
 api --> User
 deactivate api
 
-' ─────────────────────────────────────────
 ' sample path
-' ─────────────────────────────────────────
 User -> api : sample(rng)
 activate api
 api -> core : WeightedSampler::sample
 activate core
-core -> gq : weighted random\nleaf selection
-activate gq
-gq -> vtree : descend V-tree\nweighted by child intensities
+core -> smp : sample(rng)
+activate smp
+smp -> vtree : descend by child intensities
 activate vtree
-vtree --> gq : Entry V-node → G-node
+vtree --> smp : Entry V-node -> backing G-node
 deactivate vtree
-gq --> core : Cell
-deactivate gq
+smp --> core : Cell
+deactivate smp
 core --> api
 deactivate core
 api --> User
 deactivate api
 
-' ─────────────────────────────────────────
 ' decay path
-' ─────────────────────────────────────────
-User -> api : decay(root, factor, q)
+User -> api : decay(root, attenuation, q)
 activate api
 api -> core : TemporalDecay::decay
 activate core
-core -> dec : attenuate all G-node values\nby multiplicative factor
+core -> dec : decay(root, attenuation, q)
 activate dec
-dec -> reb : fix any new 2-3 violations\nfrom value changes
+dec -> gtree : attenuate own values\nrecompute G sums
+activate gtree
+gtree --> dec
+deactivate gtree
+dec -> vtree : recompute V intensities
+activate vtree
+vtree --> dec
+deactivate vtree
+dec -> reb : resolve violations created by decay
 activate reb
 reb --> dec
 deactivate reb
-dec -> gpl : recompute plateau sums\nnormalize + repair P-I4
-activate gpl
-gpl --> dec
-deactivate gpl
+dec -> plt : post-decay repair\nnormalize + P-I4 maintenance
+activate plt
+plt --> dec
+deactivate plt
 dec --> core
 deactivate dec
 core --> api
