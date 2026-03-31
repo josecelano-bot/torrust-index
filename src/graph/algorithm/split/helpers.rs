@@ -2,10 +2,7 @@ use crate::graph::GvGraph;
 use crate::graph::algorithm::rebalance::{Nd, contract};
 use crate::graph::algorithm::violation_push::ViolationQueue;
 use crate::handle::{GNodeId, VNodeId};
-use crate::nodes::vnode::VNode;
 use crate::traits::{Accumulator, Coordinate, Inspectable};
-use crate::tree::gtree::GTree;
-use crate::tree::vtree::VTree;
 
 impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N> {
     pub(super) fn split_candidate_entry(&self, g_id: GNodeId) -> Option<VNodeId> {
@@ -58,8 +55,8 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
 
     pub(super) fn allocate_split_children(&mut self, g_id: GNodeId) -> SplitChildren {
         let (left_id, right_id) = self.core.gtree.nodes.allocate_children(g_id);
-        let left_entry_id = alloc_v_entry(&mut self.core.vtree, &mut self.core.gtree, left_id);
-        let right_entry_id = alloc_v_entry(&mut self.core.vtree, &mut self.core.gtree, right_id);
+        let left_entry_id = self.core.alloc_v_entry(left_id);
+        let right_entry_id = self.core.alloc_v_entry(right_id);
 
         SplitChildren {
             left_id,
@@ -79,15 +76,4 @@ pub(super) struct SplitChildren {
     pub(super) left_id: GNodeId,
     pub(super) left_entry_id: VNodeId,
     pub(super) right_entry_id: VNodeId,
-}
-
-pub(super) fn alloc_v_entry<C: Coordinate, V: Accumulator, const N: u32>(
-    vtree: &mut VTree<V>,
-    gtree: &mut GTree<C, V, N>,
-    gnode: GNodeId,
-) -> VNodeId {
-    let e = VNode::new_entry(V::zero(), None, gnode, true, true);
-    let e_id = VNodeId::from_index(vtree.nodes.alloc(e).0);
-    gtree.nodes.assign_entry(gnode, e_id);
-    e_id
 }
