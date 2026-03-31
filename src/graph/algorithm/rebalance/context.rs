@@ -1,6 +1,4 @@
 use crate::handle::VNodeId;
-use crate::traits::Accumulator;
-use crate::tree::vtree::VTree;
 
 pub use super::super::fmt::{Ctx, Nd};
 
@@ -31,8 +29,4 @@ impl EscalationContext {
             heaviest_is_direct_child,
         }
     }
-}
-
-pub struct VTreeMutContext<'a, V: Accumulator> {
-    pub vtree: &'a mut VTree<V>,
 }

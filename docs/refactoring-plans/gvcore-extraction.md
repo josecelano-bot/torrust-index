@@ -219,7 +219,7 @@ src/graph/
 | 3. Replace fields in `GvGraph` | ✅ Done — `bb15b61` |
 | 4. Mechanical field-path update | ✅ Done — `bb15b61` |
 | 5. Move `rebalance` to `GvCore` | ✅ Done — `d083d5e` (delegates to free function; wrapper removed) |
-| 6. Move `legacy_promote` to `GvCore` | ⏭ Skipped — `dead_code` lint fires: only call site is in `rebalance/resolve.rs` which uses separate `(vtree, gtree)` borrows; needs Option B (resolve → GvCore) deferred |
+| 6. Move `legacy_promote` to `GvCore` | ✅ Done — `HEAD` (resolve chain refactored to thread `&mut GvCore`) |
 | 7. Move `alloc_v_entry` to `GvCore` | ✅ Done — `8cf239a` (body moved; free function removed) |
 | 8. First verify run | ✅ Passed after each step |
 | 9. Update tests to use `GvCore` directly | ⏭ Skipped — production `dead_code` constraint prevents test-only GvCore methods |

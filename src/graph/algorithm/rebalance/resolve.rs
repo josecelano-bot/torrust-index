@@ -1,12 +1,12 @@
+use crate::graph::core::GvCore;
 use crate::handle::{GNodeId, VNodeId};
 use crate::nodes::vnode::VKind;
 use crate::traits::{Accumulator, Coordinate};
-use crate::tree::gtree::GTree;
-use crate::tree::vtree::VNodeTree;
+use crate::tree::vtree::{VNodeTree, VTree};
 
-use super::super::promote::{legacy_promote, skip_promote, standard_promote};
+use super::super::promote::{skip_promote, standard_promote};
 use super::super::violation_push::ViolationQueue;
-use super::{Ctx, EscalationContext, Nd, VTreeMutContext, contract, is_violated};
+use super::{Ctx, EscalationContext, Nd, contract, is_violated};
 
 fn structural_child_count<V: Accumulator>(vnodes: &VNodeTree<V>, id: VNodeId) -> usize {
     vnodes.get(id.index()).child_count()
@@ -35,12 +35,12 @@ fn v_depth_local<V: Accumulator>(vnodes: &VNodeTree<V>, id: VNodeId) -> u32 {
 /// and returns `Some(merged)` if the violation persists (Phase 3 needed),
 /// or `None` if the contraction resolved it.
 fn escalate_contract_parent<V: Accumulator>(
-    tree: &mut VTreeMutContext<'_, V>,
+    vtree: &mut VTree<V>,
     ctx: &mut EscalationContext,
 ) -> Option<VNodeId> {
-    let merged = contract(tree.vtree, ctx.parent_id);
+    let merged = contract(vtree, ctx.parent_id);
     {
-        let (vnodes, violations) = (&tree.vtree.nodes, &mut tree.vtree.violations);
+        let (vnodes, violations) = (&vtree.nodes, &mut vtree.violations);
         let mut queue = ViolationQueue::new(violations);
         queue.push_side_effect(vnodes, ctx.parent_id);
         queue.push_side_effect(vnodes, merged);
@@ -49,9 +49,9 @@ fn escalate_contract_parent<V: Accumulator>(
     ctx.merged_id = Some(merged);
 
     let needs_skip = if ctx.heaviest_is_direct_child {
-        is_violated(&tree.vtree.nodes, ctx.heaviest_id)
+        is_violated(&vtree.nodes, ctx.heaviest_id)
     } else {
-        is_violated(&tree.vtree.nodes, merged)
+        is_violated(&vtree.nodes, merged)
     };
     if needs_skip {
         Some(merged)
@@ -67,13 +67,13 @@ fn escalate_contract_parent<V: Accumulator>(
 /// `resolved = true` means the violation was resolved and the caller should
 /// return immediately.
 fn escalate_try_contract_grandparent<V: Accumulator>(
-    tree: &mut VTreeMutContext<'_, V>,
+    vtree: &mut VTree<V>,
     ctx: &mut EscalationContext,
 ) -> bool {
-    if structural_child_count(&tree.vtree.nodes, ctx.grandparent_id) == 3 {
-        let g_merged = contract(tree.vtree, ctx.grandparent_id);
+    if structural_child_count(&vtree.nodes, ctx.grandparent_id) == 3 {
+        let g_merged = contract(vtree, ctx.grandparent_id);
         {
-            let (vnodes, violations) = (&tree.vtree.nodes, &mut tree.vtree.violations);
+            let (vnodes, violations) = (&vtree.nodes, &mut vtree.violations);
             let mut queue = ViolationQueue::new(violations);
             queue.push_side_effect(vnodes, ctx.grandparent_id);
             queue.push_side_effect(vnodes, g_merged);
@@ -84,8 +84,8 @@ fn escalate_try_contract_grandparent<V: Accumulator>(
         let merged = ctx
             .merged_id
             .expect("escalate_try_contract_grandparent: parent contraction must run first");
-        let resolved = !is_violated(&tree.vtree.nodes, ctx.heaviest_id)
-            && (ctx.heaviest_is_direct_child || !is_violated(&tree.vtree.nodes, merged));
+        let resolved = !is_violated(&vtree.nodes, ctx.heaviest_id)
+            && (ctx.heaviest_is_direct_child || !is_violated(&vtree.nodes, merged));
         if resolved {
             tracing::debug!("resolved by g-contraction");
             return true;
@@ -97,14 +97,11 @@ fn escalate_try_contract_grandparent<V: Accumulator>(
 
 /// Skip-promote fallback (Phase 4): moves the violation upward when neither
 /// parent nor grandparent contraction resolved it.
-fn escalate_skip_promote<V: Accumulator>(
-    tree: &mut VTreeMutContext<'_, V>,
-    ctx: &EscalationContext,
-) {
-    let g_id_opt = tree.vtree.nodes.get(ctx.parent_id.index()).parent();
+fn escalate_skip_promote<V: Accumulator>(vtree: &mut VTree<V>, ctx: &EscalationContext) {
+    let g_id_opt = vtree.nodes.get(ctx.parent_id.index()).parent();
     if let Some(g_id) = g_id_opt {
-        skip_promote(tree.vtree, ctx.heaviest_id);
-        let (vnodes, violations) = (&tree.vtree.nodes, &mut tree.vtree.violations);
+        skip_promote(vtree, ctx.heaviest_id);
+        let (vnodes, violations) = (&vtree.nodes, &mut vtree.violations);
         let mut queue = ViolationQueue::new(violations);
         queue.push_side_effect(vnodes, g_id);
         queue.push_promoted(vnodes, g_id);
@@ -115,11 +112,11 @@ fn escalate_skip_promote<V: Accumulator>(
     }
 }
 
-fn escalate_after_promote<V: Accumulator>(tree: &mut VTreeMutContext<'_, V>, p: VNodeId) {
+fn escalate_after_promote<V: Accumulator>(vtree: &mut VTree<V>, p: VNodeId) {
     // Phase 1: Identify heaviest child; early-return if no violation.
     // Scope the shared borrow so it is dropped before the mutable helper calls.
     let (heaviest, h_direct, g) = {
-        let vnodes = &tree.vtree.nodes;
+        let vnodes = &vtree.nodes;
         let p_node = vnodes.get(p.index());
         if !p_node.is_structural_triple() {
             return;
@@ -137,11 +134,11 @@ fn escalate_after_promote<V: Accumulator>(tree: &mut VTreeMutContext<'_, V>, p: 
             return;
         };
         (heaviest, h_direct, g)
-    }; // shared borrow of tree.vtree.nodes dropped here
+    }; // shared borrow of vtree.nodes dropped here
 
     let _span = tracing::debug_span!(
         "escalate",
-        h = %Nd(&tree.vtree.nodes, heaviest),
+        h = %Nd(&vtree.nodes, heaviest),
         reason = if h_direct { "direct" } else { "indirect" },
     )
     .entered();
@@ -149,38 +146,38 @@ fn escalate_after_promote<V: Accumulator>(tree: &mut VTreeMutContext<'_, V>, p: 
     let mut ctx = EscalationContext::new(p, g, heaviest, h_direct);
 
     // Phase 2: Contract 3-child parent `p` and propagate violations.
-    let Some(_merged) = escalate_contract_parent(tree, &mut ctx) else {
+    let Some(_merged) = escalate_contract_parent(vtree, &mut ctx) else {
         return;
     };
 
     // Phase 3: Optionally contract grandparent `g` if it has 3 children.
-    if escalate_try_contract_grandparent(tree, &mut ctx) {
+    if escalate_try_contract_grandparent(vtree, &mut ctx) {
         return;
     }
 
     // Phase 4: Skip-promote fallback.
-    escalate_skip_promote(tree, &ctx);
+    escalate_skip_promote(vtree, &ctx);
 }
 
 /// Phase 1 of `resolve`: if the parent of `c` is a 3-child node, contract it
 /// and propagate side-effect violations. Returns `true` if the contraction
 /// resolved `c`'s violation (caller should return `None` immediately).
 fn resolve_try_contract_parent<V: Accumulator>(
-    tree: &mut VTreeMutContext<'_, V>,
+    vtree: &mut VTree<V>,
     p: VNodeId,
     c: VNodeId,
 ) -> bool {
-    if structural_child_count(&tree.vtree.nodes, p) == 3 {
-        tracing::debug!(p = %Nd(&tree.vtree.nodes, p), "phase 1: contracting 3-node parent");
-        let merged = contract(tree.vtree, p);
+    if structural_child_count(&vtree.nodes, p) == 3 {
+        tracing::debug!(p = %Nd(&vtree.nodes, p), "phase 1: contracting 3-node parent");
+        let merged = contract(vtree, p);
         {
-            let (vnodes, violations) = (&tree.vtree.nodes, &mut tree.vtree.violations);
+            let (vnodes, violations) = (&vtree.nodes, &mut vtree.violations);
             let mut queue = ViolationQueue::new(violations);
             queue.push_side_effect(vnodes, p);
             queue.push_side_effect(vnodes, merged);
             queue.push_contraction_child(vnodes, p, c);
         }
-        if !is_violated(&tree.vtree.nodes, c) {
+        if !is_violated(&vtree.nodes, c) {
             tracing::debug!("phase 1: resolved by contraction");
             return true;
         }
@@ -194,24 +191,23 @@ fn resolve_try_contract_parent<V: Accumulator>(
 /// `c` is a semi-internal entry at or above `depth_evict`) or skip-promotes.
 /// Returns `Some(new_g)` only when a legacy promote created a new G-node.
 fn resolve_path_b<C: Coordinate, V: Accumulator, const N: u32>(
-    tree: &mut VTreeMutContext<'_, V>,
-    gtree: &mut GTree<C, V, N>,
+    core: &mut GvCore<C, V, N>,
     c: VNodeId,
     p: VNodeId,
     g: VNodeId,
     depth_evict: u32,
 ) -> Option<GNodeId> {
     // Optional grandparent contraction before the promote attempt.
-    let g_merged = if structural_child_count(&tree.vtree.nodes, g) == 3 {
-        let merged = contract(tree.vtree, g);
+    let g_merged = if structural_child_count(&core.vtree.nodes, g) == 3 {
+        let merged = contract(&mut core.vtree, g);
         {
-            let (vnodes, violations) = (&tree.vtree.nodes, &mut tree.vtree.violations);
+            let (vnodes, violations) = (&core.vtree.nodes, &mut core.vtree.violations);
             let mut queue = ViolationQueue::new(violations);
             queue.push_side_effect(vnodes, g);
             queue.push_side_effect(vnodes, merged);
             queue.push_promoted(vnodes, g);
         }
-        if !is_violated(&tree.vtree.nodes, c) {
+        if !is_violated(&core.vtree.nodes, c) {
             tracing::debug!("phase 2: resolved by g-contraction");
             return None;
         }
@@ -220,36 +216,36 @@ fn resolve_path_b<C: Coordinate, V: Accumulator, const N: u32>(
         None
     };
 
-    let Some(g_id) = tree.vtree.nodes.get(p.index()).parent() else {
+    let Some(g_id) = core.vtree.nodes.get(p.index()).parent() else {
         tracing::warn!(
-            node = %Ctx(&tree.vtree.nodes, c),
+            node = %Ctx(&core.vtree.nodes, c),
             "skip-promote path: no grandparent after g-contraction — resolve incomplete",
         );
         return None;
     };
 
     let is_semi = matches!(
-        &tree.vtree.nodes.get(c.index()).kind(),
+        &core.vtree.nodes.get(c.index()).kind(),
         VKind::Entry { gnode, .. }
-            if gtree.nodes.get(gnode.index()).is_semi_internal()
+            if core.gtree.nodes.get(gnode.index()).is_semi_internal()
     );
 
-    let result = if is_semi && v_depth_local(&tree.vtree.nodes, c) <= depth_evict {
+    let result = if is_semi && v_depth_local(&core.vtree.nodes, c) <= depth_evict {
         tracing::debug!("phase 2: legacy promote (semi-internal entry)");
-        let new_g = legacy_promote(tree.vtree, gtree, c);
+        let new_g = core.legacy_promote(c);
         {
-            let (vnodes, violations) = (&tree.vtree.nodes, &mut tree.vtree.violations);
+            let (vnodes, violations) = (&core.vtree.nodes, &mut core.vtree.violations);
             let mut queue = ViolationQueue::new(violations);
             queue.push_side_effect(vnodes, p);
         }
         Some(new_g)
     } else {
-        skip_promote(tree.vtree, c);
+        skip_promote(&mut core.vtree, c);
         None
     };
 
     {
-        let (vnodes, violations) = (&tree.vtree.nodes, &mut tree.vtree.violations);
+        let (vnodes, violations) = (&core.vtree.nodes, &mut core.vtree.violations);
         let mut queue = ViolationQueue::new(violations);
         queue.push_side_effect(vnodes, g_id);
         queue.push_promoted(vnodes, g_id);
@@ -281,47 +277,48 @@ fn resolve_path_b<C: Coordinate, V: Accumulator, const N: u32>(
 ///
 /// Returns `Some(new_g)` only when a legacy promote created a new G-node.
 pub fn resolve<C: Coordinate, V: Accumulator, const N: u32>(
-    tree: &mut VTreeMutContext<'_, V>,
-    gtree: &mut GTree<C, V, N>,
+    core: &mut GvCore<C, V, N>,
     c: VNodeId,
     depth_evict: u32,
 ) -> Option<GNodeId> {
     let _span = tracing::debug_span!("resolve", node = c.index()).entered();
-    tracing::debug!(ctx = %Ctx(&tree.vtree.nodes, c), "begin");
+    tracing::debug!(ctx = %Ctx(&core.vtree.nodes, c), "begin");
 
-    let Some(p) = tree.vtree.nodes.get(c.index()).parent() else {
+    let Some(p) = core.vtree.nodes.get(c.index()).parent() else {
         tracing::trace!("no parent — nothing to resolve");
         return None;
     };
 
     // Phase 1: optional parent contraction.
-    if resolve_try_contract_parent(tree, p, c) {
+    if resolve_try_contract_parent(&mut core.vtree, p, c) {
         return None;
     }
 
     // Path A: standard promote.
-    if tree.vtree.nodes.get(c.index()).is_structural_pair() {
+    if core.vtree.nodes.get(c.index()).is_structural_pair() {
         tracing::debug!("phase 2: standard promote");
-        standard_promote(tree.vtree, c);
-        let mut queue = ViolationQueue::new(&mut tree.vtree.violations);
-        queue.push_side_effect(&tree.vtree.nodes, p);
-        queue.push_promoted(&tree.vtree.nodes, p);
-        escalate_after_promote(tree, p);
+        standard_promote(&mut core.vtree, c);
+        {
+            let mut queue = ViolationQueue::new(&mut core.vtree.violations);
+            queue.push_side_effect(&core.vtree.nodes, p);
+            queue.push_promoted(&core.vtree.nodes, p);
+        }
+        escalate_after_promote(&mut core.vtree, p);
         return None;
     }
 
     // Path B: skip / legacy promote.
     tracing::debug!("phase 2: skip promote path");
-    let Some(g) = tree.vtree.nodes.get(p.index()).parent() else {
+    let Some(g) = core.vtree.nodes.get(p.index()).parent() else {
         tracing::trace!("no grandparent — cannot skip-promote");
         return None;
     };
 
-    let result = resolve_path_b(tree, gtree, c, p, g, depth_evict);
+    let result = resolve_path_b(core, c, p, g, depth_evict);
 
-    if tree.vtree.nodes.is_occupied(c.index()) && is_violated(&tree.vtree.nodes, c) {
+    if core.vtree.nodes.is_occupied(c.index()) && is_violated(&core.vtree.nodes, c) {
         tracing::warn!(
-            node = %Ctx(&tree.vtree.nodes, c),
+            node = %Ctx(&core.vtree.nodes, c),
             "resolve() returning with node STILL violated",
         );
     }
@@ -332,7 +329,6 @@ pub fn resolve<C: Coordinate, V: Accumulator, const N: u32>(
 #[cfg(test)]
 mod tests {
     use super::resolve;
-    use crate::graph::algorithm::rebalance::VTreeMutContext;
     use crate::graph::{Config, GvGraph, StructuralConfig};
     use crate::handle::{GNodeId, VNodeId};
     use crate::nodes::vnode::{Children, VKind, VNode};
@@ -357,11 +353,8 @@ mod tests {
         let mut g = make_graph();
         let c = g.v_root().expect("fresh graph must have v_root");
         let depth_evict = g.core.gtree.live_depth_evict;
-        let mut tree = VTreeMutContext {
-            vtree: &mut g.core.vtree,
-        };
 
-        let out = resolve(&mut tree, &mut g.core.gtree, c, depth_evict);
+        let out = resolve(&mut g.core, c, depth_evict);
         assert!(out.is_none());
     }
 
@@ -377,10 +370,7 @@ mod tests {
         };
 
         let depth_evict = g.core.gtree.live_depth_evict;
-        let mut tree = VTreeMutContext {
-            vtree: &mut g.core.vtree,
-        };
-        let out = resolve(&mut tree, &mut g.core.gtree, c, depth_evict);
+        let out = resolve(&mut g.core, c, depth_evict);
         assert!(out.is_none());
     }
 
@@ -458,10 +448,7 @@ mod tests {
         g.core.gtree.nodes.assign_entry(semi_gid, c);
 
         let depth_evict = g.core.gtree.live_depth_evict;
-        let mut tree = VTreeMutContext {
-            vtree: &mut g.core.vtree,
-        };
-        let out = resolve(&mut tree, &mut g.core.gtree, c, depth_evict);
+        let out = resolve(&mut g.core, c, depth_evict);
 
         let new_gid = out.expect("legacy promote path should return new gnode");
         assert_eq!(

@@ -1,3 +1,4 @@
+use crate::graph::algorithm::promote;
 use crate::graph::algorithm::rebalance;
 use crate::handle::{GNodeId, VNodeId};
 use crate::nodes::vnode::VNode;
@@ -32,11 +33,14 @@ impl<C: Coordinate, V: Accumulator, const N: u32> GvCore<C, V, N> {
         self.gtree.nodes.assign_entry(gnode, e_id);
         e_id
     }
+
+    pub(crate) fn legacy_promote(&mut self, c: VNodeId) -> GNodeId {
+        promote::legacy_promote(&mut self.vtree, &mut self.gtree, c)
+    }
 }
 
 impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvCore<C, V, N> {
     pub(crate) fn rebalance(&mut self) -> Vec<GNodeId> {
-        let depth_evict = self.gtree.live_depth_evict;
-        rebalance::rebalance(&mut self.vtree, &mut self.gtree, depth_evict)
+        rebalance::rebalance(self)
     }
 }

@@ -1,7 +1,7 @@
+use crate::graph::core::GvCore;
 use crate::handle::{GNodeId, VNodeId};
 use crate::nodes::vnode::{Children, VKind, VNode};
 use crate::traits::{Accumulator, Coordinate, Inspectable};
-use crate::tree::gtree::GTree;
 use crate::tree::vtree::{VNodeTree, VTree};
 
 mod context;
@@ -9,7 +9,7 @@ mod resolve;
 mod violation_scan;
 
 pub(super) use super::fmt::Ch;
-pub use context::{Ctx, EscalationContext, Nd, VTreeMutContext};
+pub use context::{Ctx, EscalationContext, Nd};
 pub use resolve::resolve;
 pub use violation_scan::find_violated_nodes;
 
@@ -163,22 +163,21 @@ fn handle_iteration_limit<V: Accumulator>(
 }
 
 pub fn rebalance<C: Coordinate, V: Accumulator + Inspectable, const N: u32>(
-    vtree: &mut VTree<V>,
-    gtree: &mut GTree<C, V, N>,
-    depth_evict: u32,
+    core: &mut GvCore<C, V, N>,
 ) -> Vec<GNodeId> {
+    let depth_evict = core.gtree.live_depth_evict;
     let mut new_gnodes = Vec::new();
 
-    let max_iterations: u32 = vtree.nodes.count().saturating_mul(20).max(10_000);
+    let max_iterations: u32 = core.vtree.nodes.count().saturating_mul(20).max(10_000);
     let mut iterations: u32 = 0;
     let mut resolved: u32 = 0;
 
-    let _span = tracing::debug_span!("rebalance", queue = vtree.violations.len()).entered();
+    let _span = tracing::debug_span!("rebalance", queue = core.vtree.violations.len()).entered();
 
     if tracing::enabled!(tracing::Level::DEBUG) {
         crate::diagnostics::diagnostic::audit_violations(
-            &vtree.nodes,
-            &vtree.violations,
+            &core.vtree.nodes,
+            &core.vtree.violations,
             "PRE-REBALANCE",
         );
     }
@@ -187,12 +186,12 @@ pub fn rebalance<C: Coordinate, V: Accumulator + Inspectable, const N: u32>(
     // total violations by at least 1) or promotes the violation upward toward
     // the root (bounded by tree depth × branching factor).  The safety-net
     // `max_iterations` catches any cycle if that invariant is ever violated.
-    while let Some(c) = vtree.violations.pop() {
+    while let Some(c) = core.vtree.violations.pop() {
         iterations += 1;
         if iterations > max_iterations
             && handle_iteration_limit(
-                &vtree.nodes,
-                &vtree.violations,
+                &core.vtree.nodes,
+                &core.vtree.violations,
                 iterations,
                 max_iterations,
                 resolved,
@@ -202,12 +201,12 @@ pub fn rebalance<C: Coordinate, V: Accumulator + Inspectable, const N: u32>(
             break;
         }
 
-        if !vtree.nodes.is_occupied(c.index()) {
+        if !core.vtree.nodes.is_occupied(c.index()) {
             tracing::trace!(node = c.index(), "skip destroyed");
             continue;
         }
 
-        if !is_violated(&vtree.nodes, c) {
+        if !is_violated(&core.vtree.nodes, c) {
             tracing::trace!(node = c.index(), "skip already resolved");
             continue;
         }
@@ -216,30 +215,27 @@ pub fn rebalance<C: Coordinate, V: Accumulator + Inspectable, const N: u32>(
         tracing::debug!(
             iter = iterations,
             resolved,
-            queue = vtree.violations.len(),
-            node = %Ctx(&vtree.nodes, c),
+            queue = core.vtree.violations.len(),
+            node = %Ctx(&core.vtree.nodes, c),
             "resolving violation",
         );
-        let gid = {
-            let mut tree = VTreeMutContext { vtree: &mut *vtree };
-            resolve(&mut tree, gtree, c, depth_evict)
-        };
+        let gid = resolve(core, c, depth_evict);
         if let Some(gid) = gid {
             new_gnodes.push(gid);
         }
 
-        if vtree.nodes.is_occupied(c.index()) && is_violated(&vtree.nodes, c) {
+        if core.vtree.nodes.is_occupied(c.index()) && is_violated(&core.vtree.nodes, c) {
             tracing::warn!(
                 iter = iterations,
-                node = %Ctx(&vtree.nodes, c),
+                node = %Ctx(&core.vtree.nodes, c),
                 "node STILL violated after resolve",
             );
         }
 
         if tracing::enabled!(tracing::Level::DEBUG) {
             crate::diagnostics::diagnostic::audit_violations(
-                &vtree.nodes,
-                &vtree.violations,
+                &core.vtree.nodes,
+                &core.vtree.violations,
                 "POST-RESOLVE",
             );
         }
@@ -249,8 +245,8 @@ pub fn rebalance<C: Coordinate, V: Accumulator + Inspectable, const N: u32>(
 
     if cfg!(debug_assertions) || tracing::enabled!(tracing::Level::DEBUG) {
         let remaining = crate::diagnostics::diagnostic::audit_violations(
-            &vtree.nodes,
-            &vtree.violations,
+            &core.vtree.nodes,
+            &core.vtree.violations,
             "RESIDUAL",
         );
         assert!(
@@ -588,9 +584,7 @@ mod tests {
     // ── rebalance (integration) ───────────────────────────────────────
     mod rebalance_fn {
         use super::*;
-        use crate::graph::algorithm::rebalance::{
-            VTreeMutContext, handle_iteration_limit, rebalance, resolve,
-        };
+        use crate::graph::algorithm::rebalance::{handle_iteration_limit, rebalance, resolve};
         use crate::nodes::vnode::VNode;
 
         #[test]
@@ -621,10 +615,7 @@ mod tests {
             let c = g.v_root().expect("v_root must exist");
             g.core.vtree.violations.clear();
             let depth_evict = g.core.gtree.live_depth_evict;
-            let mut tree = VTreeMutContext {
-                vtree: &mut g.core.vtree,
-            };
-            let result = resolve(&mut tree, &mut g.core.gtree, c, depth_evict);
+            let result = resolve(&mut g.core, c, depth_evict);
             assert!(result.is_none());
             assert!(g.core.vtree.violations.is_empty());
         }
@@ -634,9 +625,8 @@ mod tests {
             let mut g = fresh();
             g.observe(64u8, 3u32); // ensure non-empty tree
             g.core.vtree.violations.push(VNodeId::from_index(9999));
-            let depth_evict = g.core.gtree.live_depth_evict;
 
-            let new_nodes = rebalance(&mut g.core.vtree, &mut g.core.gtree, depth_evict);
+            let new_nodes = rebalance(&mut g.core);
             assert!(new_nodes.is_empty());
             assert!(g.core.vtree.violations.is_empty());
         }
@@ -648,9 +638,8 @@ mod tests {
             let v_root = g.v_root().expect("v_root must exist");
             // Root has no uncle relation and should not be violated.
             g.core.vtree.violations.push(v_root);
-            let depth_evict = g.core.gtree.live_depth_evict;
 
-            let new_nodes = rebalance(&mut g.core.vtree, &mut g.core.gtree, depth_evict);
+            let new_nodes = rebalance(&mut g.core);
             assert!(new_nodes.is_empty());
             assert!(g.core.vtree.violations.is_empty());
         }
