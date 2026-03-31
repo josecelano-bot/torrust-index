@@ -161,78 +161,6 @@ fn resolve_try_contract_parent<V: Accumulator>(
     false
 }
 
-/// Path B of `resolve`: handles skip / legacy promote.
-///
-/// Attempts a grandparent contraction first, then either legacy-promotes (when
-/// `c` is a semi-internal entry at or above `depth_evict`) or skip-promotes.
-/// Returns `Some(new_g)` only when a legacy promote created a new G-node.
-fn resolve_path_b<C: Coordinate, V: Accumulator, const N: u32>(
-    core: &mut GvCore<C, V, N>,
-    c: VNodeId,
-    p: VNodeId,
-    g: VNodeId,
-    depth_evict: u32,
-) -> Option<GNodeId> {
-    // Optional grandparent contraction before the promote attempt.
-    let g_merged = if core.vtree.nodes.structural_child_count(g) == 3 {
-        let merged = core.vtree.contract(g);
-        {
-            let (vnodes, violations) = (&core.vtree.nodes, &mut core.vtree.violations);
-            let mut queue = ViolationQueue::new(violations);
-            queue.push_side_effect(vnodes, g);
-            queue.push_side_effect(vnodes, merged);
-            queue.push_promoted(vnodes, g);
-        }
-        if !core.vtree.nodes.is_violated(c) {
-            tracing::debug!("phase 2: resolved by g-contraction");
-            return None;
-        }
-        Some(merged)
-    } else {
-        None
-    };
-
-    let Some(g_id) = core.vtree.nodes.get(p.index()).parent() else {
-        tracing::warn!(
-            node = %Ctx(&core.vtree.nodes, c),
-            "skip-promote path: no grandparent after g-contraction — resolve incomplete",
-        );
-        return None;
-    };
-
-    let is_semi = matches!(
-        &core.vtree.nodes.get(c.index()).kind(),
-        VKind::Entry { gnode, .. }
-            if core.gtree.nodes.get(gnode.index()).is_semi_internal()
-    );
-
-    let result = if is_semi && core.vtree.nodes.depth(c) <= depth_evict {
-        tracing::debug!("phase 2: legacy promote (semi-internal entry)");
-        let new_g = core.legacy_promote(c);
-        {
-            let (vnodes, violations) = (&core.vtree.nodes, &mut core.vtree.violations);
-            let mut queue = ViolationQueue::new(violations);
-            queue.push_side_effect(vnodes, p);
-        }
-        Some(new_g)
-    } else {
-        core.vtree.skip_promote(c);
-        None
-    };
-
-    {
-        let (vnodes, violations) = (&core.vtree.nodes, &mut core.vtree.violations);
-        let mut queue = ViolationQueue::new(violations);
-        queue.push_side_effect(vnodes, g_id);
-        queue.push_promoted(vnodes, g_id);
-        if let Some(merged) = g_merged {
-            queue.push_source_10(vnodes, merged);
-        }
-    }
-
-    result
-}
-
 /// Attempt to resolve a single violation at V-node `c`.
 ///
 /// The function dispatches between two paths based on the shape of `c`:
@@ -290,7 +218,7 @@ pub fn resolve<C: Coordinate, V: Accumulator, const N: u32>(
         return None;
     };
 
-    let result = resolve_path_b(core, c, p, g, depth_evict);
+    let result = core.resolve_path_b(c, p, g, depth_evict);
 
     if core.vtree.nodes.is_occupied(c.index()) && core.vtree.nodes.is_violated(c) {
         tracing::warn!(

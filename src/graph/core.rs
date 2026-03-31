@@ -1,4 +1,5 @@
 use crate::graph::algorithm::rebalance;
+use crate::graph::algorithm::violation_push::ViolationQueue;
 use crate::handle::{GNodeId, VNodeId};
 use crate::nodes::vnode::{Children, VKind, VNode};
 use crate::traits::{Accumulator, Coordinate, Inspectable};
@@ -129,6 +130,78 @@ impl<C: Coordinate, V: Accumulator, const N: u32> GvCore<C, V, N> {
         self.vtree.recompute_and_sync(p);
         self.vtree.propagate_evictable(p);
         self.vtree.propagate_evictable(vg);
+    }
+
+    /// Path B of `resolve`: handles skip / legacy promote.
+    ///
+    /// Attempts a grandparent contraction first, then either legacy-promotes (when
+    /// `c` is a semi-internal entry at or above `depth_evict`) or skip-promotes.
+    /// Returns `Some(new_g)` only when a legacy promote created a new G-node.
+    pub(crate) fn resolve_path_b(
+        &mut self,
+        c: VNodeId,
+        p: VNodeId,
+        g: VNodeId,
+        depth_evict: u32,
+    ) -> Option<GNodeId> {
+        // Optional grandparent contraction before the promote attempt.
+        let g_merged = if self.vtree.nodes.structural_child_count(g) == 3 {
+            let merged = self.vtree.contract(g);
+            {
+                let (vnodes, violations) = (&self.vtree.nodes, &mut self.vtree.violations);
+                let mut queue = ViolationQueue::new(violations);
+                queue.push_side_effect(vnodes, g);
+                queue.push_side_effect(vnodes, merged);
+                queue.push_promoted(vnodes, g);
+            }
+            if !self.vtree.nodes.is_violated(c) {
+                tracing::debug!("phase 2: resolved by g-contraction");
+                return None;
+            }
+            Some(merged)
+        } else {
+            None
+        };
+
+        let Some(g_id) = self.vtree.nodes.get(p.index()).parent() else {
+            tracing::warn!(
+                node = %rebalance::Ctx(&self.vtree.nodes, c),
+                "skip-promote path: no grandparent after g-contraction — resolve incomplete",
+            );
+            return None;
+        };
+
+        let is_semi = matches!(
+            &self.vtree.nodes.get(c.index()).kind(),
+            VKind::Entry { gnode, .. }
+                if self.gtree.nodes.get(gnode.index()).is_semi_internal()
+        );
+
+        let result = if is_semi && self.vtree.nodes.depth(c) <= depth_evict {
+            tracing::debug!("phase 2: legacy promote (semi-internal entry)");
+            let new_g = self.legacy_promote(c);
+            {
+                let (vnodes, violations) = (&self.vtree.nodes, &mut self.vtree.violations);
+                let mut queue = ViolationQueue::new(violations);
+                queue.push_side_effect(vnodes, p);
+            }
+            Some(new_g)
+        } else {
+            self.vtree.skip_promote(c);
+            None
+        };
+
+        {
+            let (vnodes, violations) = (&self.vtree.nodes, &mut self.vtree.violations);
+            let mut queue = ViolationQueue::new(violations);
+            queue.push_side_effect(vnodes, g_id);
+            queue.push_promoted(vnodes, g_id);
+            if let Some(merged) = g_merged {
+                queue.push_source_10(vnodes, merged);
+            }
+        }
+
+        result
     }
 }
 
