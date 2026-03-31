@@ -29,13 +29,57 @@ impl<C: Coordinate, V: Accumulator, const N: u32> Clone for GvCore<C, V, N> {
 impl<C: Coordinate, V: Accumulator, const N: u32> GvCore<C, V, N> {
     /// Attempt to resolve a single violation at V-node `c`.
     ///
-    /// Delegates to the `resolve` algorithm in the rebalance module, reading
-    /// `depth_evict` from `self.gtree.live_depth_evict` so callers do not need
-    /// to thread that value through.
+    /// Dispatches between two paths based on the shape of `c`:
+    ///
+    /// - Path A (standard promote): `c` is a structural 2-child node.
+    /// - Path B (skip/legacy promote): any other kind.
     ///
     /// Returns `Some(new_g)` only when a legacy promote created a new G-node.
     pub(crate) fn resolve_violation(&mut self, c: VNodeId) -> Option<GNodeId> {
-        rebalance::resolve(self, c, self.gtree.live_depth_evict)
+        let depth_evict = self.gtree.live_depth_evict;
+        let _span = tracing::debug_span!("resolve", node = c.index()).entered();
+        tracing::debug!(ctx = %rebalance::Ctx(&self.vtree.nodes, c), "begin");
+
+        let Some(p) = self.vtree.nodes.get(c.index()).parent() else {
+            tracing::trace!("no parent — nothing to resolve");
+            return None;
+        };
+
+        // Phase 1: optional parent contraction.
+        if self.vtree.resolve_try_contract_parent(p, c) {
+            return None;
+        }
+
+        // Path A: standard promote.
+        if self.vtree.nodes.get(c.index()).is_structural_pair() {
+            tracing::debug!("phase 2: standard promote");
+            self.vtree.standard_promote(c);
+            {
+                let mut queue = ViolationQueue::new(&mut self.vtree.violations);
+                queue.push_side_effect(&self.vtree.nodes, p);
+                queue.push_promoted(&self.vtree.nodes, p);
+            }
+            self.vtree.escalate_after_promote(p);
+            return None;
+        }
+
+        // Path B: skip / legacy promote.
+        tracing::debug!("phase 2: skip promote path");
+        let Some(g) = self.vtree.nodes.get(p.index()).parent() else {
+            tracing::trace!("no grandparent — cannot skip-promote");
+            return None;
+        };
+
+        let result = self.resolve_path_b(c, p, g, depth_evict);
+
+        if self.vtree.nodes.is_occupied(c.index()) && self.vtree.nodes.is_violated(c) {
+            tracing::warn!(
+                node = %rebalance::Ctx(&self.vtree.nodes, c),
+                "resolve() returning with node STILL violated",
+            );
+        }
+
+        result
     }
 
     pub(crate) fn alloc_v_entry(&mut self, gnode: GNodeId) -> VNodeId {
@@ -684,7 +728,6 @@ mod tests {
         // These are coupled to the current implementation; update them when refactoring internals.
         mod internals {
             use super::super::*;
-            use crate::graph::algorithm::rebalance::resolve;
             use crate::tree::vtree::vnode::VNode;
 
             #[test]
@@ -693,10 +736,106 @@ mod tests {
                 g.observe(64u8, 2u32); // no split: root entry has no parent
                 let c = g.v_root().expect("v_root must exist");
                 g.core.vtree.violations.clear();
-                let depth_evict = g.core.gtree.live_depth_evict;
-                let result = resolve(&mut g.core, c, depth_evict);
+                let result = g.core.resolve_violation(c);
                 assert!(result.is_none());
                 assert!(g.core.vtree.violations.is_empty());
+            }
+
+            #[test]
+            fn resolve_skip_path_returns_none_without_grandparent() {
+                let mut g = fresh();
+                g.observe(64u8, 3u32);
+
+                let v_root = g.v_root().expect("v_root should exist after split");
+                let c = match g.core.vtree.nodes.get(v_root.index()).kind() {
+                    VKind::Structural { children, .. } => children.get(0).0,
+                    VKind::Entry { .. } => panic!("expected structural v_root after split"),
+                };
+
+                let out = g.core.resolve_violation(c);
+                assert!(out.is_none());
+            }
+
+            #[test]
+            fn resolve_path_b_legacy_promote_returns_new_gnode() {
+                let mut g = fresh();
+
+                let semi_gid = g.core.gtree.nodes.root;
+                let existing_child = g.core.gtree.nodes.allocate_missing_child(semi_gid);
+
+                let c = VNodeId::from_index(
+                    g.core
+                        .vtree
+                        .nodes
+                        .alloc(VNode::new_entry(7, None, semi_gid, true, true))
+                        .0,
+                );
+                let s = VNodeId::from_index(
+                    g.core
+                        .vtree
+                        .nodes
+                        .alloc(VNode::new_entry(
+                            5,
+                            None,
+                            GNodeId::from_index(existing_child.index()),
+                            true,
+                            true,
+                        ))
+                        .0,
+                );
+                let u = VNodeId::from_index(
+                    g.core
+                        .vtree
+                        .nodes
+                        .alloc(VNode::new_entry(
+                            11,
+                            None,
+                            GNodeId::from_index(existing_child.index()),
+                            true,
+                            true,
+                        ))
+                        .0,
+                );
+
+                let p = VNodeId::from_index(
+                    g.core
+                        .vtree
+                        .nodes
+                        .alloc(VNode::new_structural(
+                            12,
+                            None,
+                            Children::new_2((c, 7), (s, 5)),
+                            true,
+                        ))
+                        .0,
+                );
+                g.core.vtree.nodes.get_mut(c.index()).set_parent(p);
+                g.core.vtree.nodes.get_mut(s.index()).set_parent(p);
+
+                let gp = VNodeId::from_index(
+                    g.core
+                        .vtree
+                        .nodes
+                        .alloc(VNode::new_structural(
+                            23,
+                            None,
+                            Children::new_2((p, 12), (u, 11)),
+                            true,
+                        ))
+                        .0,
+                );
+                g.core.vtree.nodes.get_mut(p.index()).set_parent(gp);
+                g.core.vtree.nodes.get_mut(u.index()).set_parent(gp);
+
+                g.core.gtree.nodes.assign_entry(semi_gid, c);
+
+                let out = g.core.resolve_violation(c);
+
+                let new_gid = out.expect("legacy promote path should return new gnode");
+                assert_eq!(
+                    g.core.gtree.nodes.get(new_gid.index()).parent(),
+                    Some(semi_gid)
+                );
             }
 
             #[test]

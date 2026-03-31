@@ -1,7 +1,5 @@
 use crate::tree::handle::VNodeId;
 
-pub use super::super::fmt::{Ctx, Nd};
-
 #[derive(Debug, Clone, Copy)]
 pub struct EscalationContext {
     pub parent_id: VNodeId,

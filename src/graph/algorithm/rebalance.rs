@@ -1,7 +1,4 @@
-mod context;
-mod resolve;
-pub use context::{Ctx, EscalationContext, Nd};
-pub use resolve::resolve;
+pub use super::fmt::{Ctx, Nd};
 
 #[cfg(test)]
 mod tests {
