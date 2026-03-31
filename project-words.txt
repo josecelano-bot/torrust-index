@@ -118,3 +118,5 @@ vnode
 vnodes
 vtree
 weighable
+callsite
+evictability

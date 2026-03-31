@@ -33,7 +33,14 @@ impl<C: Coordinate, V: Accumulator, const N: u32> GvCore<C, V, N> {
         e_id
     }
 
-    #[allow(clippy::too_many_lines)]
+    /// Promotes entry `c` from a semi-internal G-node into the grandparent level of
+    /// the V-tree, creating the missing G-child that `c` previously occupied.
+    ///
+    /// # TODO
+    ///
+    /// This function is a legacy adaptation path used during the transition away from
+    /// the old borrow-split resolve model.  Once `resolve_path_b` is refactored to
+    /// operate directly on `&mut GvCore`, this function should be inlined or removed.
     pub(crate) fn legacy_promote(&mut self, c: VNodeId) -> GNodeId {
         let p = self
             .vtree
@@ -41,7 +48,7 @@ impl<C: Coordinate, V: Accumulator, const N: u32> GvCore<C, V, N> {
             .get(c.index())
             .parent()
             .expect("legacy_promote: c must have a parent");
-        let g = self
+        let vg = self
             .vtree
             .nodes
             .get(p.index())
@@ -62,7 +69,7 @@ impl<C: Coordinate, V: Accumulator, const N: u32> GvCore<C, V, N> {
             "legacy_promote",
             c = %rebalance::Nd(&self.vtree.nodes, c),
             p = p.index(),
-            g = g.index(),
+            vg = vg.index(),
             gnode = gnode_id.index(),
         )
         .entered();
@@ -76,36 +83,36 @@ impl<C: Coordinate, V: Accumulator, const N: u32> GvCore<C, V, N> {
         let c_int = self.vtree.nodes.get(c.index()).intensity();
         self.vtree.replace_structural_child(p, c, ne_id, V::zero());
 
-        let (u_id, u_int) = self.vtree.nodes.sibling_of(g, p);
+        let (u_id, u_int) = self.vtree.nodes.sibling_of(vg, p);
 
-        let c_evictable = false;
+        // c is being demoted — it is never evictable at this point
         let p_evictable = self.vtree.nodes.node_has_evictable(p);
         let u_evictable = self.vtree.nodes.node_has_evictable(u_id);
 
         let p_int = self.vtree.nodes.get(p.index()).intensity();
-        let g_node = self.vtree.nodes.get_mut(g.index());
+        let g_node = self.vtree.nodes.get_mut(vg.index());
         if let VKind::Structural {
             children,
             has_evictable,
         } = g_node.kind_mut()
         {
             *children = Children::new_3((c, c_int), (p, p_int), (u_id, u_int));
-            *has_evictable = c_evictable || p_evictable || u_evictable;
+            *has_evictable = p_evictable || u_evictable;
         }
 
-        self.vtree.nodes.get_mut(c.index()).set_parent(g);
+        self.vtree.nodes.get_mut(c.index()).set_parent(vg);
 
         self.vtree.set_entry_flags(c, false, false);
 
         self.vtree.recompute_and_sync(p);
 
         self.vtree.propagate_evictable(p);
-        self.vtree.propagate_evictable(g);
+        self.vtree.propagate_evictable(vg);
 
         tracing::debug!(
             new_gnode = new_child_id.index(),
             new_ventry = ne_id.index(),
-            "legacy_promote complete: c lifted to g, new child created",
+            "legacy_promote complete: c lifted to grandparent, new child created",
         );
 
         new_child_id
@@ -114,6 +121,8 @@ impl<C: Coordinate, V: Accumulator, const N: u32> GvCore<C, V, N> {
 
 impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvCore<C, V, N> {
     pub(crate) fn rebalance(&mut self) -> Vec<GNodeId> {
+        use crate::diagnostics::diagnostic::audit_violations;
+
         let depth_evict = self.gtree.live_depth_evict;
         let mut new_gnodes = Vec::new();
 
@@ -125,11 +134,7 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvCore<C, V, N> 
             tracing::debug_span!("rebalance", queue = self.vtree.violations.len()).entered();
 
         if tracing::enabled!(tracing::Level::DEBUG) {
-            crate::diagnostics::diagnostic::audit_violations(
-                &self.vtree.nodes,
-                &self.vtree.violations,
-                "PRE-REBALANCE",
-            );
+            audit_violations(&self.vtree.nodes, &self.vtree.violations, "PRE-REBALANCE");
         }
 
         // Invariant: each `resolve` call either resolves the head node (decreasing
@@ -138,17 +143,19 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvCore<C, V, N> 
         // `max_iterations` catches any cycle if that invariant is ever violated.
         while let Some(c) = self.vtree.violations.pop() {
             iterations += 1;
-            if iterations > max_iterations
-                && handle_iteration_limit(
+            if iterations > max_iterations {
+                // In debug builds handle_iteration_limit diverges via panic!;
+                // in release it logs and signals break.
+                if handle_iteration_limit(
                     &self.vtree.nodes,
                     &self.vtree.violations,
                     iterations,
                     max_iterations,
                     resolved,
                     c,
-                )
-            {
-                break;
+                ) {
+                    break;
+                }
             }
 
             if !self.vtree.nodes.is_occupied(c.index()) {
@@ -185,22 +192,14 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvCore<C, V, N> 
             }
 
             if tracing::enabled!(tracing::Level::DEBUG) {
-                crate::diagnostics::diagnostic::audit_violations(
-                    &self.vtree.nodes,
-                    &self.vtree.violations,
-                    "POST-RESOLVE",
-                );
+                audit_violations(&self.vtree.nodes, &self.vtree.violations, "POST-RESOLVE");
             }
         }
 
         tracing::debug!(iterations, resolved, "rebalance complete");
 
         if cfg!(debug_assertions) || tracing::enabled!(tracing::Level::DEBUG) {
-            let remaining = crate::diagnostics::diagnostic::audit_violations(
-                &self.vtree.nodes,
-                &self.vtree.violations,
-                "RESIDUAL",
-            );
+            let remaining = audit_violations(&self.vtree.nodes, &self.vtree.violations, "RESIDUAL");
             assert!(
                 remaining.is_empty(),
                 "rebalance finished with residual violations: {remaining:?}"
@@ -266,16 +265,20 @@ mod tests {
 
     type G = GvGraph<u8, u32, 8>;
 
+    fn base_structural() -> StructuralConfig {
+        StructuralConfig {
+            depth_create: 3,
+            depth_evict: 5,
+            budget: None,
+            alpha_relax: 0.5,
+            bounded_eviction: false,
+        }
+    }
+
     fn make_config() -> Config<u32> {
         Config {
             split_threshold: 2,
-            structural: StructuralConfig {
-                depth_create: 3,
-                depth_evict: 5,
-                budget: None,
-                alpha_relax: 0.5,
-                bounded_eviction: false,
-            },
+            structural: base_structural(),
         }
     }
 
@@ -286,13 +289,7 @@ mod tests {
     fn make_graph() -> GvGraph<u8, u64, 8> {
         GvGraph::new(Config {
             split_threshold: 2,
-            structural: StructuralConfig {
-                depth_create: 3,
-                depth_evict: 5,
-                budget: None,
-                alpha_relax: 0.5,
-                bounded_eviction: false,
-            },
+            structural: base_structural(),
         })
     }
 
@@ -538,85 +535,105 @@ mod tests {
     // ── rebalance ─────────────────────────────────────────────────────
 
     mod rebalance_fn {
-        use super::*;
-        use crate::graph::algorithm::rebalance::resolve;
-        use crate::nodes::vnode::VNode;
+        // Black-box tests: exercise GvGraph's public API only.
+        // These should survive any internal restructuring.
+        mod public_api {
+            use super::super::*;
 
-        #[test]
-        fn total_sum_invariant_is_maintained_after_many_observations() {
-            let mut g = fresh();
-            let mut expected_sum = 0u32;
-            for (i, coord) in [0u8, 64, 32, 96, 16, 80, 48, 112].iter().enumerate() {
-                let delta = (i as u32 + 1) * 3;
-                g.observe(*coord, delta);
-                expected_sum += delta;
+            #[test]
+            fn total_sum_invariant_is_maintained_after_many_observations() {
+                let mut g = fresh();
+                let mut expected_sum = 0u32;
+                for (i, coord) in [0u8, 64, 32, 96, 16, 80, 48, 112].iter().enumerate() {
+                    let delta = (i as u32 + 1) * 3;
+                    g.observe(*coord, delta);
+                    expected_sum += delta;
+                }
+                assert_eq!(g.total_sum(), expected_sum);
             }
-            assert_eq!(g.total_sum(), expected_sum);
-        }
 
-        #[test]
-        fn node_count_is_at_least_one_after_many_observations() {
-            let mut g = fresh();
-            for coord in 0u8..20 {
-                g.observe(coord.wrapping_mul(13), 3u32);
+            #[test]
+            fn node_count_is_at_least_one_after_many_observations() {
+                let mut g = fresh();
+                for coord in 0u8..20 {
+                    g.observe(coord.wrapping_mul(13), 3u32);
+                }
+                assert!(g.node_count() >= 1);
             }
-            assert!(g.node_count() >= 1);
+
+            #[test]
+            fn rebalance_skips_destroyed_queue_nodes() {
+                let mut g = fresh();
+                g.observe(64u8, 3u32); // ensure non-empty tree
+                g.core.vtree.violations.push(VNodeId::from_index(9999));
+
+                let new_nodes = g.core.rebalance();
+                assert!(new_nodes.is_empty());
+                assert!(g.core.vtree.violations.is_empty());
+            }
+
+            #[test]
+            fn rebalance_skips_already_resolved_nodes() {
+                let mut g = fresh();
+                g.observe(64u8, 3u32); // establish a structural root
+                let v_root = g.v_root().expect("v_root must exist");
+                // Root has no uncle relation and should not be violated.
+                g.core.vtree.violations.push(v_root);
+
+                let new_nodes = g.core.rebalance();
+                assert!(new_nodes.is_empty());
+                assert!(g.core.vtree.violations.is_empty());
+            }
         }
 
-        #[test]
-        fn resolve_returns_none_when_node_has_no_parent() {
-            let mut g = fresh();
-            g.observe(64u8, 2u32); // no split: root entry has no parent
-            let c = g.v_root().expect("v_root must exist");
-            g.core.vtree.violations.clear();
-            let depth_evict = g.core.gtree.live_depth_evict;
-            let result = resolve(&mut g.core, c, depth_evict);
-            assert!(result.is_none());
-            assert!(g.core.vtree.violations.is_empty());
-        }
+        // White-box tests: exercise internal helpers directly.
+        // These are coupled to the current implementation; update them when refactoring internals.
+        mod internals {
+            use super::super::*;
+            use crate::graph::algorithm::rebalance::resolve;
+            use crate::nodes::vnode::VNode;
 
-        #[test]
-        fn rebalance_skips_destroyed_queue_nodes() {
-            let mut g = fresh();
-            g.observe(64u8, 3u32); // ensure non-empty tree
-            g.core.vtree.violations.push(VNodeId::from_index(9999));
+            #[test]
+            fn resolve_returns_none_when_node_has_no_parent() {
+                let mut g = fresh();
+                g.observe(64u8, 2u32); // no split: root entry has no parent
+                let c = g.v_root().expect("v_root must exist");
+                g.core.vtree.violations.clear();
+                let depth_evict = g.core.gtree.live_depth_evict;
+                let result = resolve(&mut g.core, c, depth_evict);
+                assert!(result.is_none());
+                assert!(g.core.vtree.violations.is_empty());
+            }
 
-            let new_nodes = g.core.rebalance();
-            assert!(new_nodes.is_empty());
-            assert!(g.core.vtree.violations.is_empty());
-        }
+            #[test]
+            #[should_panic(expected = "rebalance: exceeded")]
+            fn handle_iteration_limit_panics_in_debug_mode() {
+                // Note: the release-build path (returns true, signals break) is not covered by
+                // automated tests — exercising it requires a cycle in violation resolution.
+                let mut vnodes =
+                    crate::tree::vtree::VNodeTree::<u32>::from(crate::arena::Arena::new());
+                let live = VNodeId::from_index(
+                    vnodes
+                        .alloc(VNode::new_entry(
+                            1,
+                            None,
+                            crate::handle::GNodeId::from_index(50),
+                            true,
+                            true,
+                        ))
+                        .0,
+                );
+                let violations = vec![live, VNodeId::from_index(9999)];
 
-        #[test]
-        fn rebalance_skips_already_resolved_nodes() {
-            let mut g = fresh();
-            g.observe(64u8, 3u32); // establish a structural root
-            let v_root = g.v_root().expect("v_root must exist");
-            // Root has no uncle relation and should not be violated.
-            g.core.vtree.violations.push(v_root);
-
-            let new_nodes = g.core.rebalance();
-            assert!(new_nodes.is_empty());
-            assert!(g.core.vtree.violations.is_empty());
-        }
-
-        #[test]
-        #[should_panic(expected = "rebalance: exceeded")]
-        fn handle_iteration_limit_panics_in_debug_mode() {
-            let mut vnodes = crate::tree::vtree::VNodeTree::<u32>::from(crate::arena::Arena::new());
-            let live = VNodeId::from_index(
-                vnodes
-                    .alloc(VNode::new_entry(
-                        1,
-                        None,
-                        crate::handle::GNodeId::from_index(50),
-                        true,
-                        true,
-                    ))
-                    .0,
-            );
-            let violations = vec![live, VNodeId::from_index(9999)];
-
-            let _ = super::super::handle_iteration_limit(&vnodes, &violations, 11, 10, 0, live);
+                let _ = super::super::super::handle_iteration_limit(
+                    &vnodes,
+                    &violations,
+                    11,
+                    10,
+                    0,
+                    live,
+                );
+            }
         }
     }
 }
