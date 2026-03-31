@@ -165,7 +165,7 @@ For every free function being migrated:
 ## Progress
 
 - [x] Step 1 — `VNodeTree` pure query methods
-- [ ] Step 2 — `VTree` operation methods
+- [x] Step 2 — `VTree` mutation methods (`contract`, `standard_promote`, `skip_promote`)
 - [ ] Step 3 — `GNodeTree` pure query methods
 - [ ] Step 4 — `GvCore` cross-tree operation methods
 - [ ] Step 5 — `GvGraph`-level operations

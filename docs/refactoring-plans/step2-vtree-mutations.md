@@ -121,9 +121,9 @@ refactor(vtree): move contract, standard_promote, skip_promote to VTree methods
 
 ## Progress
 
-- [ ] `contract` → `VTree::contract` method
-- [ ] `standard_promote` → `VTree::standard_promote` method
-- [ ] `skip_promote` → `VTree::skip_promote` method
-- [ ] `promote.rs` deleted
-- [ ] All call sites updated (`resolve.rs`, `split/helpers.rs`)
-- [ ] Tests moved to `vtree/mod.rs`
+- [x] `contract` → `VTree::contract` method
+- [x] `standard_promote` → `VTree::standard_promote` method
+- [x] `skip_promote` → `VTree::skip_promote` method
+- [x] `promote.rs` deleted
+- [x] All call sites updated (`resolve.rs`, `split/helpers.rs`)
+- [x] Tests moved to `vtree/mod.rs`
