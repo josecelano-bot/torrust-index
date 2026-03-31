@@ -29,6 +29,18 @@ Primary public type: `GvGraph<C, V, N>` where `C` = coordinate type, `V` = value
 
 ---
 
+## Setup after cloning
+
+Run once after cloning to install the git hooks:
+
+```bash
+./scripts/install-hooks.sh
+```
+
+This installs a `pre-commit` hook that runs `./scripts/verify.sh` before every commit, blocking commits that fail formatting, Clippy, tests, or spell-check.
+
+---
+
 ## Build commands
 
 ```bash
