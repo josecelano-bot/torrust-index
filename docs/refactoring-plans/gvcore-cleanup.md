@@ -447,10 +447,10 @@ docs(core): add TODO marker on legacy_promote tech-debt
 
 | Item | Status |
 |------|--------|
-| 1. Remove dead `c_evictable` assignment | ⬜ Not started |
-| 2. Clarify `handle_iteration_limit` callsite | ⬜ Not started |
-| 3. Local `use audit_violations` | ⬜ Not started |
-| 4. Consolidate test config | ⬜ Not started |
-| 5. Rename `g` → `vg` in `legacy_promote` | ⬜ Not started |
-| 6. Tech-debt marker on `legacy_promote` | ⬜ Not started |
-| 7. Split white-box / black-box tests | ⬜ Not started |
+| 1. Remove dead `c_evictable` assignment | ✅ Done — `cfe84b2` |
+| 2. Clarify `handle_iteration_limit` callsite | ✅ Done — `cfe84b2` |
+| 3. Local `use audit_violations` | ✅ Done — `cfe84b2` |
+| 4. Consolidate test config | ✅ Done — `cfe84b2` |
+| 5. Rename `g` → `vg` in `legacy_promote` | ✅ Done — `cfe84b2` |
+| 6. Tech-debt marker on `legacy_promote` | ✅ Done — `cfe84b2` |
+| 7. Split white-box / black-box tests | ✅ Done — `cfe84b2` |
