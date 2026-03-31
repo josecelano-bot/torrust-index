@@ -125,9 +125,9 @@ Work bottom-up. Each layer is prerequisite for the next.
 
 2. **`VTree` single-tree mutations** — functions that need `&mut VTree` (nodes +
    violations queue) and nothing from the G-tree or config.
-   Examples: `standard_promote`, `skip_promote`, `escalate_contract_parent`,
-   `escalate_try_contract_grandparent`, `escalate_skip_promote`,
-   `escalate_after_promote`, `resolve_try_contract_parent`.
+   Examples: `contract`, `standard_promote`, `skip_promote`.
+   (Escalate helpers stay in `resolve.rs` — they need algorithm-layer types.)
+   → Sub-plan: [step2-vtree-mutations.md](step2-vtree-mutations.md)
 
 3. **`GNodeTree` pure queries** — functions that only read `&GNodeTree`.
 

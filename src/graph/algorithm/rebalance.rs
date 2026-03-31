@@ -1,84 +1,7 @@
-use crate::handle::VNodeId;
-use crate::nodes::vnode::{Children, VKind, VNode};
-use crate::traits::Accumulator;
-use crate::tree::vtree::VTree;
-
 mod context;
 mod resolve;
-
-pub(super) use super::fmt::Ch;
 pub use context::{Ctx, EscalationContext, Nd};
 pub use resolve::resolve;
-
-pub fn contract<V: Accumulator>(vtree: &mut VTree<V>, p: VNodeId) -> VNodeId {
-    let _span = tracing::debug_span!(
-        "contract",
-        p = %Nd(&vtree.nodes, p),
-        children = %Ch(&vtree.nodes, p),
-    )
-    .entered();
-
-    let (heaviest_idx, children_data) = {
-        let node = vtree.nodes.get(p.index());
-        let children = match &node.kind() {
-            VKind::Structural { children, .. } => children,
-            VKind::Entry { .. } => panic!("contract: p must be structural"),
-        };
-        assert!(children.len() == 3, "contract: p must be a 3-node");
-        let h = children.heaviest_child_index();
-        let data: [(VNodeId, V); 3] = [children.get(0), children.get(1), children.get(2)];
-        (h, data)
-    };
-
-    let isolate = children_data[heaviest_idx];
-    let mut merge = Vec::with_capacity(2);
-    for (i, &child) in children_data.iter().enumerate() {
-        if i != heaviest_idx {
-            merge.push(child);
-        }
-    }
-    let (a_id, a_int) = merge[0];
-    let (b_id, b_int) = merge[1];
-
-    let a_terminal = vtree.nodes.node_has_evictable(a_id);
-    let b_terminal = vtree.nodes.node_has_evictable(b_id);
-
-    let merged = VNode::new_structural(
-        V::add(a_int, b_int),
-        Some(p),
-        Children::new_2((a_id, a_int), (b_id, b_int)),
-        a_terminal || b_terminal,
-    );
-    let m_id = VNodeId::from_index(vtree.nodes.alloc(merged).0);
-
-    vtree.nodes.get_mut(a_id.index()).set_parent(m_id);
-    vtree.nodes.get_mut(b_id.index()).set_parent(m_id);
-
-    let merged_int = V::add(a_int, b_int);
-    let iso_terminal = vtree.nodes.node_has_evictable(isolate.0);
-    let m_terminal = a_terminal || b_terminal;
-
-    let p_node = vtree.nodes.get_mut(p.index());
-    if let VKind::Structural {
-        children,
-        has_evictable,
-    } = p_node.kind_mut()
-    {
-        *children = Children::new_2(isolate, (m_id, merged_int));
-        *has_evictable = iso_terminal || m_terminal;
-    }
-
-    vtree.propagate_evictable(p);
-
-    tracing::debug!(
-        merged = %Nd(&vtree.nodes, m_id),
-        result = %Ch(&vtree.nodes, p),
-        "complete",
-    );
-    m_id
-}
-
-// rebalance and handle_iteration_limit have moved to `GvCore` in `graph/core.rs`.
 
 #[cfg(test)]
 mod tests {
@@ -237,7 +160,7 @@ mod tests {
     // ── Ch display ───────────────────────────────────────────────────
     mod ch_display_fn {
         use super::*;
-        use crate::graph::algorithm::rebalance::Ch;
+        use crate::graph::algorithm::fmt::Ch;
 
         #[test]
         fn entry_vnode_displays_as_empty_set_symbol() {

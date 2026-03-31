@@ -47,7 +47,7 @@ use crate::tree::gtree::GTree;
 
 pub mod vnode;
 pub mod vnode_tree;
-use self::vnode::VKind;
+use self::vnode::{Children, VKind, VNode};
 pub use vnode_tree::VNodeTree;
 
 // ── VTree ────────────────────────────────────────────────────────────────────
@@ -267,6 +267,170 @@ impl<V: Accumulator> VTree<V> {
         g_root: GNodeId,
     ) -> Vec<VNodeId> {
         self.nodes.scan_for_candidates(live_depth_evict, g_root)
+    }
+
+    // ── Structural restructuring ──────────────────────────────────────────
+
+    /// Contracts a 3-child structural node `p` into a 2-child node by merging
+    /// its two lightest children into a new structural node. Returns the new
+    /// merged node's id.
+    pub(crate) fn contract(&mut self, p: VNodeId) -> VNodeId {
+        let _span = tracing::debug_span!("contract", p = p.index()).entered();
+
+        let (heaviest_idx, children_data) = {
+            let node = self.nodes.get(p.index());
+            let children = match &node.kind() {
+                VKind::Structural { children, .. } => children,
+                VKind::Entry { .. } => panic!("contract: p must be structural"),
+            };
+            assert!(children.len() == 3, "contract: p must be a 3-node");
+            let h = children.heaviest_child_index();
+            let data: [(VNodeId, V); 3] = [children.get(0), children.get(1), children.get(2)];
+            (h, data)
+        };
+
+        let isolate = children_data[heaviest_idx];
+        let mut merge = Vec::with_capacity(2);
+        for (i, &child) in children_data.iter().enumerate() {
+            if i != heaviest_idx {
+                merge.push(child);
+            }
+        }
+        let (a_id, a_int) = merge[0];
+        let (b_id, b_int) = merge[1];
+
+        let a_terminal = self.nodes.node_has_evictable(a_id);
+        let b_terminal = self.nodes.node_has_evictable(b_id);
+
+        let merged = VNode::new_structural(
+            V::add(a_int, b_int),
+            Some(p),
+            Children::new_2((a_id, a_int), (b_id, b_int)),
+            a_terminal || b_terminal,
+        );
+        let m_id = VNodeId::from_index(self.nodes.alloc(merged).0);
+
+        self.nodes.get_mut(a_id.index()).set_parent(m_id);
+        self.nodes.get_mut(b_id.index()).set_parent(m_id);
+
+        let merged_int = V::add(a_int, b_int);
+        let iso_terminal = self.nodes.node_has_evictable(isolate.0);
+        let m_terminal = a_terminal || b_terminal;
+
+        let p_node = self.nodes.get_mut(p.index());
+        if let VKind::Structural {
+            children,
+            has_evictable,
+        } = p_node.kind_mut()
+        {
+            *children = Children::new_2(isolate, (m_id, merged_int));
+            *has_evictable = iso_terminal || m_terminal;
+        }
+
+        self.propagate_evictable(p);
+
+        tracing::debug!("complete");
+        m_id
+    }
+
+    /// Absorbs the 2-child structural node `c` into its parent, expanding the
+    /// parent from a 2-node to a 3-node. The intermediate node `c` is then
+    /// deallocated.
+    pub(crate) fn standard_promote(&mut self, c: VNodeId) {
+        let p = self
+            .nodes
+            .get(c.index())
+            .parent()
+            .expect("standard_promote: c must have a parent");
+        let _span = tracing::debug_span!("standard_promote", c = c.index()).entered();
+
+        let (c1_id, c1_int, c2_id, c2_int) = {
+            let node = self.nodes.get(c.index());
+            match &node.kind() {
+                VKind::Structural { children, .. } => {
+                    assert!(children.len() == 2, "standard_promote: c must be a 2-node");
+                    let (id1, int1) = children.get(0);
+                    let (id2, int2) = children.get(1);
+                    (id1, int1, id2, int2)
+                }
+                VKind::Entry { .. } => panic!("standard_promote: c must be structural"),
+            }
+        };
+
+        let sibling_id = self.nodes.sibling_of(p, c);
+
+        let sib_terminal = self.nodes.node_has_evictable(sibling_id.0);
+        let c1_terminal = self.nodes.node_has_evictable(c1_id);
+        let c2_terminal = self.nodes.node_has_evictable(c2_id);
+
+        let p_node = self.nodes.get_mut(p.index());
+        if let VKind::Structural {
+            children,
+            has_evictable,
+        } = p_node.kind_mut()
+        {
+            *children = Children::new_3((c1_id, c1_int), (c2_id, c2_int), sibling_id);
+            *has_evictable = c1_terminal || c2_terminal || sib_terminal;
+        }
+
+        self.nodes.get_mut(c1_id.index()).set_parent(p);
+        self.nodes.get_mut(c2_id.index()).set_parent(p);
+
+        self.nodes.dealloc(c.index());
+
+        self.propagate_evictable(p);
+
+        tracing::debug!("c destroyed, p is 3-node");
+    }
+
+    /// Lifts entry `c` past its parent `p`, joining the grandparent `g`
+    /// directly as one of three children. The intermediate node `p` is
+    /// deallocated and `g` becomes a 3-node.
+    pub(crate) fn skip_promote(&mut self, c: VNodeId) -> Option<VNodeId> {
+        let p = self
+            .nodes
+            .get(c.index())
+            .parent()
+            .expect("skip_promote: c must have a parent");
+        let g = self
+            .nodes
+            .get(p.index())
+            .parent()
+            .expect("skip_promote: p must have a grandparent");
+        let _span =
+            tracing::debug_span!("skip_promote", c = c.index(), p = p.index(), g = g.index())
+                .entered();
+
+        let (s_id, s_int) = self.nodes.sibling_of(p, c);
+
+        let c_int = self.nodes.get(c.index()).intensity();
+
+        let (u_id, u_int) = self.nodes.sibling_of(g, p);
+
+        let c_terminal = self.nodes.node_has_evictable(c);
+        let s_terminal = self.nodes.node_has_evictable(s_id);
+        let u_terminal = self.nodes.node_has_evictable(u_id);
+
+        let g_node = self.nodes.get_mut(g.index());
+        if let VKind::Structural {
+            children,
+            has_evictable,
+        } = g_node.kind_mut()
+        {
+            *children = Children::new_3((c, c_int), (s_id, s_int), (u_id, u_int));
+            *has_evictable = c_terminal || s_terminal || u_terminal;
+        }
+
+        self.nodes.get_mut(c.index()).set_parent(g);
+        self.nodes.get_mut(s_id.index()).set_parent(g);
+
+        self.nodes.dealloc(p.index());
+
+        self.propagate_evictable(g);
+
+        tracing::debug!("p destroyed, g is 3-node");
+
+        None
     }
 
     // ── Internal arena-based helpers ──────────────────────────────────────
@@ -614,6 +778,243 @@ mod tests {
                 }
                 _ => panic!("expected Structural"),
             }
+        }
+    }
+
+    // ── standard_promote ─────────────────────────────────────────────────
+
+    fn make_vtree<V: crate::traits::Accumulator>() -> VTree<V> {
+        VTree {
+            nodes: VNodeTree::from(Arena::new()),
+            violations: Vec::new(),
+        }
+    }
+
+    mod standard_promote_fn {
+        use super::*;
+
+        #[test]
+        fn replaces_child_pair_with_grandchildren() {
+            let mut vtree: VTree<u64> = make_vtree();
+
+            let e1 = VNodeId::from_index(
+                vtree
+                    .nodes
+                    .alloc(VNode::new_entry(
+                        2,
+                        None,
+                        GNodeId::from_index(0),
+                        false,
+                        true,
+                    ))
+                    .0,
+            );
+            let e2 = VNodeId::from_index(
+                vtree
+                    .nodes
+                    .alloc(VNode::new_entry(
+                        3,
+                        None,
+                        GNodeId::from_index(1),
+                        false,
+                        false,
+                    ))
+                    .0,
+            );
+            let s = VNodeId::from_index(
+                vtree
+                    .nodes
+                    .alloc(VNode::new_entry(
+                        5,
+                        None,
+                        GNodeId::from_index(2),
+                        false,
+                        true,
+                    ))
+                    .0,
+            );
+
+            let c = VNodeId::from_index(
+                vtree
+                    .nodes
+                    .alloc(VNode::new_structural(
+                        5,
+                        None,
+                        Children::new_2((e1, 2), (e2, 3)),
+                        true,
+                    ))
+                    .0,
+            );
+            vtree.nodes.get_mut(e1.index()).set_parent(c);
+            vtree.nodes.get_mut(e2.index()).set_parent(c);
+
+            let p = VNodeId::from_index(
+                vtree
+                    .nodes
+                    .alloc(VNode::new_structural(
+                        10,
+                        None,
+                        Children::new_2((c, 5), (s, 5)),
+                        true,
+                    ))
+                    .0,
+            );
+            vtree.nodes.get_mut(c.index()).set_parent(p);
+            vtree.nodes.get_mut(s.index()).set_parent(p);
+
+            vtree.standard_promote(c);
+
+            let p_node = vtree.nodes.get(p.index());
+            match p_node.kind() {
+                VKind::Structural { children, .. } => {
+                    assert_eq!(children.get(0).0, e1);
+                    assert_eq!(children.get(1).0, e2);
+                    assert_eq!(children.get(2).0, s);
+                }
+                VKind::Entry { .. } => panic!("parent should remain structural"),
+            }
+
+            assert_eq!(vtree.nodes.get(e1.index()).parent(), Some(p));
+            assert_eq!(vtree.nodes.get(e2.index()).parent(), Some(p));
+            assert!(!vtree.nodes.is_occupied(c.index()));
+        }
+
+        #[test]
+        #[should_panic(expected = "standard_promote: c must be structural")]
+        fn panics_for_entry_node() {
+            let mut vtree: VTree<u64> = make_vtree();
+            let c = VNodeId::from_index(
+                vtree
+                    .nodes
+                    .alloc(VNode::new_entry(
+                        4,
+                        None,
+                        GNodeId::from_index(1),
+                        true,
+                        true,
+                    ))
+                    .0,
+            );
+            let s = VNodeId::from_index(
+                vtree
+                    .nodes
+                    .alloc(VNode::new_entry(
+                        3,
+                        None,
+                        GNodeId::from_index(2),
+                        true,
+                        true,
+                    ))
+                    .0,
+            );
+            let p = VNodeId::from_index(
+                vtree
+                    .nodes
+                    .alloc(VNode::new_structural(
+                        7,
+                        None,
+                        Children::new_2((c, 4), (s, 3)),
+                        true,
+                    ))
+                    .0,
+            );
+            vtree.nodes.get_mut(c.index()).set_parent(p);
+            vtree.nodes.get_mut(s.index()).set_parent(p);
+
+            vtree.standard_promote(c);
+        }
+    }
+
+    // ── skip_promote ──────────────────────────────────────────────────────
+
+    mod skip_promote_fn {
+        use super::*;
+
+        #[test]
+        fn lifts_child_and_sibling_to_grandparent() {
+            let mut vtree: VTree<u64> = make_vtree();
+
+            let c = VNodeId::from_index(
+                vtree
+                    .nodes
+                    .alloc(VNode::new_entry(
+                        4,
+                        None,
+                        GNodeId::from_index(10),
+                        false,
+                        true,
+                    ))
+                    .0,
+            );
+            let s = VNodeId::from_index(
+                vtree
+                    .nodes
+                    .alloc(VNode::new_entry(
+                        3,
+                        None,
+                        GNodeId::from_index(11),
+                        false,
+                        false,
+                    ))
+                    .0,
+            );
+            let u = VNodeId::from_index(
+                vtree
+                    .nodes
+                    .alloc(VNode::new_entry(
+                        8,
+                        None,
+                        GNodeId::from_index(12),
+                        false,
+                        true,
+                    ))
+                    .0,
+            );
+
+            let p = VNodeId::from_index(
+                vtree
+                    .nodes
+                    .alloc(VNode::new_structural(
+                        7,
+                        None,
+                        Children::new_2((c, 4), (s, 3)),
+                        true,
+                    ))
+                    .0,
+            );
+            vtree.nodes.get_mut(c.index()).set_parent(p);
+            vtree.nodes.get_mut(s.index()).set_parent(p);
+
+            let g = VNodeId::from_index(
+                vtree
+                    .nodes
+                    .alloc(VNode::new_structural(
+                        15,
+                        None,
+                        Children::new_2((p, 7), (u, 8)),
+                        true,
+                    ))
+                    .0,
+            );
+            vtree.nodes.get_mut(p.index()).set_parent(g);
+            vtree.nodes.get_mut(u.index()).set_parent(g);
+
+            let result = vtree.skip_promote(c);
+            assert!(result.is_none());
+
+            let g_node = vtree.nodes.get(g.index());
+            match g_node.kind() {
+                VKind::Structural { children, .. } => {
+                    assert_eq!(children.get(0).0, c);
+                    assert_eq!(children.get(1).0, s);
+                    assert_eq!(children.get(2).0, u);
+                }
+                VKind::Entry { .. } => panic!("grandparent should remain structural"),
+            }
+
+            assert_eq!(vtree.nodes.get(c.index()).parent(), Some(g));
+            assert_eq!(vtree.nodes.get(s.index()).parent(), Some(g));
+            assert!(!vtree.nodes.is_occupied(p.index()));
         }
     }
 }

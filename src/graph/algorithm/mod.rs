@@ -5,7 +5,6 @@ pub mod extract;
 pub mod fmt;
 pub mod observe;
 pub mod plateau;
-pub mod promote;
 pub mod query;
 pub mod rebalance;
 pub mod sample;

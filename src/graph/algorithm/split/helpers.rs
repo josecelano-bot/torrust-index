@@ -1,5 +1,5 @@
 use crate::graph::GvGraph;
-use crate::graph::algorithm::rebalance::{Nd, contract};
+use crate::graph::algorithm::rebalance::Nd;
 use crate::graph::algorithm::violation_push::ViolationQueue;
 use crate::handle::{GNodeId, VNodeId};
 use crate::traits::{Accumulator, Coordinate, Inspectable};
@@ -46,7 +46,7 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
             p = %Nd(&self.core.vtree.nodes, p_id),
         )
         .entered();
-        let merged = contract(&mut self.core.vtree, p_id);
+        let merged = self.core.vtree.contract(p_id);
         let mut queue = ViolationQueue::new(&mut self.core.vtree.violations);
         queue.push_side_effect(&self.core.vtree.nodes, p_id);
         queue.push_side_effect(&self.core.vtree.nodes, merged);
