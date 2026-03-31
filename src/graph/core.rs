@@ -54,12 +54,10 @@ impl<C: Coordinate, V: Accumulator, const N: u32> GvCore<C, V, N> {
             .get(p.index())
             .parent()
             .expect("legacy_promote: p must have a grandparent");
-
         let gnode_id = match &self.vtree.nodes.get(c.index()).kind() {
             VKind::Entry { gnode, .. } => *gnode,
             VKind::Structural { .. } => panic!("legacy_promote: c must be an entry"),
         };
-
         debug_assert!(
             self.gtree.nodes.get(gnode_id.index()).is_semi_internal(),
             "legacy_promote: backing G-node must be semi-internal"
@@ -74,21 +72,45 @@ impl<C: Coordinate, V: Accumulator, const N: u32> GvCore<C, V, N> {
         )
         .entered();
 
-        let new_child_id = self.gtree.nodes.allocate_missing_child(gnode_id);
+        // Create the missing G-child and its paired V-entry under p
+        let (new_child_id, ne_id) = self.create_gchild_and_ventry(gnode_id, p);
 
-        let ne = VNode::new_entry(V::zero(), Some(p), new_child_id, true, true);
-        let ne_id = VNodeId::from_index(self.vtree.nodes.alloc(ne).0);
-        self.gtree.nodes.assign_entry(new_child_id, ne_id);
-
+        // Swap ne into p in place of c, preserving c's intensity for the lift
         let c_int = self.vtree.nodes.get(c.index()).intensity();
         self.vtree.replace_structural_child(p, c, ne_id, V::zero());
 
-        let (u_id, u_int) = self.vtree.nodes.sibling_of(vg, p);
+        // Lift c up to vg as a third sibling
+        self.lift_c_to_grandparent(c, c_int, p, vg);
 
+        // Clear c's flags and propagate evictability upward
+        self.demote_and_propagate(c, p, vg);
+
+        tracing::debug!(
+            new_gnode = new_child_id.index(),
+            new_ventry = ne_id.index(),
+            "legacy_promote complete: c lifted to grandparent, new child created",
+        );
+
+        new_child_id
+    }
+
+    fn create_gchild_and_ventry(
+        &mut self,
+        gnode_id: GNodeId,
+        parent_v: VNodeId,
+    ) -> (GNodeId, VNodeId) {
+        let new_child_id = self.gtree.nodes.allocate_missing_child(gnode_id);
+        let ne = VNode::new_entry(V::zero(), Some(parent_v), new_child_id, true, true);
+        let ne_id = VNodeId::from_index(self.vtree.nodes.alloc(ne).0);
+        self.gtree.nodes.assign_entry(new_child_id, ne_id);
+        (new_child_id, ne_id)
+    }
+
+    fn lift_c_to_grandparent(&mut self, c: VNodeId, c_int: V, p: VNodeId, vg: VNodeId) {
+        let (u_id, u_int) = self.vtree.nodes.sibling_of(vg, p);
         // c is being demoted — it is never evictable at this point
         let p_evictable = self.vtree.nodes.node_has_evictable(p);
         let u_evictable = self.vtree.nodes.node_has_evictable(u_id);
-
         let p_int = self.vtree.nodes.get(p.index()).intensity();
         let g_node = self.vtree.nodes.get_mut(vg.index());
         if let VKind::Structural {
@@ -99,23 +121,14 @@ impl<C: Coordinate, V: Accumulator, const N: u32> GvCore<C, V, N> {
             *children = Children::new_3((c, c_int), (p, p_int), (u_id, u_int));
             *has_evictable = p_evictable || u_evictable;
         }
-
         self.vtree.nodes.get_mut(c.index()).set_parent(vg);
+    }
 
+    fn demote_and_propagate(&mut self, c: VNodeId, p: VNodeId, vg: VNodeId) {
         self.vtree.set_entry_flags(c, false, false);
-
         self.vtree.recompute_and_sync(p);
-
         self.vtree.propagate_evictable(p);
         self.vtree.propagate_evictable(vg);
-
-        tracing::debug!(
-            new_gnode = new_child_id.index(),
-            new_ventry = ne_id.index(),
-            "legacy_promote complete: c lifted to grandparent, new child created",
-        );
-
-        new_child_id
     }
 }
 
