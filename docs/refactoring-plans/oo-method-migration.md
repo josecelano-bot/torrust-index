@@ -104,17 +104,15 @@ impl<V: Accumulator> VNodeTree<V> {
 }
 ```
 
-### `is_violated` — threshold ownership problem
+### `is_violated` — threshold ownership problem (resolved)
 
-`is_violated(vnodes, id)` currently threads the violation threshold implicitly through
-its callers. The threshold is owned by `Config` (on `GvGraph`), not by `VNodeTree`.
-This is why it lives as a free function rather than a method today.
+`is_violated(vnodes, id)` was originally assumed to depend on a threshold from
+`Config`, which would have prevented it from becoming a `VNodeTree` method.
 
-Two resolution paths exist:
-
-- Move `alpha_relax` into `VTree` so that `VTree::is_violated(id)` can close over it.
-- Keep `is_violated` as a free function but give it a single well-typed home
-  (e.g. `rebalance::is_violated`) and call it consistently.
+In practice the function turned out to be a **purely structural comparison**:
+it only compares uncle intensity between sibling V-nodes and does not consult
+`alpha_relax` or any other config field. It migrated cleanly to
+`VNodeTree::is_violated(&self, c: VNodeId) -> bool` with no config dependency.
 
 ## Suggested migration order
 
@@ -139,6 +137,20 @@ Work bottom-up. Each layer is prerequisite for the next.
 5. **`GvGraph`-level operations** — functions that additionally need `Config` or the
    plateau tracker.
 
+### Checklist for each step (derived from Step 1 experience)
+
+For every free function being migrated:
+
+1. Add the method to the target type.
+2. Remove the free function (or delete the whole source file if it becomes empty).
+3. Remove any thin delegate that the algorithm module kept forwarding to the old
+   free function — these are easy to miss and must be cleaned up in the same step.
+4. Update **all** call sites across the codebase, not just the ones listed in the
+   sub-plan — the real scope of callers is typically wider than anticipated.
+5. Move the tests for the migrated function into the target type's module, even when
+   the tests require a `GvGraph` fixture for setup.
+6. Run `./scripts/verify.sh` to confirm zero warnings and all tests pass.
+
 ## Scope boundaries
 
 - This refactoring is **purely mechanical**: no algorithmic changes, no behaviour
@@ -157,3 +169,32 @@ Work bottom-up. Each layer is prerequisite for the next.
 - [ ] Step 3 — `GNodeTree` pure query methods
 - [ ] Step 4 — `GvCore` cross-tree operation methods
 - [ ] Step 5 — `GvGraph`-level operations
+
+### Step 1 — implementation notes
+
+**Methods added to `VNodeTree`** (all `pub(crate)`):
+`max_uncle_intensity`, `is_violated`, `structural_child_count`, `any_child_violated`,
+`find_violated_nodes`.
+
+**`violation_scan.rs` deleted** — once `find_violated_nodes` moved, the file
+contained nothing and was removed entirely.
+
+**Caller scope wider than planned** — the sub-plan listed 5 files to update;
+the actual set was 8:
+`rebalance.rs`, `resolve.rs`, `fmt.rs`, `observe.rs`, `evict.rs`, `decay.rs`,
+`core.rs`, `diagnostic.rs`, `invariants.rs`.
+
+**Thin delegates were not removed in the initial commit** — `is_violated` and
+`max_uncle_intensity` were left as forwarding stubs in `rebalance.rs` after the
+methods were added. They had to be cleaned up in a separate follow-up commit
+along with all the external caller updates. Future steps should make delegate
+removal explicit in the commit plan.
+
+**`is_violated` config dependency was a false alarm** — the function performed a
+pure structural comparison with no reference to `alpha_relax` or any other config
+field; it migrated to `VNodeTree` with no changes to its logic.
+
+**Test co-location** — tests for the migrated methods were moved into
+`vnode_tree.rs` alongside their implementations. Tests that require `GvGraph` as
+a setup fixture can live there too; the module just imports `GvGraph` within the
+`#[cfg(test)]` block.
