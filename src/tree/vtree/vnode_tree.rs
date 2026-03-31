@@ -422,6 +422,26 @@ impl<V: Accumulator> VNodeTree<V> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::graph::{Config, GvGraph, StructuralConfig};
+
+    type G = GvGraph<u8, u32, 8>;
+
+    fn make_config() -> Config<u32> {
+        Config {
+            split_threshold: 2,
+            structural: StructuralConfig {
+                depth_create: 3,
+                depth_evict: 5,
+                budget: None,
+                alpha_relax: 0.5,
+                bounded_eviction: false,
+            },
+        }
+    }
+
+    fn fresh() -> G {
+        GvGraph::new(make_config())
+    }
 
     fn make_tree() -> VNodeTree<u32> {
         VNodeTree::from(Arena::new())
@@ -583,5 +603,84 @@ mod tests {
         vnodes.get_mut(u1.index()).set_parent(gp);
 
         assert_eq!(vnodes.max_uncle_intensity(c), Some(9));
+    }
+
+    // ── is_violated ────────────────────────────────────────────
+
+    mod is_violated_fn {
+        use super::*;
+
+        #[test]
+        fn fresh_single_entry_is_not_violated() {
+            // Before any observation v_root is None; after first observation
+            // (delta ≤ split_threshold) the single root entry has no uncle.
+            let mut g = fresh();
+            g.observe(0u8, 2u32); // no split; single entry node remains root
+            // Single entry has no parent → no uncle → not violated
+            // We rely on `has_pending_violations` which uses the same predicate.
+            assert!(!g.has_pending_violations());
+        }
+
+        #[test]
+        fn no_violations_remain_after_bootstrap_split() {
+            let mut g = fresh();
+            g.observe(64u8, 3u32); // bootstrap split
+            assert!(!g.has_pending_violations());
+        }
+
+        #[test]
+        fn no_violations_remain_after_multiple_observations() {
+            let mut g = fresh();
+            for coord in [0u8, 64, 128, 192, 32, 96, 160, 224] {
+                g.observe(coord, 3u32);
+            }
+            assert!(!g.has_pending_violations());
+        }
+    }
+
+    // ── max_uncle_intensity (GvGraph-level) ──────────────────────
+
+    mod max_uncle_intensity_fn {
+        use super::*;
+
+        #[test]
+        fn returns_none_for_node_with_no_grandparent() {
+            // After bootstrap split the original entry (depth 1) has a parent
+            // (root structural, depth 0) but no grandparent → no uncle.
+            let mut g = fresh();
+            g.observe(64u8, 3u32); // bootstrap split
+            let v_root = g.v_root().expect("v_root must exist after bootstrap split");
+            let result = g.vnodes().max_uncle_intensity(v_root);
+            // v_root has no parent → no grandparent → None
+            assert!(result.is_none());
+        }
+
+        #[test]
+        fn is_some_for_node_with_grandparent() {
+            // After bootstrap + one catalytic split depth-3 entries have
+            // grandparents.  max_uncle_intensity should return Some.
+            let mut g = fresh();
+            g.observe(32u8, 3u32); // bootstrap
+            g.observe(32u8, 3u32); // catalytic split in left child
+            let v_root = g.v_root().unwrap();
+            // The root itself has no grandparent → None
+            assert!(g.vnodes().max_uncle_intensity(v_root).is_none());
+            // But total_sum being correct proves rebalance ran successfully.
+            assert_eq!(g.total_sum(), 6u32);
+        }
+    }
+
+    // ── find_violated_nodes ──────────────────────────────────
+
+    mod find_violated_nodes_fn {
+        use super::*;
+
+        #[test]
+        fn returns_empty_when_no_nodes_are_violated() {
+            let mut g = fresh();
+            g.observe(64u8, 2u32); // single root entry, no uncle relation
+            let violated = g.vnodes().find_violated_nodes();
+            assert!(violated.is_empty());
+        }
     }
 }
