@@ -303,6 +303,27 @@ impl<V: Accumulator> VNodeTree<V> {
     }
 
     #[must_use]
+    pub(crate) fn structural_child_count(&self, id: VNodeId) -> usize {
+        self.get(id.index()).child_count()
+    }
+
+    #[must_use]
+    pub(crate) fn any_child_violated(&self, node: VNodeId) -> bool {
+        match &self.get(node.index()).kind() {
+            VKind::Structural { children, .. } => {
+                for i in 0..children.len() {
+                    let (child_id, _) = children.get(i);
+                    if self.is_violated(child_id) {
+                        return true;
+                    }
+                }
+                false
+            }
+            VKind::Entry { .. } => false,
+        }
+    }
+
+    #[must_use]
     pub(crate) fn max_uncle_intensity(&self, c: VNodeId) -> Option<V> {
         let parent = self.get(c.index()).parent()?;
         let grandparent = self.get(parent.index()).parent()?;

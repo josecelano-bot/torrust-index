@@ -2,30 +2,11 @@ use crate::graph::core::GvCore;
 use crate::handle::{GNodeId, VNodeId};
 use crate::nodes::vnode::VKind;
 use crate::traits::{Accumulator, Coordinate};
-use crate::tree::vtree::{VNodeTree, VTree};
+use crate::tree::vtree::VTree;
 
 use super::super::promote::{skip_promote, standard_promote};
 use super::super::violation_push::ViolationQueue;
 use super::{Ctx, EscalationContext, Nd, contract, is_violated};
-
-fn structural_child_count<V: Accumulator>(vnodes: &VNodeTree<V>, id: VNodeId) -> usize {
-    vnodes.get(id.index()).child_count()
-}
-
-fn any_child_violated<V: Accumulator>(vnodes: &VNodeTree<V>, node: VNodeId) -> bool {
-    match &vnodes.get(node.index()).kind() {
-        VKind::Structural { children, .. } => {
-            for i in 0..children.len() {
-                let (child_id, _) = children.get(i);
-                if is_violated(vnodes, child_id) {
-                    return true;
-                }
-            }
-            false
-        }
-        VKind::Entry { .. } => false,
-    }
-}
 
 /// Contracts the 3-child parent `p` after a promote, propagates violations,
 /// and returns `Some(merged)` if the violation persists (Phase 3 needed),
@@ -66,7 +47,7 @@ fn escalate_try_contract_grandparent<V: Accumulator>(
     vtree: &mut VTree<V>,
     ctx: &mut EscalationContext,
 ) -> bool {
-    if structural_child_count(&vtree.nodes, ctx.grandparent_id) == 3 {
+    if vtree.nodes.structural_child_count(ctx.grandparent_id) == 3 {
         let g_merged = contract(vtree, ctx.grandparent_id);
         {
             let (vnodes, violations) = (&vtree.nodes, &mut vtree.violations);
@@ -122,7 +103,7 @@ fn escalate_after_promote<V: Accumulator>(vtree: &mut VTree<V>, p: VNodeId) {
             VKind::Entry { .. } => return,
         };
         let h_direct = is_violated(vnodes, heaviest);
-        let h_indirect = !h_direct && any_child_violated(vnodes, heaviest);
+        let h_indirect = !h_direct && vnodes.any_child_violated(heaviest);
         if !h_direct && !h_indirect {
             return;
         }
@@ -163,7 +144,7 @@ fn resolve_try_contract_parent<V: Accumulator>(
     p: VNodeId,
     c: VNodeId,
 ) -> bool {
-    if structural_child_count(&vtree.nodes, p) == 3 {
+    if vtree.nodes.structural_child_count(p) == 3 {
         tracing::debug!(p = %Nd(&vtree.nodes, p), "phase 1: contracting 3-node parent");
         let merged = contract(vtree, p);
         {
@@ -194,7 +175,7 @@ fn resolve_path_b<C: Coordinate, V: Accumulator, const N: u32>(
     depth_evict: u32,
 ) -> Option<GNodeId> {
     // Optional grandparent contraction before the promote attempt.
-    let g_merged = if structural_child_count(&core.vtree.nodes, g) == 3 {
+    let g_merged = if core.vtree.nodes.structural_child_count(g) == 3 {
         let merged = contract(&mut core.vtree, g);
         {
             let (vnodes, violations) = (&core.vtree.nodes, &mut core.vtree.violations);
