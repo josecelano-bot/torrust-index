@@ -46,6 +46,8 @@ use crate::tree::gtree::GTree;
 use crate::tree::handle::{GNodeId, VNodeId};
 
 pub mod algorithm;
+pub mod fmt;
+pub mod violations;
 pub mod vnode;
 pub mod vnode_tree;
 use self::vnode::{Children, VKind, VNode};

@@ -1,8 +1,8 @@
 use crate::graph::GvGraph;
 use crate::graph::algorithm::rebalance::Nd;
-use crate::graph::algorithm::violation_push::ViolationQueue;
 use crate::traits::{Accumulator, Coordinate, Inspectable};
 use crate::tree::handle::{GNodeId, VNodeId};
+use crate::tree::vtree::violations::ViolationQueue;
 
 impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N> {
     pub(super) fn split_candidate_entry(&self, g_id: GNodeId) -> Option<VNodeId> {

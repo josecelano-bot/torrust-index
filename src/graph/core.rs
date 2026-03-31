@@ -1,8 +1,8 @@
 use crate::graph::algorithm::rebalance;
-use crate::graph::algorithm::violation_push::ViolationQueue;
 use crate::traits::{Accumulator, Coordinate, Inspectable};
 use crate::tree::gtree::GTree;
 use crate::tree::handle::{GNodeId, VNodeId};
+use crate::tree::vtree::violations::ViolationQueue;
 use crate::tree::vtree::vnode::{Children, VKind, VNode};
 use crate::tree::vtree::{VNodeTree, VTree};
 

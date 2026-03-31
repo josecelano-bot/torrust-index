@@ -4,6 +4,9 @@
 //! format a single node (or a node in context) for tracing and panic messages.
 //! They are defined here rather than in `rebalance.rs` to keep that module
 //! focused on algorithm logic.
+//!
+//! `Nd` is defined in `crate::tree::vtree::fmt` and re-exported here so that
+//! callers in the graph layer can keep using the same import path.
 
 use std::fmt;
 
@@ -12,24 +15,7 @@ use crate::tree::handle::VNodeId;
 use crate::tree::vtree::VNodeTree;
 use crate::tree::vtree::vnode::VKind;
 
-/// Formats a single V-node: `v{idx}(E,{intensity})` or `v{idx}(S{n},{intensity})`.
-pub struct Nd<'a, V: Accumulator>(pub &'a VNodeTree<V>, pub VNodeId);
-
-impl<V: Accumulator> fmt::Display for Nd<'_, V> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let idx = self.1.index();
-        if !self.0.is_occupied(idx) {
-            return write!(f, "v{idx}(DEAD)");
-        }
-        let n = self.0.get(idx);
-        match &n.kind() {
-            VKind::Entry { .. } => write!(f, "v{idx}(E,{:?})", n.intensity()),
-            VKind::Structural { children, .. } => {
-                write!(f, "v{idx}(S{},{:?})", children.len(), n.intensity())
-            }
-        }
-    }
-}
+pub use crate::tree::vtree::fmt::Nd;
 
 /// Formats the child list of a structural V-node: `[v{a}({ia}), v{b}({ib}), …]`.
 pub(super) struct Ch<'a, V: Accumulator>(pub(super) &'a VNodeTree<V>, pub(super) VNodeId);

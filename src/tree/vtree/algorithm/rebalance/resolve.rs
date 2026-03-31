@@ -1,8 +1,8 @@
 use crate::graph::algorithm::fmt::Nd;
-use crate::graph::algorithm::violation_push::ViolationQueue;
 use crate::traits::Accumulator;
 use crate::tree::handle::VNodeId;
 use crate::tree::vtree::VTree;
+use crate::tree::vtree::violations::ViolationQueue;
 use crate::tree::vtree::vnode::VKind;
 
 use super::context::EscalationContext;

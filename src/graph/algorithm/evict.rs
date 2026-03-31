@@ -1,9 +1,9 @@
 use crate::graph::GvGraph;
-use crate::graph::algorithm::violation_push::ViolationQueue;
 use crate::traits::{Accumulator, Coordinate, Inspectable};
 use crate::tree::gtree::gnode::GState;
 use crate::tree::handle::VNodeId;
 use crate::tree::vtree::VNodeTree;
+use crate::tree::vtree::violations::ViolationQueue;
 use crate::tree::vtree::vnode::VKind;
 
 /// Topology of the V-node being evicted, captured before the leaf is removed.
@@ -409,7 +409,7 @@ mod tests {
         use super::super::classify_leaf_removal;
         use super::super::{LeafRemovalContext, push_eviction_violations};
         use super::*;
-        use crate::graph::algorithm::violation_push::ViolationQueue;
+        use crate::tree::vtree::violations::ViolationQueue;
 
         fn id(i: usize) -> VNodeId {
             VNodeId::from_index(i)

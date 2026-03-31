@@ -2,7 +2,7 @@
 //! a `violations` vector based on structural conditions in the V-tree.
 //!
 //! These are a cohesive family unrelated to the rebalancing algorithm itself.
-//! Callers in `rebalance.rs` import them via `use super::violation_push::*`.
+//! Callers import [`ViolationQueue`] from the parent `violations` module.
 //!
 //! # Violation source numbering
 //!
@@ -25,10 +25,10 @@
 use crate::traits::Accumulator;
 use crate::tree::handle::VNodeId;
 use crate::tree::vtree::VNodeTree;
+use crate::tree::vtree::fmt::Nd;
 use crate::tree::vtree::vnode::VKind;
 
-use super::rebalance::Nd;
-use super::violation_sources::ViolationSources;
+use super::sources::ViolationSources;
 
 pub struct ViolationQueue<'a> {
     violations: &'a mut Vec<VNodeId>,
