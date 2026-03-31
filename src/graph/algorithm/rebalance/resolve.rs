@@ -6,7 +6,7 @@ use crate::tree::vtree::VTree;
 
 use super::super::promote::{skip_promote, standard_promote};
 use super::super::violation_push::ViolationQueue;
-use super::{Ctx, EscalationContext, Nd, contract, is_violated};
+use super::{Ctx, EscalationContext, Nd, contract};
 
 /// Contracts the 3-child parent `p` after a promote, propagates violations,
 /// and returns `Some(merged)` if the violation persists (Phase 3 needed),
@@ -26,9 +26,9 @@ fn escalate_contract_parent<V: Accumulator>(
     ctx.merged_id = Some(merged);
 
     let needs_skip = if ctx.heaviest_is_direct_child {
-        is_violated(&vtree.nodes, ctx.heaviest_id)
+        vtree.nodes.is_violated(ctx.heaviest_id)
     } else {
-        is_violated(&vtree.nodes, merged)
+        vtree.nodes.is_violated(merged)
     };
     if needs_skip {
         Some(merged)
@@ -61,8 +61,8 @@ fn escalate_try_contract_grandparent<V: Accumulator>(
         let merged = ctx
             .merged_id
             .expect("escalate_try_contract_grandparent: parent contraction must run first");
-        let resolved = !is_violated(&vtree.nodes, ctx.heaviest_id)
-            && (ctx.heaviest_is_direct_child || !is_violated(&vtree.nodes, merged));
+        let resolved = !vtree.nodes.is_violated(ctx.heaviest_id)
+            && (ctx.heaviest_is_direct_child || !vtree.nodes.is_violated(merged));
         if resolved {
             tracing::debug!("resolved by g-contraction");
             return true;
@@ -102,7 +102,7 @@ fn escalate_after_promote<V: Accumulator>(vtree: &mut VTree<V>, p: VNodeId) {
             VKind::Structural { children, .. } => children.get(children.heaviest_child_index()).0,
             VKind::Entry { .. } => return,
         };
-        let h_direct = is_violated(vnodes, heaviest);
+        let h_direct = vnodes.is_violated(heaviest);
         let h_indirect = !h_direct && vnodes.any_child_violated(heaviest);
         if !h_direct && !h_indirect {
             return;
@@ -154,7 +154,7 @@ fn resolve_try_contract_parent<V: Accumulator>(
             queue.push_side_effect(vnodes, merged);
             queue.push_contraction_child(vnodes, p, c);
         }
-        if !is_violated(&vtree.nodes, c) {
+        if !vtree.nodes.is_violated(c) {
             tracing::debug!("phase 1: resolved by contraction");
             return true;
         }
@@ -184,7 +184,7 @@ fn resolve_path_b<C: Coordinate, V: Accumulator, const N: u32>(
             queue.push_side_effect(vnodes, merged);
             queue.push_promoted(vnodes, g);
         }
-        if !is_violated(&core.vtree.nodes, c) {
+        if !core.vtree.nodes.is_violated(c) {
             tracing::debug!("phase 2: resolved by g-contraction");
             return None;
         }
@@ -293,7 +293,7 @@ pub fn resolve<C: Coordinate, V: Accumulator, const N: u32>(
 
     let result = resolve_path_b(core, c, p, g, depth_evict);
 
-    if core.vtree.nodes.is_occupied(c.index()) && is_violated(&core.vtree.nodes, c) {
+    if core.vtree.nodes.is_occupied(c.index()) && core.vtree.nodes.is_violated(c) {
         tracing::warn!(
             node = %Ctx(&core.vtree.nodes, c),
             "resolve() returning with node STILL violated",

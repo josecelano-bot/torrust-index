@@ -176,7 +176,7 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvCore<C, V, N> 
                 continue;
             }
 
-            if !rebalance::is_violated(&self.vtree.nodes, c) {
+            if !self.vtree.nodes.is_violated(c) {
                 tracing::trace!(node = c.index(), "skip already resolved");
                 continue;
             }
@@ -194,9 +194,7 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvCore<C, V, N> 
                 new_gnodes.push(gid);
             }
 
-            if self.vtree.nodes.is_occupied(c.index())
-                && rebalance::is_violated(&self.vtree.nodes, c)
-            {
+            if self.vtree.nodes.is_occupied(c.index()) && self.vtree.nodes.is_violated(c) {
                 tracing::warn!(
                     iter = iterations,
                     node = %rebalance::Ctx(&self.vtree.nodes, c),

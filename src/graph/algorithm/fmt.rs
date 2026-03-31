@@ -12,8 +12,6 @@ use crate::nodes::vnode::VKind;
 use crate::traits::Accumulator;
 use crate::tree::vtree::VNodeTree;
 
-use super::rebalance::max_uncle_intensity;
-
 /// Formats a single V-node: `v{idx}(E,{intensity})` or `v{idx}(S{n},{intensity})`.
 pub struct Nd<'a, V: Accumulator>(pub &'a VNodeTree<V>, pub VNodeId);
 
@@ -71,7 +69,7 @@ impl<V: Accumulator> fmt::Display for Ctx<'_, V> {
         if let Some(g) = vnodes.get(p.index()).parent() {
             write!(f, " ← {} {}", Nd(vnodes, g), Ch(vnodes, g))?;
         }
-        if let Some(u) = max_uncle_intensity(vnodes, c) {
+        if let Some(u) = vnodes.max_uncle_intensity(c) {
             write!(f, "  uncle_max={u:?}")?;
         }
         Ok(())

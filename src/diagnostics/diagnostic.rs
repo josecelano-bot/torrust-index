@@ -3,7 +3,7 @@
 #[cfg(feature = "dynamic-contour-tracking")]
 #[allow(unused_imports)]
 pub use crate::diagnostics::plateau_audit::{PlateauAuditContext, audit_plateau_consistency};
-use crate::graph::algorithm::rebalance::{self, Ctx};
+use crate::graph::algorithm::rebalance::Ctx;
 use crate::handle::VNodeId;
 use crate::traits::{Accumulator, Inspectable};
 use crate::tree::vtree::{VNodeTree, VTree};
@@ -20,7 +20,7 @@ pub fn audit_violations<V: Accumulator + Inspectable>(
     violations: &[VNodeId],
     checkpoint: &str,
 ) -> Vec<VNodeId> {
-    let all_violated = rebalance::find_violated_nodes(vnodes);
+    let all_violated = vnodes.find_violated_nodes();
     let queued: std::collections::HashSet<usize> = violations.iter().map(|v| v.index()).collect();
     let mut missed = Vec::new();
     for &v in &all_violated {

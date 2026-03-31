@@ -4,7 +4,6 @@ mod reporting;
 mod vtree_consistency;
 
 use crate::graph::GvGraph;
-use crate::graph::algorithm::rebalance::is_violated;
 use crate::handle::{GNodeId, VNodeId};
 use crate::nodes::vnode::VKind;
 use crate::traits::{Accumulator, Coordinate, Inspectable};
@@ -198,11 +197,12 @@ fn check_v_i3_max_uncle<C: Coordinate, V: Accumulator + Inspectable, const N: u3
 ) {
     for (idx, v) in graph.vnodes().iter_occupied() {
         let v_id = VNodeId::from_index(idx);
-        if is_violated(graph.vnodes(), v_id) {
+        if graph.vnodes().is_violated(v_id) {
             let int = v.intensity().to_f64_approx();
-            let uncle =
-                crate::graph::algorithm::rebalance::max_uncle_intensity(graph.vnodes(), v_id)
-                    .map_or(f64::NAN, Inspectable::to_f64_approx);
+            let uncle = graph
+                .vnodes()
+                .max_uncle_intensity(v_id)
+                .map_or(f64::NAN, Inspectable::to_f64_approx);
             errors.push(format!(
                 "V-I3 violated at V-node {idx}: intensity={int}, max_uncle={uncle}"
             ));

@@ -27,7 +27,7 @@ use crate::nodes::vnode::VKind;
 use crate::traits::Accumulator;
 use crate::tree::vtree::VNodeTree;
 
-use super::rebalance::{Nd, is_violated};
+use super::rebalance::Nd;
 use super::violation_sources::ViolationSources;
 
 pub struct ViolationQueue<'a> {
@@ -135,7 +135,7 @@ pub fn push_contraction_child_violations<V: Accumulator>(
         VKind::Entry { .. } => return,
     };
     for child_id in child_ids {
-        if child_id != skip && is_violated(vnodes, child_id) {
+        if child_id != skip && vnodes.is_violated(child_id) {
             tracing::trace!(
                 child = %Nd(vnodes, child_id),
                 skip = skip.index(),
@@ -240,7 +240,7 @@ pub fn push_promoted_violations_with_config<V: Accumulator>(
         VKind::Entry { .. } => return,
     };
     for child_id in child_ids {
-        if is_violated(vnodes, child_id) {
+        if vnodes.is_violated(child_id) {
             tracing::trace!(child = %Nd(vnodes, child_id), at = %Nd(vnodes, node), "promoted violation");
             violations.push(child_id);
         }
@@ -272,7 +272,7 @@ pub fn push_leaf_removal_violations_with_config<V: Accumulator>(
             if let VKind::Structural { children, .. } = &vnodes.get(sib_id.index()).kind() {
                 for i in 0..children.len() {
                     let (child_id, _) = children.get(i);
-                    if is_violated(vnodes, child_id) {
+                    if vnodes.is_violated(child_id) {
                         tracing::trace!(
                             child = %Nd(vnodes, child_id),
                             weakened_uncle = %Nd(vnodes, ancestor),
@@ -379,7 +379,7 @@ fn push_grandchild_violations<V: Accumulator>(
         if let VKind::Structural { children, .. } = &vnodes.get(child_id.index()).kind() {
             for i in 0..children.len() {
                 let (gc_id, _) = children.get(i);
-                if is_violated(vnodes, gc_id) {
+                if vnodes.is_violated(gc_id) {
                     tracing::trace!(gc = %Nd(vnodes, gc_id), at = %Nd(vnodes, node), "side-effect violation");
                     violations.push(gc_id);
                 }
@@ -416,7 +416,7 @@ fn push_children_violations<V: Accumulator>(
     );
 
     for child_id in children {
-        let violated = is_violated(vnodes, child_id);
+        let violated = vnodes.is_violated(child_id);
         tracing::debug!(
             child = child_id.index(),
             violated,

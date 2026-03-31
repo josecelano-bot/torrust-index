@@ -29,7 +29,7 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
 
             let mut check_id = Some(entry_id);
             while let Some(id) = check_id {
-                if rebalance::is_violated(&self.core.vtree.nodes, id) {
+                if self.core.vtree.nodes.is_violated(id) {
                     tracing::debug!(
                         violated = %rebalance::Nd(&self.core.vtree.nodes, id),
                         entry = entry_id.index(),

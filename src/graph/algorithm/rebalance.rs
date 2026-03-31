@@ -1,26 +1,14 @@
 use crate::handle::VNodeId;
 use crate::nodes::vnode::{Children, VKind, VNode};
 use crate::traits::Accumulator;
-use crate::tree::vtree::{VNodeTree, VTree};
+use crate::tree::vtree::VTree;
 
 mod context;
 mod resolve;
-mod violation_scan;
 
 pub(super) use super::fmt::Ch;
 pub use context::{Ctx, EscalationContext, Nd};
 pub use resolve::resolve;
-pub use violation_scan::find_violated_nodes;
-
-#[must_use]
-pub fn max_uncle_intensity<V: Accumulator>(vnodes: &VNodeTree<V>, c: VNodeId) -> Option<V> {
-    vnodes.max_uncle_intensity(c)
-}
-
-#[must_use]
-pub fn is_violated<V: Accumulator>(vnodes: &VNodeTree<V>, c: VNodeId) -> bool {
-    vnodes.is_violated(c)
-}
 
 pub fn contract<V: Accumulator>(vtree: &mut VTree<V>, p: VNodeId) -> VNodeId {
     let _span = tracing::debug_span!(

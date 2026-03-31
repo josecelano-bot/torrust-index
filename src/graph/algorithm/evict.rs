@@ -1,5 +1,4 @@
 use crate::graph::GvGraph;
-use crate::graph::algorithm::rebalance;
 use crate::graph::algorithm::violation_push::ViolationQueue;
 use crate::handle::VNodeId;
 use crate::nodes::gnode::GState;
@@ -207,7 +206,7 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
 
             let mut check_id = Some(p_entry_id);
             while let Some(id) = check_id {
-                if rebalance::is_violated(&self.core.vtree.nodes, id) {
+                if self.core.vtree.nodes.is_violated(id) {
                     self.core.vtree.push_violation(id);
                 }
                 check_id = self.core.vtree.nodes.get(id.index()).parent();

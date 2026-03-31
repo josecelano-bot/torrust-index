@@ -1,5 +1,4 @@
 use crate::graph::GvGraph;
-use crate::graph::algorithm::rebalance;
 use crate::handle::GNodeId;
 use crate::traits::{Accumulator, Attenuatable, Coordinate, Inspectable, PlateauTracking};
 
@@ -238,7 +237,7 @@ impl<C: Coordinate, V: Accumulator + Attenuatable + Inspectable, const N: u32> G
     }
 
     fn post_decay_repair(&mut self, label: &str) {
-        self.core.vtree.violations = rebalance::find_violated_nodes(&self.core.vtree.nodes);
+        self.core.vtree.violations = self.core.vtree.nodes.find_violated_nodes();
         let new_gnodes = self.core.rebalance();
         if !new_gnodes.is_empty() {
             self.handle_legacy_promotes(&new_gnodes);
