@@ -28,8 +28,7 @@
 /// guided by the golden ratio φ, with temporal decay for sliding window tracking.
 /// Handle types for identifying nodes in the index.
 pub(crate) mod handle;
-/// Node implementations for graph and tree structures.
-pub(crate) mod nodes;
+
 /// Spatial data structures and algorithms.
 pub(crate) mod spatial;
 
@@ -52,7 +51,6 @@ pub use diagnostics::invariants;
 pub use graph::GNodeChildren;
 pub use graph::{Config, DefaultGraph, GvGraph, StructuralConfig};
 pub use handle::GNodeId;
-pub use nodes::gnode::GState;
 pub use spatial::contour_range::{BasisElement, ContourRange, ContourRangeEnergy};
 pub use spatial::node::Node;
 pub use spatial::pewei::{Layer, Pewei, Terminal, Transition};
@@ -66,6 +64,7 @@ pub use traits::{
     Accumulator, Attenuatable, Coordinate, Inspectable, Observation, Proratable, Rng,
     ScalableObservation, SpatialRead, SpatialWrite, TemporalDecay, Weighable, WeightedSampler,
 };
+pub use tree::gtree::gnode::GState;
 
 #[cfg(test)]
 mod tests {

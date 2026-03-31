@@ -1,9 +1,9 @@
 use crate::graph::GvGraph;
 use crate::handle::VNodeId;
-use crate::nodes::gnode::GState;
-use crate::nodes::vnode::VKind;
 use crate::traits::{Accumulator, Coordinate, Inspectable};
 use crate::tree::gtree::GTree;
+use crate::tree::gtree::gnode::GState;
+use crate::tree::vtree::vnode::VKind;
 
 const fn state_label(s: GState) -> &'static str {
     match s {

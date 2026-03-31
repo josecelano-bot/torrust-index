@@ -1,9 +1,9 @@
 use super::DynamicPlateauTracker;
 use crate::handle::GNodeId;
-use crate::nodes::gnode::GState;
 use crate::spatial::plateau::BasisEdge;
 use crate::traits::{Accumulator, Coordinate};
 use crate::tree::gtree::GNodeTree;
+use crate::tree::gtree::gnode::GState;
 
 impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
     pub(super) fn repair_p_i4_impl(&mut self, gnodes: &GNodeTree<C, V>) {

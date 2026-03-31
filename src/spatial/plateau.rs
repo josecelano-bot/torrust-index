@@ -1,6 +1,6 @@
-use crate::nodes::gnode::{GNode, GState};
 use crate::spatial::view::Span;
 use crate::traits::{Accumulator, Coordinate};
+use crate::tree::gtree::gnode::{GNode, GState};
 use std::cmp::Ordering;
 
 #[derive(Debug, Clone, Copy)]
@@ -81,7 +81,7 @@ where
 mod tests {
     use super::{BasisEdge, Plateau, basis_edge_of};
     use crate::handle::GNodeId;
-    use crate::nodes::gnode::GNode;
+    use crate::tree::gtree::gnode::GNode;
     use rstest::rstest;
     use std::cmp::Ordering;
 

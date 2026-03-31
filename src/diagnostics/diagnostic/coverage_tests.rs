@@ -1,7 +1,7 @@
 use super::*;
 use crate::handle::{GNodeId, VNodeId};
-use crate::nodes::vnode::{Children, VNode};
 use crate::tree::vtree::VNodeTree;
+use crate::tree::vtree::vnode::{Children, VNode};
 
 fn build_small_vtree() -> (VNodeTree<u32>, VNodeId, VNodeId, VNodeId) {
     let mut vnodes = VNodeTree::from(crate::arena::Arena::new());

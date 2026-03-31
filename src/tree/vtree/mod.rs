@@ -478,8 +478,8 @@ mod tests {
     use super::{VNodeTree, VTree};
     use crate::arena::Arena;
     use crate::handle::{GNodeId, VNodeId};
-    use crate::nodes::gnode::GNode;
-    use crate::nodes::vnode::{Children, VKind, VNode};
+    use crate::tree::gtree::gnode::GNode;
+    use crate::tree::vtree::vnode::{Children, VKind, VNode};
 
     fn entry_vnode(intensity: u32, parent: Option<VNodeId>) -> VNode<u32> {
         VNode::new_entry(intensity, parent, GNodeId::from_index(0), true, true)

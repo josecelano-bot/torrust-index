@@ -2,11 +2,11 @@ use crate::arena::Arena;
 use crate::graph::algorithm::plateau::noop_tracker::NoopPlateauTracker;
 use crate::graph::core::GvCore;
 use crate::handle::{GNodeId, VNodeId};
-use crate::nodes::gnode::{GNode, GNodeChildren};
-use crate::nodes::vnode::VNode;
 use crate::spatial::node::Node;
 use crate::traits::{Accumulator, Coordinate, PlateauTracking};
+use crate::tree::gtree::gnode::{GNode, GNodeChildren};
 use crate::tree::gtree::{GNodeTree, GTree};
+use crate::tree::vtree::vnode::VNode;
 use crate::tree::vtree::{VNodeTree, VTree};
 
 use super::config::Config;
@@ -393,7 +393,7 @@ mod tests {
 
         #[test]
         fn root_is_terminal_at_start() {
-            use crate::nodes::gnode::GState;
+            use crate::tree::gtree::gnode::GState;
             let g = GvGraph::<u8, u32, 8>::new(make_config());
             let info = g.gnode_info(g.core.gtree.nodes.root).unwrap();
             assert_eq!(info.state, GState::Terminal);
@@ -553,7 +553,7 @@ mod tests {
         use super::*;
         use crate::arena::Arena;
         use crate::handle::GNodeId;
-        use crate::nodes::gnode::GNode;
+        use crate::tree::gtree::gnode::GNode;
         use crate::tree::gtree::gnode_tree::uniform_contour_depth_of;
 
         fn make_terminal(lo: u8, hi: u8) -> GNode<u8, u32> {

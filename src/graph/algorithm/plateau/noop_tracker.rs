@@ -4,10 +4,10 @@ use std::borrow::Cow;
 use std::collections::BTreeMap;
 
 use crate::handle::GNodeId;
-use crate::nodes::gnode::GState;
 use crate::spatial::plateau::{BasisEdge, Plateau};
 use crate::traits::{Accumulator, Coordinate, PlateauTracking};
 use crate::tree::gtree::GNodeTree;
+use crate::tree::gtree::gnode::GState;
 
 /// Zero-cost placeholder that satisfies the [`PlateauTracking`] bound while
 /// performing no work.  Selected when `dynamic-contour-tracking` is disabled.
@@ -63,8 +63,8 @@ impl<C: Coordinate, V: Accumulator> PlateauTracking<C, V> for NoopPlateauTracker
 mod tests {
     use super::*;
     use crate::arena::Arena;
-    use crate::nodes::gnode::GNode;
     use crate::tree::gtree::GNodeTree;
+    use crate::tree::gtree::gnode::GNode;
 
     fn empty_gnodes() -> GNodeTree<u8, u32> {
         let mut nodes: Arena<GNode<u8, u32>> = Arena::new();
@@ -86,7 +86,7 @@ mod tests {
             gnodes,
             root,
             root,
-            crate::nodes::gnode::GState::Terminal,
+            crate::tree::gtree::gnode::GState::Terminal,
             0u8,
             255u8,
         );

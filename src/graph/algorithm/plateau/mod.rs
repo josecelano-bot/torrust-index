@@ -18,9 +18,9 @@ mod tests {
     use crate::arena::Arena;
     use crate::graph::{Config, GvGraph, StructuralConfig};
     use crate::handle::GNodeId;
-    use crate::nodes::gnode::GNode;
     use crate::spatial::plateau::BasisEdge;
     use crate::traits::PlateauTracking;
+    use crate::tree::gtree::gnode::GNode;
 
     type G = GvGraph<u8, u32, 8>;
 
@@ -176,8 +176,8 @@ mod tests {
     mod dynamic_tracker_behavior_fn {
         use super::*;
         use crate::graph::algorithm::plateau::DynamicPlateauTracker;
-        use crate::nodes::gnode::GState;
         use crate::spatial::plateau::Plateau;
+        use crate::tree::gtree::gnode::GState;
 
         #[test]
         fn on_observe_updates_matching_plateau_sums_along_path() {

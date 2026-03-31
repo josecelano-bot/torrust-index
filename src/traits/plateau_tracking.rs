@@ -3,9 +3,9 @@ use std::collections::BTreeMap;
 
 use super::{Accumulator, Coordinate};
 use crate::handle::GNodeId;
-use crate::nodes::gnode::GState;
 use crate::spatial::plateau::{BasisEdge, Plateau};
 use crate::tree::gtree::GNodeTree;
+use crate::tree::gtree::gnode::GState;
 
 /// Strategy trait that encapsulates all plateau-state updates.
 ///

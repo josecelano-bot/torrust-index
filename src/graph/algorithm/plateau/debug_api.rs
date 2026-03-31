@@ -35,9 +35,9 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32>
                 .map(|&gid| {
                     let g = self.core.gtree.nodes.get(gid.index());
                     let state_str = match g.state() {
-                        crate::nodes::gnode::GState::Terminal => "Terminal",
-                        crate::nodes::gnode::GState::Internal => "Internal",
-                        crate::nodes::gnode::GState::SemiInternal => "SemiInternal",
+                        crate::tree::gtree::gnode::GState::Terminal => "Terminal",
+                        crate::tree::gtree::gnode::GState::Internal => "Internal",
+                        crate::tree::gtree::gnode::GState::SemiInternal => "SemiInternal",
                     };
                     let g_depth = GTree::<C, V, N>::depth_of_interval(g.lo(), g.hi());
                     (gid.index(), g.lo(), g.hi(), state_str, g_depth)

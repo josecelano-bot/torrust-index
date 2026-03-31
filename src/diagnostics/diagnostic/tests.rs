@@ -21,7 +21,7 @@ fn make_config() -> Config<u32> {
 // ── audit_violations ──────────────────────────────────────────────
 mod audit_violations_fn {
     use super::*;
-    use crate::nodes::vnode::VKind;
+    use crate::tree::vtree::vnode::VKind;
 
     fn find_depth_two_entry(g: &G) -> Option<crate::handle::VNodeId> {
         let v_root = g.v_root()?;
@@ -113,7 +113,7 @@ mod audit_violations_fn {
 // ── diagnose_missed_violation ─────────────────────────────────────
 mod diagnose_missed_violation_fn {
     use super::*;
-    use crate::nodes::vnode::VKind;
+    use crate::tree::vtree::vnode::VKind;
 
     #[test]
     fn does_not_panic_for_root_vnode_after_bootstrap() {
@@ -341,7 +341,7 @@ mod diagnose_missed_violation_fn {
 // ── diagnose_missed_violation_in_tree ─────────────────────────────
 mod diagnose_missed_violation_in_tree_fn {
     use crate::diagnostics::diagnostic::{MissedViolationContext, diagnose_missed_violation_in_tree};
-    use crate::nodes::vnode::VKind;
+    use crate::tree::vtree::vnode::VKind;
     use super::*;
 
     #[test]

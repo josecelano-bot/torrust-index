@@ -5,8 +5,8 @@ mod vtree_consistency;
 
 use crate::graph::GvGraph;
 use crate::handle::{GNodeId, VNodeId};
-use crate::nodes::vnode::VKind;
 use crate::traits::{Accumulator, Coordinate, Inspectable};
+use crate::tree::vtree::vnode::VKind;
 
 use budget_checks::check_accounting_invariants;
 use graph_consistency::check_g_tree_invariants;
@@ -541,7 +541,7 @@ mod tests {
     use super::*;
     use crate::graph::{Config, StructuralConfig};
     use crate::handle::VNodeId;
-    use crate::nodes::vnode::{VKind, VNode};
+    use crate::tree::vtree::vnode::{VKind, VNode};
 
     type G = GvGraph<u8, u32, 8>;
 

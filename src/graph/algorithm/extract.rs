@@ -7,9 +7,9 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
     pub fn extract(&self) -> crate::spatial::pewei::Pewei<C, V> {
         use std::collections::VecDeque;
 
-        use crate::nodes::gnode::GState;
-        use crate::nodes::vnode::VKind;
         use crate::spatial::pewei::{Layer, Pewei, Terminal, Transition};
+        use crate::tree::gtree::gnode::GState;
+        use crate::tree::vtree::vnode::VKind;
 
         let domain_start = C::zero();
         let domain_end = C::domain_max(N);
@@ -124,7 +124,7 @@ impl<C: Coordinate, V: Accumulator, const N: u32> Iterator for Layers<'_, C, V, 
     type Item = (usize, crate::spatial::node::Node<C, V>);
 
     fn next(&mut self) -> Option<Self::Item> {
-        use crate::nodes::vnode::VKind;
+        use crate::tree::vtree::vnode::VKind;
 
         loop {
             let (vid, bfs_depth) = self.queue.pop_front()?;

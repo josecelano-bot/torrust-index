@@ -1,9 +1,9 @@
 use crate::graph::algorithm::rebalance;
 use crate::graph::algorithm::violation_push::ViolationQueue;
 use crate::handle::{GNodeId, VNodeId};
-use crate::nodes::vnode::{Children, VKind, VNode};
 use crate::traits::{Accumulator, Coordinate, Inspectable};
 use crate::tree::gtree::GTree;
+use crate::tree::vtree::vnode::{Children, VKind, VNode};
 use crate::tree::vtree::{VNodeTree, VTree};
 
 /// The dual-tree core of a `GvGraph`.
@@ -355,7 +355,7 @@ fn handle_iteration_limit<V: Accumulator>(
 mod tests {
     use crate::graph::{Config, GvGraph, StructuralConfig};
     use crate::handle::{GNodeId, VNodeId};
-    use crate::nodes::vnode::{Children, VKind, VNode};
+    use crate::tree::vtree::vnode::{Children, VKind, VNode};
 
     type G = GvGraph<u8, u32, 8>;
 
@@ -685,7 +685,7 @@ mod tests {
         mod internals {
             use super::super::*;
             use crate::graph::algorithm::rebalance::resolve;
-            use crate::nodes::vnode::VNode;
+            use crate::tree::vtree::vnode::VNode;
 
             #[test]
             fn resolve_returns_none_when_node_has_no_parent() {

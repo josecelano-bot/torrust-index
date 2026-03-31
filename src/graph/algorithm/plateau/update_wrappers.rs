@@ -34,7 +34,7 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32, T: PlateauTracki
         &mut self,
         gnode_id: GNodeId,
         parent_id: GNodeId,
-        parent_state_after: crate::nodes::gnode::GState,
+        parent_state_after: crate::tree::gtree::gnode::GState,
         parent_lo: C,
         parent_hi: C,
     ) {

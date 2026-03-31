@@ -81,7 +81,7 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
     /// depth is above the current eviction gate.  Guards the inner loop in
     /// `evict_candidates` without nesting.
     fn is_eviction_candidate(&self, v_id: crate::handle::VNodeId) -> bool {
-        use crate::nodes::vnode::VKind;
+        use crate::tree::vtree::vnode::VKind;
         if !self.core.vtree.nodes.is_occupied(v_id.index()) {
             return false;
         }
@@ -165,7 +165,7 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
 mod tests {
     use crate::graph::{Config, GvGraph, StructuralConfig};
     use crate::handle::VNodeId;
-    use crate::nodes::vnode::VKind;
+    use crate::tree::vtree::vnode::VKind;
 
     type G = GvGraph<u8, u32, 8>;
 

@@ -1,7 +1,7 @@
 use crate::graph::GvGraph;
-use crate::nodes::gnode::GNode;
 use crate::traits::{Accumulator, Coordinate};
 use crate::tree::gtree::GTree;
+use crate::tree::gtree::gnode::GNode;
 
 impl<C: Coordinate, V: Accumulator, const N: u32> GvGraph<C, V, N> {
     /// Return the cell that covers `coord`.
@@ -52,7 +52,7 @@ impl<C: Coordinate, V: Accumulator, const N: u32> GvGraph<C, V, N> {
 
     #[inline]
     pub(in super::super) fn uncovered_interval(g: &GNode<C, V>) -> (C, C) {
-        use crate::nodes::gnode::GState;
+        use crate::tree::gtree::gnode::GState;
         match g.state() {
             GState::Terminal | GState::Internal => (g.lo(), g.hi()),
             GState::SemiInternal => {
@@ -68,7 +68,7 @@ impl<C: Coordinate, V: Accumulator, const N: u32> GvGraph<C, V, N> {
 
     #[inline]
     fn trimmed_interval(g: &GNode<C, V>, coord: C) -> (C, C) {
-        use crate::nodes::gnode::GState;
+        use crate::tree::gtree::gnode::GState;
         match g.state() {
             GState::Terminal | GState::Internal => (g.lo(), g.hi()),
             GState::SemiInternal => {

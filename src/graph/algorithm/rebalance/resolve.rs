@@ -1,8 +1,8 @@
 use crate::graph::core::GvCore;
 use crate::handle::{GNodeId, VNodeId};
-use crate::nodes::vnode::VKind;
 use crate::traits::{Accumulator, Coordinate};
 use crate::tree::vtree::VTree;
+use crate::tree::vtree::vnode::VKind;
 
 use super::super::violation_push::ViolationQueue;
 use super::{Ctx, EscalationContext, Nd};
@@ -234,7 +234,7 @@ pub fn resolve<C: Coordinate, V: Accumulator, const N: u32>(
 mod tests {
     use crate::graph::{Config, GvGraph, StructuralConfig};
     use crate::handle::{GNodeId, VNodeId};
-    use crate::nodes::vnode::{Children, VKind, VNode};
+    use crate::tree::vtree::vnode::{Children, VKind, VNode};
 
     type G = GvGraph<u8, u32, 8>;
 

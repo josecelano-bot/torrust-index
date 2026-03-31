@@ -1,6 +1,6 @@
 use crate::handle::VNodeId;
-use crate::nodes::vnode::VKind;
 use crate::traits::{Accumulator, Inspectable};
+use crate::tree::vtree::vnode::VKind;
 use crate::tree::vtree::{VNodeTree, VTree};
 
 fn is_ancestor_in_nodes<V: Accumulator>(

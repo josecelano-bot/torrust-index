@@ -1,9 +1,9 @@
 //! Query-facing representation of a G-tree node.
 
 use crate::handle::GNodeId;
-use crate::nodes::gnode::GState;
 use crate::spatial::view::{Cell, Span};
 use crate::traits::{Accumulator, Coordinate};
+use crate::tree::gtree::gnode::GState;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -88,7 +88,7 @@ impl<C: Coordinate, V: Accumulator> Node<C, V> {
 mod tests {
     use super::Node;
     use crate::handle::GNodeId;
-    use crate::nodes::gnode::GState;
+    use crate::tree::gtree::gnode::GState;
     use rstest::rstest;
 
     fn node(start: u8, end: u8, own: u32, sum: u32, depth: u32, state: GState) -> Node<u8, u32> {

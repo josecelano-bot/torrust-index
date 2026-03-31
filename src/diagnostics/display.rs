@@ -21,9 +21,9 @@ impl<C: Coordinate, V: Accumulator + Inspectable> fmt::Display for Gn<'_, C, V> 
         }
         let g = self.0.get(idx);
         let state = match g.state() {
-            crate::nodes::gnode::GState::Terminal => "T",
-            crate::nodes::gnode::GState::SemiInternal => "S",
-            crate::nodes::gnode::GState::Internal => "I",
+            crate::tree::gtree::gnode::GState::Terminal => "T",
+            crate::tree::gtree::gnode::GState::SemiInternal => "S",
+            crate::tree::gtree::gnode::GState::Internal => "I",
         };
         write!(
             f,

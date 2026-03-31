@@ -1,7 +1,7 @@
 use crate::graph::GvGraph;
 use crate::handle::{GNodeId, VNodeId};
-use crate::nodes::vnode::{Children, VNode};
 use crate::traits::{Accumulator, Coordinate, Inspectable};
+use crate::tree::vtree::vnode::{Children, VNode};
 
 mod helpers;
 

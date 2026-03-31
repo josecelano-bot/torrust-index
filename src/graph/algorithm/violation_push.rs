@@ -23,9 +23,9 @@
 //! | 10     | `source_10_g_contraction_promotion`     | G-contraction followed by promotion           |
 
 use crate::handle::VNodeId;
-use crate::nodes::vnode::VKind;
 use crate::traits::Accumulator;
 use crate::tree::vtree::VNodeTree;
+use crate::tree::vtree::vnode::VKind;
 
 use super::rebalance::Nd;
 use super::violation_sources::ViolationSources;
@@ -440,7 +440,7 @@ mod tests {
     use super::*;
     use crate::arena::Arena;
     use crate::handle::GNodeId;
-    use crate::nodes::vnode::{Children, VNode};
+    use crate::tree::vtree::vnode::{Children, VNode};
 
     fn make_vnodes() -> VNodeTree<u32> {
         VNodeTree::from(Arena::new())

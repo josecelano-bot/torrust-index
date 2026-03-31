@@ -10,7 +10,7 @@ impl<C: Coordinate, V: Accumulator + Weighable, const N: u32> GvGraph<C, V, N> {
         &self,
         rng: &mut impl crate::traits::Rng,
     ) -> Option<crate::spatial::view::Cell<C, V>> {
-        use crate::nodes::vnode::VKind;
+        use crate::tree::vtree::vnode::VKind;
 
         let v_root = self.core.vtree.nodes.root?;
         let root_node = self.core.vtree.nodes.get(v_root.index());
@@ -40,7 +40,7 @@ impl<C: Coordinate, V: Accumulator + Weighable, const N: u32> GvGraph<C, V, N> {
     }
 
     fn sample_child(
-        children: &crate::nodes::vnode::Children<V>,
+        children: &crate::tree::vtree::vnode::Children<V>,
         rng: &mut impl crate::traits::Rng,
     ) -> VNodeId {
         let total: f64 = (0..children.len())

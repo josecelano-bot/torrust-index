@@ -8,9 +8,9 @@
 use std::fmt;
 
 use crate::handle::VNodeId;
-use crate::nodes::vnode::VKind;
 use crate::traits::Accumulator;
 use crate::tree::vtree::VNodeTree;
+use crate::tree::vtree::vnode::VKind;
 
 /// Formats a single V-node: `v{idx}(E,{intensity})` or `v{idx}(S{n},{intensity})`.
 pub struct Nd<'a, V: Accumulator>(pub &'a VNodeTree<V>, pub VNodeId);

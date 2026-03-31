@@ -1,10 +1,10 @@
 use crate::graph::GvGraph;
 use crate::graph::algorithm::violation_push::ViolationQueue;
 use crate::handle::VNodeId;
-use crate::nodes::gnode::GState;
-use crate::nodes::vnode::VKind;
 use crate::traits::{Accumulator, Coordinate, Inspectable};
+use crate::tree::gtree::gnode::GState;
 use crate::tree::vtree::VNodeTree;
+use crate::tree::vtree::vnode::VKind;
 
 /// Topology of the V-node being evicted, captured before the leaf is removed.
 struct LeafRemovalContext {
@@ -285,7 +285,7 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
 mod tests {
     use crate::graph::{Config, GvGraph, StructuralConfig};
     use crate::handle::{GNodeId, VNodeId};
-    use crate::nodes::vnode::{Children, VNode};
+    use crate::tree::vtree::vnode::{Children, VNode};
 
     type G = GvGraph<u8, u32, 8>;
 

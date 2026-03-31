@@ -1,7 +1,7 @@
 use super::DynamicPlateauTracker;
 use crate::arena::Arena;
 use crate::handle::GNodeId;
-use crate::nodes::gnode::{GNode, GState};
+use crate::tree::gtree::gnode::{GNode, GState};
 use crate::spatial::plateau::{BasisEdge, Plateau};
 use crate::spatial::plateau_basis::PlateauBasis;
 

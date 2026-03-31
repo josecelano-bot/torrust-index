@@ -1,9 +1,9 @@
 use super::DynamicPlateauTracker;
 use crate::handle::GNodeId;
-use crate::nodes::gnode::GState;
 use crate::spatial::range::CoordinateRange;
 use crate::traits::{Accumulator, Coordinate};
 use crate::tree::gtree::GNodeTree;
+use crate::tree::gtree::gnode::GState;
 use crate::tree::gtree::gnode_depth_from_range;
 
 impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {

@@ -1,13 +1,13 @@
 #[cfg(feature = "dynamic-contour-tracking")]
 use crate::graph::GvGraph;
 #[cfg(feature = "dynamic-contour-tracking")]
-use crate::nodes::gnode::{GNode, GState};
-#[cfg(feature = "dynamic-contour-tracking")]
 use crate::spatial::plateau::BasisEdge;
 #[cfg(feature = "dynamic-contour-tracking")]
 use crate::traits::{Accumulator, Coordinate, Inspectable};
 #[cfg(feature = "dynamic-contour-tracking")]
 use crate::tree::gtree::GTree;
+#[cfg(feature = "dynamic-contour-tracking")]
+use crate::tree::gtree::gnode::{GNode, GState};
 
 #[cfg(feature = "dynamic-contour-tracking")]
 pub fn check_plateau_btreemap_key_consistency<

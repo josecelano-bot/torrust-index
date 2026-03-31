@@ -90,7 +90,7 @@ mod tests {
     mod ctx_display_fn {
         use super::*;
         use crate::graph::algorithm::rebalance::Ctx;
-        use crate::nodes::vnode::VKind;
+        use crate::tree::vtree::vnode::VKind;
 
         #[test]
         fn root_node_includes_root_label() {

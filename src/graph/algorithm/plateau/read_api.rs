@@ -27,8 +27,8 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32, T: PlateauTracki
     #[doc(hidden)]
     #[must_use]
     pub fn build_plateaus(&self) -> BTreeMap<BasisEdge<C>, Plateau<C, V>> {
-        use crate::nodes::gnode::GState;
         use crate::spatial::plateau::basis_edge_of;
+        use crate::tree::gtree::gnode::GState;
 
         let mut basis: Vec<(BasisEdge<C>, u32, C, C, V)> = Vec::new();
         let mut stack = vec![self.core.gtree.nodes.root];

@@ -1,9 +1,9 @@
 use super::DynamicPlateauTracker;
 use crate::arena::Arena;
 use crate::handle::GNodeId;
-use crate::nodes::gnode::GNode;
 use crate::spatial::plateau::{BasisEdge, Plateau};
 use crate::traits::PlateauTracking;
+use crate::tree::gtree::gnode::GNode;
 
 fn add_leaf(
     gnodes: &mut Arena<GNode<u8, u32>>,
@@ -215,7 +215,7 @@ fn on_evict_with_ancestor_displacement_executes_phase6_replacement() {
         &gnodes,
         evicted,
         parent,
-        crate::nodes::gnode::GState::SemiInternal,
+        crate::tree::gtree::gnode::GState::SemiInternal,
         0,
         16,
     );
