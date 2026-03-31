@@ -11,22 +11,23 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32, T: PlateauTracki
         delta: O,
     ) {
         let value_v: V = O::accumulate(V::zero(), delta);
-        self.tracker.on_observe(&self.gtree.nodes, g_id, value_v);
+        self.tracker
+            .on_observe(&self.core.gtree.nodes, g_id, value_v);
     }
 
     pub(crate) fn plateau_after_bootstrap_split(&mut self, g_id: GNodeId, left_id: GNodeId) {
         self.tracker
-            .on_bootstrap_split(&self.gtree.nodes, g_id, left_id);
+            .on_bootstrap_split(&self.core.gtree.nodes, g_id, left_id);
     }
 
     pub(crate) fn plateau_after_catalytic_split(&mut self, g_id: GNodeId, left_id: GNodeId) {
         self.tracker
-            .on_catalytic_split(&self.gtree.nodes, g_id, left_id);
+            .on_catalytic_split(&self.core.gtree.nodes, g_id, left_id);
     }
 
     pub(crate) fn plateau_after_legacy_promotes_batched(&mut self, new_gnodes: &[GNodeId]) {
         self.tracker
-            .on_legacy_promotes_batched(&self.gtree.nodes, new_gnodes);
+            .on_legacy_promotes_batched(&self.core.gtree.nodes, new_gnodes);
     }
 
     pub(crate) fn plateau_after_evict(
@@ -38,7 +39,7 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32, T: PlateauTracki
         parent_hi: C,
     ) {
         self.tracker.on_evict(
-            &self.gtree.nodes,
+            &self.core.gtree.nodes,
             gnode_id,
             parent_id,
             parent_state_after,
@@ -48,15 +49,15 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32, T: PlateauTracki
     }
 
     pub(crate) fn normalize_plateaus(&mut self) {
-        self.tracker.normalize(&self.gtree.nodes);
+        self.tracker.normalize(&self.core.gtree.nodes);
     }
 
     pub(crate) fn repair_p_i4(&mut self) {
-        self.tracker.repair_p_i4(&self.gtree.nodes);
+        self.tracker.repair_p_i4(&self.core.gtree.nodes);
     }
 
     pub(crate) fn plateau_recompute_sums(&mut self, label: &str) {
-        self.tracker.recompute_sums(&self.gtree.nodes, label);
+        self.tracker.recompute_sums(&self.core.gtree.nodes, label);
     }
 
     /// Verifies that the plateau mirror is consistent with a fresh G-tree
@@ -68,6 +69,6 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32, T: PlateauTracki
         }
         let fresh = self.build_plateaus();
         self.tracker
-            .debug_assert_mirror_consistency(&self.gtree.nodes, &fresh, label);
+            .debug_assert_mirror_consistency(&self.core.gtree.nodes, &fresh, label);
     }
 }

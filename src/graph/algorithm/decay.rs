@@ -84,7 +84,7 @@ impl<C: Coordinate, V: Accumulator + Attenuatable + Inspectable, const N: u32> G
         let _span = tracing::debug_span!("decay", root = root.index(), attenuation, q,).entered();
 
         assert!(
-            self.gtree.nodes.is_occupied(root.index()),
+            self.core.gtree.nodes.is_occupied(root.index()),
             "decay: root handle (index {}) does not refer to a live G-node",
             root.index()
         );
@@ -102,7 +102,7 @@ impl<C: Coordinate, V: Accumulator + Attenuatable + Inspectable, const N: u32> G
             return;
         }
 
-        let is_global = root == self.gtree.nodes.root;
+        let is_global = root == self.core.gtree.nodes.root;
 
         let _span = tracing::debug_span!("decay", root = root.index(), attenuation, q,).entered();
 
@@ -122,7 +122,7 @@ impl<C: Coordinate, V: Accumulator + Attenuatable + Inspectable, const N: u32> G
         while let Some(gid) = stack.pop() {
             order.push(gid);
 
-            let g = self.gtree.nodes.get_mut(gid.index());
+            let g = self.core.gtree.nodes.get_mut(gid.index());
             g.set_own(g.own().attenuate(att));
 
             // NOTE: V-entry intensity is written inline here, alongside g.own(),
@@ -132,10 +132,14 @@ impl<C: Coordinate, V: Accumulator + Attenuatable + Inspectable, const N: u32> G
             // second tree traversal.
             if let Some(v_id) = g.entry() {
                 let own = g.own();
-                self.vtree.nodes.get_mut(v_id.index()).set_intensity(own);
+                self.core
+                    .vtree
+                    .nodes
+                    .get_mut(v_id.index())
+                    .set_intensity(own);
             }
 
-            let g = self.gtree.nodes.get(gid.index());
+            let g = self.core.gtree.nodes.get(gid.index());
             if let Some(left) = g.left() {
                 stack.push(left);
             }
@@ -144,15 +148,15 @@ impl<C: Coordinate, V: Accumulator + Attenuatable + Inspectable, const N: u32> G
             }
         }
 
-        self.gtree.nodes.recompute_sums_subtree(&order);
+        self.core.gtree.nodes.recompute_sums_subtree(&order);
 
         if !is_global {
-            if let Some(parent) = self.gtree.nodes.get(root.index()).parent() {
-                self.gtree.nodes.recompute_sums(parent);
+            if let Some(parent) = self.core.gtree.nodes.get(root.index()).parent() {
+                self.core.gtree.nodes.recompute_sums(parent);
             }
         }
 
-        self.vtree.recompute_all_intensities();
+        self.core.vtree.recompute_all_intensities();
 
         self.post_decay_repair("DECAY-UNIFORM");
     }
@@ -174,7 +178,7 @@ impl<C: Coordinate, V: Accumulator + Attenuatable + Inspectable, const N: u32> G
                 if depth > max_depth {
                     max_depth = depth;
                 }
-                let g = self.gtree.nodes.get(gid.index());
+                let g = self.core.gtree.nodes.get(gid.index());
                 if let Some(left) = g.left() {
                     stack.push(left);
                 }
@@ -191,15 +195,21 @@ impl<C: Coordinate, V: Accumulator + Attenuatable + Inspectable, const N: u32> G
             let d_local = self.gnode_depth(gid) - d_root;
             let factor = factors[d_local as usize];
 
-            let new_own = self.gtree.nodes.get(gid.index()).own().attenuate(factor);
-            self.gtree.nodes.get_mut(gid.index()).set_own(new_own);
+            let new_own = self
+                .core
+                .gtree
+                .nodes
+                .get(gid.index())
+                .own()
+                .attenuate(factor);
+            self.core.gtree.nodes.get_mut(gid.index()).set_own(new_own);
         }
 
-        self.gtree.nodes.recompute_sums_subtree(&order);
+        self.core.gtree.nodes.recompute_sums_subtree(&order);
 
         if !is_global {
-            if let Some(parent) = self.gtree.nodes.get(root.index()).parent() {
-                self.gtree.nodes.recompute_sums(parent);
+            if let Some(parent) = self.core.gtree.nodes.get(root.index()).parent() {
+                self.core.gtree.nodes.recompute_sums(parent);
             }
         }
 
@@ -211,20 +221,24 @@ impl<C: Coordinate, V: Accumulator + Attenuatable + Inspectable, const N: u32> G
         // a different depth.  Delaying until all g.own() are stable avoids that
         // ordering hazard.
         for &gid in &order {
-            let g = self.gtree.nodes.get(gid.index());
+            let g = self.core.gtree.nodes.get(gid.index());
             if let Some(v_id) = g.entry() {
                 let own = g.own();
-                self.vtree.nodes.get_mut(v_id.index()).set_intensity(own);
+                self.core
+                    .vtree
+                    .nodes
+                    .get_mut(v_id.index())
+                    .set_intensity(own);
             }
         }
 
-        self.vtree.recompute_all_intensities();
+        self.core.vtree.recompute_all_intensities();
 
         self.post_decay_repair("DECAY-SELECTIVE");
     }
 
     fn post_decay_repair(&mut self, label: &str) {
-        self.vtree.violations = rebalance::find_violated_nodes(&self.vtree.nodes);
+        self.core.vtree.violations = rebalance::find_violated_nodes(&self.core.vtree.nodes);
         let new_gnodes = self.rebalance_vtree();
         if !new_gnodes.is_empty() {
             self.handle_legacy_promotes(&new_gnodes);
@@ -277,7 +291,7 @@ mod tests {
         fn attenuation_of_one_is_no_op() {
             let mut g = observed_graph();
             let before = g.total_sum();
-            let root = g.gtree.nodes.root;
+            let root = g.core.gtree.nodes.root;
             g.decay(root, 1.0, 0.0);
             assert_eq!(g.total_sum(), before);
         }
@@ -286,7 +300,7 @@ mod tests {
         fn attenuation_reduces_total_sum() {
             let mut g = observed_graph();
             let before = g.total_sum();
-            let root = g.gtree.nodes.root;
+            let root = g.core.gtree.nodes.root;
             g.decay(root, 0.5, 0.0);
             assert!(g.total_sum() <= before);
         }
@@ -294,7 +308,7 @@ mod tests {
         #[test]
         fn zero_attenuation_drives_sum_to_zero() {
             let mut g = observed_graph();
-            let root = g.gtree.nodes.root;
+            let root = g.core.gtree.nodes.root;
             g.decay(root, 0.0, 0.0);
             assert_eq!(g.total_sum(), 0u32);
         }
@@ -308,7 +322,7 @@ mod tests {
         fn attenuation_of_one_is_no_op() {
             let mut g = observed_graph();
             let before = g.total_sum();
-            let root = g.gtree.nodes.root;
+            let root = g.core.gtree.nodes.root;
             g.decay(root, 1.0, 0.5);
             assert_eq!(g.total_sum(), before);
         }
@@ -317,7 +331,7 @@ mod tests {
         fn attenuation_reduces_total_sum() {
             let mut g = observed_graph();
             let before = g.total_sum();
-            let root = g.gtree.nodes.root;
+            let root = g.core.gtree.nodes.root;
             g.decay(root, 0.5, 0.5);
             assert!(g.total_sum() <= before);
         }
@@ -325,7 +339,7 @@ mod tests {
         #[test]
         fn zero_attenuation_selective_drives_sum_to_zero() {
             let mut g = observed_graph();
-            let root = g.gtree.nodes.root;
+            let root = g.core.gtree.nodes.root;
             g.decay(root, 0.0, 0.5);
             assert_eq!(g.total_sum(), 0u32);
         }
@@ -333,7 +347,7 @@ mod tests {
         #[test]
         fn infinite_attenuation_selective_does_not_panic() {
             let mut g = observed_graph();
-            let root = g.gtree.nodes.root;
+            let root = g.core.gtree.nodes.root;
             // inf attenuation zeroes the sum (positive exponents → factor=∞ → own.attenuate(∞) = 0)
             g.decay(root, f64::INFINITY, 0.5);
         }
@@ -348,7 +362,7 @@ mod tests {
             for _ in 0..3 {
                 g.observe(32u8, 5u32); // second split
             }
-            let root = g.gtree.nodes.root;
+            let root = g.core.gtree.nodes.root;
             g.decay(root, 0.5, 0.5);
         }
 
@@ -358,7 +372,7 @@ mod tests {
             // { 1.0 }` branch in the att==0.0 arm (line 140).
             // Fresh graph has one Terminal gnode → depth_range = 0.
             let mut g: G = GvGraph::new(make_config());
-            let root = g.gtree.nodes.root;
+            let root = g.core.gtree.nodes.root;
             g.decay(root, 0.0, 0.5);
             assert_eq!(g.total_sum(), 0u32);
         }
@@ -368,7 +382,7 @@ mod tests {
             // depth_range == 0 with att == INFINITY: exercises the `if depth_range
             // == 0 { 1.0 }` branch in the att.is_infinite() arm (line 152).
             let mut g: G = GvGraph::new(make_config());
-            let root = g.gtree.nodes.root;
+            let root = g.core.gtree.nodes.root;
             g.decay(root, f64::INFINITY, 0.5);
         }
 
@@ -379,7 +393,7 @@ mod tests {
             // `if exponent == 0.0 { 1.0 }` branch (line 158).
             let mut g: G = GvGraph::new(make_config());
             g.observe(64u8, 3u32); // bootstrap split → depth_range = 1
-            let root = g.gtree.nodes.root;
+            let root = g.core.gtree.nodes.root;
             g.decay(root, f64::INFINITY, 1.0);
         }
 
@@ -389,7 +403,7 @@ mod tests {
             // == 0 { 0.0 }` branch in the standard ln-based arm (line 171).
             let mut g: G = GvGraph::new(make_config());
             g.observe(0u8, 1u32); // sum=1 but no split (1 <= threshold=2)
-            let root = g.gtree.nodes.root;
+            let root = g.core.gtree.nodes.root;
             g.decay(root, 0.5, 0.5);
         }
     }
@@ -409,7 +423,7 @@ mod tests {
         #[test]
         fn sub_root_uniform_decay_does_not_panic() {
             let mut g = split_graph();
-            let children = g.gnode_children(g.gtree.nodes.root).unwrap();
+            let children = g.gnode_children(g.core.gtree.nodes.root).unwrap();
             // Decay a child subtree (non-global) to exercise the is_global=false path
             if let Some(sub_root) = children.left.or(children.right) {
                 g.decay(sub_root, 0.5, 0.0);
@@ -419,7 +433,7 @@ mod tests {
         #[test]
         fn sub_root_selective_decay_does_not_panic() {
             let mut g = split_graph();
-            let children = g.gnode_children(g.gtree.nodes.root).unwrap();
+            let children = g.gnode_children(g.core.gtree.nodes.root).unwrap();
             if let Some(sub_root) = children.left.or(children.right) {
                 g.decay(sub_root, 0.5, 0.5);
             }

@@ -421,19 +421,19 @@ mod tests {
         g.observe(64u8, 3u32);
         let missing = BasisEdge(200u8);
 
-        g.tracker.recompute_plateau(&g.gtree.nodes, &missing);
+        g.tracker.recompute_plateau(&g.core.gtree.nodes, &missing);
         assert!(g.tracker.plateaus.contains_key(&BasisEdge(0u8)));
     }
 
     #[test]
     fn fixup_plateau_removes_key_when_basis_is_empty() {
         let mut g = make_graph();
-        let root = g.gtree.nodes.root;
+        let root = g.core.gtree.nodes.root;
         let key = BasisEdge(0u8);
 
         let removed = g.tracker.plateau_basis.remove(root);
         assert_eq!(removed, Some(key));
-        g.tracker.fixup_plateau(&g.gtree.nodes, key);
+        g.tracker.fixup_plateau(&g.core.gtree.nodes, key);
 
         assert!(!g.tracker.plateaus.contains_key(&key));
     }
@@ -443,25 +443,26 @@ mod tests {
         let mut g = make_graph();
         g.observe(64u8, 3u32); // create root children
 
-        let root = g.gtree.nodes.root;
+        let root = g.core.gtree.nodes.root;
         let found = g
             .tracker
-            .find_boundary_node(&g.gtree.nodes, root, BasisEdge(0u8));
+            .find_boundary_node(&g.core.gtree.nodes, root, BasisEdge(0u8));
 
         assert!(found.is_some());
         let gid = found.unwrap();
-        let node = g.gtree.nodes.get(gid.index());
+        let node = g.core.gtree.nodes.get(gid.index());
         assert!(node.lo() > 0u8);
     }
 
     #[test]
     fn split_for_p_i4_returns_when_no_boundary_exists() {
         let mut g = make_graph();
-        let root = g.gtree.nodes.root;
+        let root = g.core.gtree.nodes.root;
         let parent_pk = BasisEdge(255u8);
         let before = g.tracker.plateaus.clone();
 
-        g.tracker.split_for_p_i4(&g.gtree.nodes, parent_pk, root);
+        g.tracker
+            .split_for_p_i4(&g.core.gtree.nodes, parent_pk, root);
 
         assert_eq!(g.tracker.plateaus, before);
     }

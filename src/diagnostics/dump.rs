@@ -31,9 +31,9 @@ fn semi_internal_lineage<C: Coordinate, V: Accumulator + Inspectable, const N: u
 ) -> String {
     let mut parts = Vec::new();
 
-    let g = graph.gtree.nodes.get(gnode.index());
+    let g = graph.core.gtree.nodes.get(gnode.index());
     if let Some(parent_id) = g.parent() {
-        let parent = graph.gtree.nodes.get(parent_id.index());
+        let parent = graph.core.gtree.nodes.get(parent_id.index());
         if parent.state() == GState::SemiInternal {
             parts.push(format!("SI-child (par=G({}))", parent_id.index()));
         }
@@ -42,9 +42,9 @@ fn semi_internal_lineage<C: Coordinate, V: Accumulator + Inspectable, const N: u
     let mut cur = g.parent();
     let mut depth = 1;
     while let Some(anc_id) = cur {
-        let anc = graph.gtree.nodes.get(anc_id.index());
+        let anc = graph.core.gtree.nodes.get(anc_id.index());
         if let Some(anc_parent_id) = anc.parent() {
-            let anc_parent = graph.gtree.nodes.get(anc_parent_id.index());
+            let anc_parent = graph.core.gtree.nodes.get(anc_parent_id.index());
             if anc_parent.state() == GState::SemiInternal {
                 parts.push(format!(
                     "{} is SI-child (G({}) under G({}))",
@@ -74,12 +74,12 @@ pub fn dump_gtree<C: Coordinate, V: Accumulator + Inspectable, const N: u32>(
     writeln!(
         out,
         "═══ G-Tree dump (root=GNodeId({}), {} nodes) ═══",
-        graph.gtree.nodes.root.index(),
-        graph.gtree.nodes.node_count
+        graph.core.gtree.nodes.root.index(),
+        graph.core.gtree.nodes.node_count
     )
     .unwrap();
 
-    for (idx, g) in graph.gtree.nodes.iter_occupied() {
+    for (idx, g) in graph.core.gtree.nodes.iter_occupied() {
         let gnode_id = GNodeId::from_index(idx);
         let state = state_label(g.state());
         let depth = GTree::<C, V, N>::depth_of_interval(g.lo(), g.hi());
@@ -111,7 +111,7 @@ fn render_plateau_element<C: Coordinate, V: Accumulator + Inspectable, const N: 
     gid: GNodeId,
 ) {
     use std::fmt::Write;
-    if !graph.gtree.nodes.is_occupied(gid.index()) {
+    if !graph.core.gtree.nodes.is_occupied(gid.index()) {
         writeln!(
             out,
             "    !! DANGLING GNodeId({}) — slot deallocated !!",
@@ -120,7 +120,7 @@ fn render_plateau_element<C: Coordinate, V: Accumulator + Inspectable, const N: 
         .unwrap();
         return;
     }
-    let g = graph.gtree.nodes.get(gid.index());
+    let g = graph.core.gtree.nodes.get(gid.index());
     let state = state_label(g.state());
     let g_depth = GTree::<C, V, N>::depth_of_interval(g.lo(), g.hi());
     let contour_depth = match g.state() {

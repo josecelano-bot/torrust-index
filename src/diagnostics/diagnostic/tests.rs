@@ -79,7 +79,7 @@ mod audit_violations_fn {
         };
 
         // Force a violation by making this node heavier than any uncle.
-        g.vtree.nodes.get_mut(entry_id.index()).set_intensity(10_000u32);
+        g.core.vtree.nodes.get_mut(entry_id.index()).set_intensity(10_000u32);
 
         let missed = audit_violations(g.vnodes(), &[], "test");
         assert!(
@@ -99,7 +99,7 @@ mod audit_violations_fn {
             return;
         };
 
-        g.vtree.nodes.get_mut(entry_id.index()).set_intensity(10_000u32);
+        g.core.vtree.nodes.get_mut(entry_id.index()).set_intensity(10_000u32);
 
         let queued = [entry_id];
         let missed = audit_violations(g.vnodes(), &queued, "test");
@@ -354,7 +354,7 @@ mod diagnose_missed_violation_in_tree_fn {
             evicted_parent_child_count: 0,
             collapse_sibling: None,
         };
-        diagnose_missed_violation_in_tree(&g.vtree, v_root, &ctx);
+        diagnose_missed_violation_in_tree(&g.core.vtree, v_root, &ctx);
     }
 
     #[test]
@@ -371,7 +371,7 @@ mod diagnose_missed_violation_in_tree_fn {
             evicted_parent_child_count: 0,
             collapse_sibling: None,
         };
-        diagnose_missed_violation_in_tree(&g.vtree, child_id, &ctx);
+        diagnose_missed_violation_in_tree(&g.core.vtree, child_id, &ctx);
     }
 
     #[test]
@@ -406,6 +406,6 @@ mod diagnose_missed_violation_in_tree_fn {
             evicted_parent_child_count: 0,
             collapse_sibling: Some(v_root),
         };
-        diagnose_missed_violation_in_tree(&g.vtree, entry_id, &ctx);
+        diagnose_missed_violation_in_tree(&g.core.vtree, entry_id, &ctx);
     }
 }

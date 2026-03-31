@@ -18,7 +18,7 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32>
 
     #[allow(clippy::float_cmp)]
     pub(crate) fn debug_check_plateau_sums(&self, label: &str) {
-        self.tracker.debug_check_sums(&self.gtree.nodes, label);
+        self.tracker.debug_check_sums(&self.core.gtree.nodes, label);
     }
 
     #[doc(hidden)]
@@ -33,7 +33,7 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32>
             let infos: Vec<_> = elements
                 .iter()
                 .map(|&gid| {
-                    let g = self.gtree.nodes.get(gid.index());
+                    let g = self.core.gtree.nodes.get(gid.index());
                     let state_str = match g.state() {
                         crate::nodes::gnode::GState::Terminal => "Terminal",
                         crate::nodes::gnode::GState::Internal => "Internal",

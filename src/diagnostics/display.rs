@@ -95,7 +95,7 @@ mod tests {
         fn dead_gnode_shows_dead_marker() {
             // Fresh graph: only gnode 0 is allocated; index 1 is dead.
             let g: G = GvGraph::new(make_config());
-            let display = format!("{}", Gn(&g.gtree.nodes, GNodeId::from_index(1)));
+            let display = format!("{}", Gn(&g.core.gtree.nodes, GNodeId::from_index(1)));
             assert_eq!(display, "G1(DEAD)");
         }
 
@@ -105,8 +105,8 @@ mod tests {
             g.observe(64u8, 3u32);
             // Find the first occupied gnode index.
             for i in 0..10 {
-                if g.gtree.nodes.is_occupied(i) {
-                    let display = format!("{}", Gn(&g.gtree.nodes, GNodeId::from_index(i)));
+                if g.core.gtree.nodes.is_occupied(i) {
+                    let display = format!("{}", Gn(&g.core.gtree.nodes, GNodeId::from_index(i)));
                     assert!(display.starts_with(&format!("G{i}(")));
                     assert!(!display.contains("DEAD"));
                     return;
@@ -127,7 +127,7 @@ mod tests {
             let mut g: G = GvGraph::new(make_config());
             g.observe(64u8, 3u32);
             // After a split, gnode[1] is a Terminal left child.
-            let display = format!("{}", Gn(&g.gtree.nodes, GNodeId::from_index(1)));
+            let display = format!("{}", Gn(&g.core.gtree.nodes, GNodeId::from_index(1)));
             assert!(
                 display.contains("T,"),
                 "expected 'T,' in terminal display: {display}"
@@ -139,21 +139,23 @@ mod tests {
             let mut g: G = GvGraph::new(make_config());
             g.observe(64u8, 3u32);
             // Evict the left child so root [gnode 0] becomes semi-internal.
-            let root = g.gtree.nodes.root;
+            let root = g.core.gtree.nodes.root;
             let left_child = g
+                .core
                 .gtree
                 .nodes
                 .get(root.index())
                 .left()
                 .expect("root must have left child after split");
             let left_entry = g
+                .core
                 .gtree
                 .nodes
                 .get(left_child.index())
                 .entry()
                 .expect("left child must have a VEntry");
             g.evict_tip(left_entry);
-            let display = format!("{}", Gn(&g.gtree.nodes, GNodeId::from_index(0)));
+            let display = format!("{}", Gn(&g.core.gtree.nodes, GNodeId::from_index(0)));
             assert!(
                 display.contains("S,"),
                 "expected 'S,' in semi-internal display: {display}"

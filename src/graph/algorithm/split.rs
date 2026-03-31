@@ -11,15 +11,22 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
             return;
         };
 
-        if self.vtree.nodes.get(entry_id.index()).parent().is_none() {
+        if self
+            .core
+            .vtree
+            .nodes
+            .get(entry_id.index())
+            .parent()
+            .is_none()
+        {
             self.bootstrap_split(g_id);
             return;
         }
 
         self.preprocess_split_parent(entry_id);
 
-        let entry_id = self.gtree.nodes.get(g_id.index()).entry().unwrap();
-        if self.vtree.depth(entry_id) > self.gtree.live_depth_create {
+        let entry_id = self.core.gtree.nodes.get(g_id.index()).entry().unwrap();
+        if self.core.vtree.depth(entry_id) > self.core.gtree.live_depth_create {
             return;
         }
 
@@ -28,7 +35,7 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
 
     fn bootstrap_split(&mut self, g_id: GNodeId) {
         let (lo, hi, entry_id) = {
-            let g = self.gtree.nodes.get(g_id.index());
+            let g = self.core.gtree.nodes.get(g_id.index());
             (
                 g.lo(),
                 g.hi(),
@@ -41,29 +48,32 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
         let children = self.allocate_split_children(g_id);
 
         let cs_id = self
+            .core
             .vtree
             .alloc_structural_2(children.left_entry_id, children.right_entry_id);
 
-        let entry_int = self.vtree.nodes.get(entry_id.index()).intensity();
+        let entry_int = self.core.vtree.nodes.get(entry_id.index()).intensity();
         let root_structural = VNode::new_structural(
             entry_int,
             None,
             Children::new_2((entry_id, entry_int), (cs_id, V::zero())),
             true,
         );
-        let root_s_id = VNodeId::from_index(self.vtree.nodes.alloc(root_structural).0);
-        self.vtree
+        let root_s_id = VNodeId::from_index(self.core.vtree.nodes.alloc(root_structural).0);
+        self.core
+            .vtree
             .nodes
             .get_mut(entry_id.index())
             .set_parent(root_s_id);
-        self.vtree
+        self.core
+            .vtree
             .nodes
             .get_mut(cs_id.index())
             .set_parent(root_s_id);
 
-        self.vtree.set_entry_flags(entry_id, false, false);
+        self.core.vtree.set_entry_flags(entry_id, false, false);
 
-        self.vtree.nodes.root = Some(root_s_id);
+        self.core.vtree.nodes.root = Some(root_s_id);
         self.plateau_after_bootstrap_split(g_id, children.left_id);
         self.debug_assert_split_mirror_consistency("POST-BOOTSTRAP-SPLIT");
     }
@@ -71,7 +81,7 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
     #[allow(clippy::too_many_lines)]
     fn catalytic_split(&mut self, g_id: GNodeId) {
         let (lo, hi, entry_id) = {
-            let g = self.gtree.nodes.get(g_id.index());
+            let g = self.core.gtree.nodes.get(g_id.index());
             (
                 g.lo(),
                 g.hi(),
@@ -82,6 +92,7 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
         let _span =
             tracing::debug_span!("catalytic_split", g_id = g_id.index(), ?lo, ?hi, ?mid,).entered();
         let p_id = self
+            .core
             .vtree
             .nodes
             .get(entry_id.index())
@@ -100,23 +111,25 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
             ),
             true,
         );
-        let s_id = VNodeId::from_index(self.vtree.nodes.alloc(s).0);
-        self.vtree
+        let s_id = VNodeId::from_index(self.core.vtree.nodes.alloc(s).0);
+        self.core
+            .vtree
             .nodes
             .get_mut(children.left_entry_id.index())
             .set_parent(s_id);
-        self.vtree
+        self.core
+            .vtree
             .nodes
             .get_mut(children.right_entry_id.index())
             .set_parent(s_id);
 
         // ── Phase 4: Wire `s` into the parent's child list ───────────────────
-        self.vtree.add_structural_child(p_id, s_id, V::zero());
+        self.core.vtree.add_structural_child(p_id, s_id, V::zero());
 
-        self.vtree.set_entry_flags(entry_id, false, false);
+        self.core.vtree.set_entry_flags(entry_id, false, false);
 
         // ── Phase 5: Propagate evictable flags ────────────────────────────────
-        self.vtree.propagate_evictable(p_id);
+        self.core.vtree.propagate_evictable(p_id);
 
         // ── Phase 6: Plateau state update ─────────────────────────────────────
         self.plateau_after_catalytic_split(g_id, children.left_id);
@@ -155,10 +168,10 @@ mod tests {
         fn no_split_when_sum_at_threshold() {
             // delta=2 equals split_threshold, condition is >, not >=
             let mut g = fresh_graph();
-            let n0 = g.gtree.nodes.node_count;
+            let n0 = g.core.gtree.nodes.node_count;
             g.observe(64u8, 2u32);
             assert_eq!(
-                g.gtree.nodes.node_count, n0,
+                g.core.gtree.nodes.node_count, n0,
                 "must not split at exactly threshold"
             );
         }
@@ -166,26 +179,26 @@ mod tests {
         #[test]
         fn no_split_when_sum_below_threshold() {
             let mut g = fresh_graph();
-            let n0 = g.gtree.nodes.node_count;
+            let n0 = g.core.gtree.nodes.node_count;
             g.observe(64u8, 1u32);
-            assert_eq!(g.gtree.nodes.node_count, n0);
+            assert_eq!(g.core.gtree.nodes.node_count, n0);
         }
 
         #[test]
         fn bootstrap_split_increases_node_count_by_two() {
             // sum > split_threshold on root triggers bootstrap_split
             let mut g = fresh_graph();
-            let n0 = g.gtree.nodes.node_count;
+            let n0 = g.core.gtree.nodes.node_count;
             g.observe(64u8, 3u32);
-            assert_eq!(g.gtree.nodes.node_count, n0 + 2);
+            assert_eq!(g.core.gtree.nodes.node_count, n0 + 2);
         }
 
         #[test]
         fn bootstrap_split_increases_terminal_count_by_one() {
             let mut g = fresh_graph();
-            let t0 = g.gtree.nodes.terminal_count;
+            let t0 = g.core.gtree.nodes.terminal_count;
             g.observe(64u8, 3u32);
-            assert_eq!(g.gtree.nodes.terminal_count, t0 + 1);
+            assert_eq!(g.core.gtree.nodes.terminal_count, t0 + 1);
         }
 
         #[test]
@@ -194,9 +207,9 @@ mod tests {
             // child triggers catalytic split.
             let mut g = fresh_graph();
             g.observe(32u8, 3u32); // bootstrap split — left child covers [0,128)
-            let n1 = g.gtree.nodes.node_count;
+            let n1 = g.core.gtree.nodes.node_count;
             g.observe(32u8, 3u32); // catalytic split of the left child
-            assert!(g.gtree.nodes.node_count > n1);
+            assert!(g.core.gtree.nodes.node_count > n1);
         }
 
         #[test]
@@ -205,12 +218,12 @@ mod tests {
             // attempt_split on the root is a no-op (early return).
             let mut g = fresh_graph();
             g.observe(64u8, 3u32); // bootstrap — root now has children
-            let n1 = g.gtree.nodes.node_count;
+            let n1 = g.core.gtree.nodes.node_count;
             // Observing the root coordinate again should not double-split the root.
             // A further split (if any) would happen on a child, not the root.
             g.observe(128u8, 3u32); // different half — may split the right child
             // node_count may grow (child splits) but the root is not split again
-            assert!(g.gtree.nodes.node_count >= n1);
+            assert!(g.core.gtree.nodes.node_count >= n1);
         }
 
         #[test]
@@ -220,10 +233,10 @@ mod tests {
             // must be a no-op (it returns immediately).
             let mut g = fresh_graph();
             g.observe(64u8, 3u32); // bootstrap — g_root becomes Internal
-            let root = g.gtree.nodes.root;
-            let n_before = g.gtree.nodes.node_count;
+            let root = g.core.gtree.nodes.root;
+            let n_before = g.core.gtree.nodes.node_count;
             g.attempt_split(root);
-            assert_eq!(g.gtree.nodes.node_count, n_before);
+            assert_eq!(g.core.gtree.nodes.node_count, n_before);
         }
     }
 }

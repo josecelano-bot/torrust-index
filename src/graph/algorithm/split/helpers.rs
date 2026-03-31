@@ -9,7 +9,7 @@ use crate::tree::vtree::VTree;
 
 impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N> {
     pub(super) fn split_candidate_entry(&self, g_id: GNodeId) -> Option<VNodeId> {
-        let g = self.gtree.nodes.get(g_id.index());
+        let g = self.core.gtree.nodes.get(g_id.index());
         if g.left().is_some() || g.right().is_some() {
             return None;
         }
@@ -27,27 +27,39 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
     }
 
     pub(super) fn preprocess_split_parent(&mut self, entry_id: VNodeId) {
-        let p_id = self.vtree.nodes.get(entry_id.index()).parent().unwrap();
-        if !self.vtree.nodes.get(p_id.index()).is_structural_triple() {
+        let p_id = self
+            .core
+            .vtree
+            .nodes
+            .get(entry_id.index())
+            .parent()
+            .unwrap();
+        if !self
+            .core
+            .vtree
+            .nodes
+            .get(p_id.index())
+            .is_structural_triple()
+        {
             return;
         }
 
         let _span = tracing::debug_span!(
             "split_preprocess",
-            p = %Nd(&self.vtree.nodes, p_id),
+            p = %Nd(&self.core.vtree.nodes, p_id),
         )
         .entered();
-        let merged = contract(&mut self.vtree, p_id);
-        let mut queue = ViolationQueue::new(&mut self.vtree.violations);
-        queue.push_side_effect(&self.vtree.nodes, p_id);
-        queue.push_side_effect(&self.vtree.nodes, merged);
-        queue.push_promoted(&self.vtree.nodes, p_id);
+        let merged = contract(&mut self.core.vtree, p_id);
+        let mut queue = ViolationQueue::new(&mut self.core.vtree.violations);
+        queue.push_side_effect(&self.core.vtree.nodes, p_id);
+        queue.push_side_effect(&self.core.vtree.nodes, merged);
+        queue.push_promoted(&self.core.vtree.nodes, p_id);
     }
 
     pub(super) fn allocate_split_children(&mut self, g_id: GNodeId) -> SplitChildren {
-        let (left_id, right_id) = self.gtree.nodes.allocate_children(g_id);
-        let left_entry_id = alloc_v_entry(&mut self.vtree, &mut self.gtree, left_id);
-        let right_entry_id = alloc_v_entry(&mut self.vtree, &mut self.gtree, right_id);
+        let (left_id, right_id) = self.core.gtree.nodes.allocate_children(g_id);
+        let left_entry_id = alloc_v_entry(&mut self.core.vtree, &mut self.core.gtree, left_id);
+        let right_entry_id = alloc_v_entry(&mut self.core.vtree, &mut self.core.gtree, right_id);
 
         SplitChildren {
             left_id,

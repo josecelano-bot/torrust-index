@@ -5,15 +5,15 @@ use crate::traits::{Accumulator, Coordinate, Inspectable, PlateauTracking};
 
 impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N> {
     pub(crate) fn rebalance_vtree(&mut self) -> Vec<GNodeId> {
-        let depth_evict = self.gtree.live_depth_evict;
-        rebalance::rebalance(&mut self.vtree, &mut self.gtree, depth_evict)
+        let depth_evict = self.core.gtree.live_depth_evict;
+        rebalance::rebalance(&mut self.core.vtree, &mut self.core.gtree, depth_evict)
     }
 
     pub(crate) fn handle_legacy_promotes(&mut self, new_gnodes: &[GNodeId]) {
         for &_new_gid in new_gnodes {
-            self.gtree.nodes.node_count += 1;
+            self.core.gtree.nodes.node_count += 1;
 
-            self.gtree.nodes.terminal_count += 1;
+            self.core.gtree.nodes.terminal_count += 1;
         }
         self.plateau_after_legacy_promotes_batched(new_gnodes);
     }
@@ -22,29 +22,29 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
         let Some(budget) = self.config.structural.budget else {
             return;
         };
-        let count = self.gtree.nodes.node_count as usize;
+        let count = self.core.gtree.nodes.node_count as usize;
 
-        let convergence_bound = 2 * (self.gtree.live_depth_create as usize).saturating_sub(1);
-        let required_headroom = self.gtree.headroom.max(convergence_bound);
+        let convergence_bound = 2 * (self.core.gtree.live_depth_create as usize).saturating_sub(1);
+        let required_headroom = self.core.gtree.headroom.max(convergence_bound);
         let soft_limit = budget - required_headroom;
         assert!(
             soft_limit >= 1,
             "soft_limit must be >= 1 (budget={budget}, headroom={required_headroom}, \
              D_c={}, buffer={})",
-            self.gtree.live_depth_create,
-            self.gtree.depth_buffer
+            self.core.gtree.live_depth_create,
+            self.core.gtree.depth_buffer
         );
-        self.gtree.soft_limit = Some(soft_limit);
+        self.core.gtree.soft_limit = Some(soft_limit);
 
         if count > soft_limit {
-            let floor = self.gtree.depth_buffer + 1;
-            if self.gtree.live_depth_evict > floor {
-                self.gtree.live_depth_evict -= 1;
-                self.gtree.live_depth_create =
-                    self.gtree.live_depth_evict - self.gtree.depth_buffer;
+            let floor = self.core.gtree.depth_buffer + 1;
+            if self.core.gtree.live_depth_evict > floor {
+                self.core.gtree.live_depth_evict -= 1;
+                self.core.gtree.live_depth_create =
+                    self.core.gtree.live_depth_evict - self.core.gtree.depth_buffer;
                 tracing::debug!(
-                    new_d_evict = self.gtree.live_depth_evict,
-                    new_d_create = self.gtree.live_depth_create,
+                    new_d_evict = self.core.gtree.live_depth_evict,
+                    new_d_create = self.core.gtree.live_depth_create,
                     count,
                     soft_limit,
                     "depth gates tightened",
@@ -56,12 +56,12 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
             #[allow(clippy::cast_precision_loss)]
             let count_f = count as f64;
             if count_f < threshold {
-                self.gtree.live_depth_evict += 1;
-                self.gtree.live_depth_create =
-                    self.gtree.live_depth_evict - self.gtree.depth_buffer;
+                self.core.gtree.live_depth_evict += 1;
+                self.core.gtree.live_depth_create =
+                    self.core.gtree.live_depth_evict - self.core.gtree.depth_buffer;
                 tracing::debug!(
-                    new_d_evict = self.gtree.live_depth_evict,
-                    new_d_create = self.gtree.live_depth_create,
+                    new_d_evict = self.core.gtree.live_depth_evict,
+                    new_d_create = self.core.gtree.live_depth_create,
                     count,
                     soft_limit,
                     "depth gates relaxed",
@@ -71,8 +71,11 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
     }
 
     pub fn check_evictions(&mut self) -> u32 {
-        let _span = tracing::debug_span!("check_evictions", d_evict = self.gtree.live_depth_evict)
-            .entered();
+        let _span = tracing::debug_span!(
+            "check_evictions",
+            d_evict = self.core.gtree.live_depth_evict
+        )
+        .entered();
         self.evict_candidates(None)
     }
 
@@ -85,10 +88,10 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
     /// `evict_candidates` without nesting.
     fn is_eviction_candidate(&self, v_id: crate::handle::VNodeId) -> bool {
         use crate::nodes::vnode::VKind;
-        if !self.vtree.nodes.is_occupied(v_id.index()) {
+        if !self.core.vtree.nodes.is_occupied(v_id.index()) {
             return false;
         }
-        match &self.vtree.nodes.get(v_id.index()).kind() {
+        match &self.core.vtree.nodes.get(v_id.index()).kind() {
             VKind::Structural { .. } => false,
             VKind::Entry {
                 gnode,
@@ -96,16 +99,17 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
                 ..
             } => {
                 *is_evictable
-                    && *gnode != self.gtree.nodes.root
-                    && self.vtree.depth(v_id) > self.gtree.live_depth_evict
+                    && *gnode != self.core.gtree.nodes.root
+                    && self.core.vtree.depth(v_id) > self.core.gtree.live_depth_evict
             }
         }
     }
 
     fn evict_candidates(&mut self, stop_at: Option<usize>) -> u32 {
         let candidates = self
+            .core
             .vtree
-            .scan_for_candidates(self.gtree.live_depth_evict, self.gtree.nodes.root);
+            .scan_for_candidates(self.core.gtree.live_depth_evict, self.core.gtree.nodes.root);
         let _span =
             tracing::debug_span!("evict_batch", candidate_count = candidates.len(),).entered();
         let mut evicted: u32 = 0;
@@ -127,8 +131,8 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
 
             if tracing::enabled!(tracing::Level::DEBUG) {
                 crate::diagnostics::diagnostic::audit_violations(
-                    &self.vtree.nodes,
-                    &self.vtree.violations,
+                    &self.core.vtree.nodes,
+                    &self.core.vtree.violations,
                     "POST-EVICT",
                 );
             }
@@ -280,7 +284,7 @@ mod tests {
                 if let VKind::Entry { gnode, .. } = n.kind() {
                     if *gnode != g.g_root() {
                         let id = VNodeId::from_index(idx);
-                        let depth = g.vtree.depth(id);
+                        let depth = g.core.vtree.depth(id);
                         if best.is_none_or(|(_, d)| depth > d) {
                             best = Some((id, depth));
                         }
@@ -318,9 +322,10 @@ mod tests {
             g.observe(64u8, 3u32);
             g.observe(32u8, 3u32);
             g.observe(16u8, 3u32); // drive deeper than D_evict=2
-            g.gtree.live_depth_evict = 0;
+            g.core.gtree.live_depth_evict = 0;
             let id = find_non_root_entry(&g);
-            if let VKind::Entry { is_evictable, .. } = g.vtree.nodes.get_mut(id.index()).kind_mut()
+            if let VKind::Entry { is_evictable, .. } =
+                g.core.vtree.nodes.get_mut(id.index()).kind_mut()
             {
                 *is_evictable = true;
             }
@@ -342,16 +347,16 @@ mod tests {
         #[test]
         fn increments_node_and_terminal_counts_per_new_gnode() {
             let mut g: G = GvGraph::new(make_config());
-            let root = g.gtree.nodes.root;
-            let g1 = g.gtree.nodes.allocate_missing_child(root);
-            let n0 = g.gtree.nodes.node_count;
-            let t0 = g.gtree.nodes.terminal_count;
+            let root = g.core.gtree.nodes.root;
+            let g1 = g.core.gtree.nodes.allocate_missing_child(root);
+            let n0 = g.core.gtree.nodes.node_count;
+            let t0 = g.core.gtree.nodes.terminal_count;
 
             let new_gnodes = [g1];
             g.handle_legacy_promotes(&new_gnodes);
 
-            assert_eq!(g.gtree.nodes.node_count, n0 + 1);
-            assert_eq!(g.gtree.nodes.terminal_count, t0 + 1);
+            assert_eq!(g.core.gtree.nodes.node_count, n0 + 1);
+            assert_eq!(g.core.gtree.nodes.terminal_count, t0 + 1);
         }
     }
 }

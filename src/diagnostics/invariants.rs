@@ -24,12 +24,12 @@ fn check_g_i1_summation<C: Coordinate, V: Accumulator + Inspectable, const N: u3
     graph: &GvGraph<C, V, N>,
     errors: &mut Vec<String>,
 ) {
-    for (idx, g) in graph.gtree.nodes.iter_occupied() {
+    for (idx, g) in graph.core.gtree.nodes.iter_occupied() {
         let left_sum = g.left().map_or(0.0, |l| {
-            graph.gtree.nodes.get(l.index()).sum().to_f64_approx()
+            graph.core.gtree.nodes.get(l.index()).sum().to_f64_approx()
         });
         let right_sum = g.right().map_or(0.0, |r| {
-            graph.gtree.nodes.get(r.index()).sum().to_f64_approx()
+            graph.core.gtree.nodes.get(r.index()).sum().to_f64_approx()
         });
         let expected = g.own().to_f64_approx() + left_sum + right_sum;
         let actual = g.sum().to_f64_approx();
@@ -47,7 +47,7 @@ fn check_g_i2_variable_fanout<C: Coordinate, V: Accumulator + Inspectable, const
     graph: &GvGraph<C, V, N>,
     errors: &mut Vec<String>,
 ) {
-    for (idx, g) in graph.gtree.nodes.iter_occupied() {
+    for (idx, g) in graph.core.gtree.nodes.iter_occupied() {
         let count = usize::from(g.left().is_some()) + usize::from(g.right().is_some());
         if count > 2 {
             errors.push(format!(
@@ -61,7 +61,7 @@ fn check_g_i4_entry_consistency<C: Coordinate, V: Accumulator + Inspectable, con
     graph: &GvGraph<C, V, N>,
     errors: &mut Vec<String>,
 ) {
-    for (idx, g) in graph.gtree.nodes.iter_occupied() {
+    for (idx, g) in graph.core.gtree.nodes.iter_occupied() {
         if let Some(v_id) = g.entry() {
             if !graph.vnodes().is_occupied(v_id.index()) {
                 errors.push(format!(
@@ -110,7 +110,7 @@ fn check_g_i5_entry_bijection<C: Coordinate, V: Accumulator + Inspectable, const
 ) {
     let mut g_without_entry = Vec::new();
     let mut g_count = 0usize;
-    for (idx, g) in graph.gtree.nodes.iter_occupied() {
+    for (idx, g) in graph.core.gtree.nodes.iter_occupied() {
         g_count += 1;
         if g.entry().is_none() {
             g_without_entry.push(idx);
@@ -238,14 +238,14 @@ fn check_v_i6_exposed_flag<C: Coordinate, V: Accumulator + Inspectable, const N:
             gnode, is_exposed, ..
         } = &v.kind()
         {
-            if !graph.gtree.nodes.is_occupied(gnode.index()) {
+            if !graph.core.gtree.nodes.is_occupied(gnode.index()) {
                 errors.push(format!(
                     "V-I6 violated at V-node {idx}: backing G-node {} is not occupied",
                     gnode.index()
                 ));
                 continue;
             }
-            let g = graph.gtree.nodes.get(gnode.index());
+            let g = graph.core.gtree.nodes.get(gnode.index());
             let expected = g.uncovered_range().is_some();
             if *is_exposed != expected {
                 errors.push(format!(
@@ -270,10 +270,10 @@ fn check_v_i6b_evictable_flag<C: Coordinate, V: Accumulator + Inspectable, const
             ..
         } = &v.kind()
         {
-            if !graph.gtree.nodes.is_occupied(gnode.index()) {
+            if !graph.core.gtree.nodes.is_occupied(gnode.index()) {
                 continue;
             }
-            let g = graph.gtree.nodes.get(gnode.index());
+            let g = graph.core.gtree.nodes.get(gnode.index());
             let expected = g.is_terminal();
             if *is_evictable != expected {
                 errors.push(format!(
@@ -335,9 +335,10 @@ fn check_clean_accounting<C: Coordinate, V: Accumulator + Inspectable, const N: 
         }
     }
     let g_root_sum = graph
+        .core
         .gtree
         .nodes
-        .get(graph.gtree.nodes.root.index())
+        .get(graph.core.gtree.nodes.root.index())
         .sum()
         .to_f64_approx();
     if total_v != g_root_sum && (total_v - g_root_sum).abs() > 1e-9 {
@@ -361,11 +362,11 @@ fn check_g_parent_links<C: Coordinate, V: Accumulator + Inspectable, const N: u3
     graph: &GvGraph<C, V, N>,
     errors: &mut Vec<String>,
 ) {
-    for (idx, g) in graph.gtree.nodes.iter_occupied() {
+    for (idx, g) in graph.core.gtree.nodes.iter_occupied() {
         let g_id = GNodeId::from_index(idx);
         if let Some(left) = g.left() {
-            if graph.gtree.nodes.is_occupied(left.index()) {
-                let child_parent = graph.gtree.nodes.get(left.index()).parent();
+            if graph.core.gtree.nodes.is_occupied(left.index()) {
+                let child_parent = graph.core.gtree.nodes.get(left.index()).parent();
                 if child_parent != Some(g_id) {
                     errors.push(format!(
                         "G-parent link: G-node {idx}'s left child {}'s parent is {:?}, expected {g_id:?}",
@@ -376,8 +377,8 @@ fn check_g_parent_links<C: Coordinate, V: Accumulator + Inspectable, const N: u3
             }
         }
         if let Some(right) = g.right() {
-            if graph.gtree.nodes.is_occupied(right.index()) {
-                let child_parent = graph.gtree.nodes.get(right.index()).parent();
+            if graph.core.gtree.nodes.is_occupied(right.index()) {
+                let child_parent = graph.core.gtree.nodes.get(right.index()).parent();
                 if child_parent != Some(g_id) {
                     errors.push(format!(
                         "G-parent link: G-node {idx}'s right child {}'s parent is {:?}, expected {g_id:?}",
@@ -462,11 +463,11 @@ fn check_node_count_consistency<C: Coordinate, V: Accumulator + Inspectable, con
     graph: &GvGraph<C, V, N>,
     errors: &mut Vec<String>,
 ) {
-    let actual = graph.gtree.nodes.count();
-    let expected = graph.gtree.nodes.node_count;
+    let actual = graph.core.gtree.nodes.count();
+    let expected = graph.core.gtree.nodes.node_count;
     if actual != expected {
         errors.push(format!(
-            "Node count: graph.gtree.nodes.node_count={expected}, arena count={actual}"
+            "Node count: graph.core.gtree.nodes.node_count={expected}, arena count={actual}"
         ));
     }
 }
@@ -477,15 +478,16 @@ fn check_terminal_count_consistency<C: Coordinate, V: Accumulator + Inspectable,
 ) {
     #[allow(clippy::cast_possible_truncation)]
     let actual = graph
+        .core
         .gtree
         .nodes
         .iter_occupied()
         .filter(|(_, g)| g.is_terminal())
         .count() as u32;
-    let expected = graph.gtree.nodes.terminal_count;
+    let expected = graph.core.gtree.nodes.terminal_count;
     if actual != expected {
         errors.push(format!(
-            "Terminal count: graph.gtree.nodes.terminal_count={expected}, arena walk={actual}"
+            "Terminal count: graph.core.gtree.nodes.terminal_count={expected}, arena walk={actual}"
         ));
     }
 }
@@ -495,10 +497,10 @@ fn check_hard_budget<C: Coordinate, V: Accumulator + Inspectable, const N: u32>(
     errors: &mut Vec<String>,
 ) {
     if let Some(budget) = graph.config().structural.budget {
-        if graph.gtree.nodes.node_count as usize > budget {
+        if graph.core.gtree.nodes.node_count as usize > budget {
             errors.push(format!(
                 "Hard budget violated (ADR-M-018): node_count ({}) > budget ({})",
-                graph.gtree.nodes.node_count, budget
+                graph.core.gtree.nodes.node_count, budget
             ));
         }
     }
@@ -510,7 +512,7 @@ fn check_depth_gate_invariants<C: Coordinate, V: Accumulator + Inspectable, cons
 ) {
     let d_create = graph.depth_create();
     let d_evict = graph.depth_evict();
-    let buffer = graph.gtree.depth_buffer;
+    let buffer = graph.core.gtree.depth_buffer;
 
     if d_create >= d_evict {
         errors.push(format!(
@@ -566,7 +568,7 @@ mod tests {
     #[test]
     fn check_node_count_consistency_reports_mismatch() {
         let mut g: G = GvGraph::new(make_config(None));
-        g.gtree.nodes.node_count += 1;
+        g.core.gtree.nodes.node_count += 1;
 
         let mut errors = Vec::new();
         check_node_count_consistency(&g, &mut errors);
@@ -580,7 +582,7 @@ mod tests {
     #[test]
     fn check_terminal_count_consistency_reports_mismatch() {
         let mut g: G = GvGraph::new(make_config(None));
-        g.gtree.nodes.terminal_count += 1;
+        g.core.gtree.nodes.terminal_count += 1;
 
         let mut errors = Vec::new();
         check_terminal_count_consistency(&g, &mut errors);
@@ -595,7 +597,7 @@ mod tests {
     fn check_v_root_consistency_reports_parented_root() {
         let mut g: G = GvGraph::new(make_config(None));
         let root = g.v_root().expect("fresh graph must have a v_root");
-        g.vtree.nodes.get_mut(root.index()).set_parent(root);
+        g.core.vtree.nodes.get_mut(root.index()).set_parent(root);
 
         let mut errors = Vec::new();
         check_v_root_consistency(&g, &mut errors);
@@ -612,7 +614,7 @@ mod tests {
     fn check_clean_accounting_reports_entry_sum_mismatch() {
         let mut g: G = GvGraph::new(make_config(None));
         let root = g.v_root().expect("fresh graph must have a v_root");
-        g.vtree.nodes.get_mut(root.index()).set_intensity(1);
+        g.core.vtree.nodes.get_mut(root.index()).set_intensity(1);
 
         let mut errors = Vec::new();
         check_clean_accounting(&g, &mut errors);
@@ -628,7 +630,7 @@ mod tests {
     #[test]
     fn check_depth_gate_invariants_reports_invalid_ordering() {
         let mut g: G = GvGraph::new(make_config(None));
-        g.gtree.live_depth_create = g.gtree.live_depth_evict;
+        g.core.gtree.live_depth_create = g.core.gtree.live_depth_evict;
 
         let mut errors = Vec::new();
         check_depth_gate_invariants(&g, &mut errors);
@@ -642,7 +644,7 @@ mod tests {
     #[test]
     fn check_hard_budget_reports_exceeded_budget() {
         let mut g: G = GvGraph::new(make_config(Some(30)));
-        g.gtree.nodes.node_count = 31;
+        g.core.gtree.nodes.node_count = 31;
 
         let mut errors = Vec::new();
         check_hard_budget(&g, &mut errors);
@@ -661,26 +663,31 @@ mod tests {
         g.observe(64u8, 3u32); // create structural V-root and multiple G-nodes
 
         // Break accounting counters.
-        g.gtree.nodes.node_count += 2;
-        g.gtree.nodes.terminal_count += 1;
+        g.core.gtree.nodes.node_count += 2;
+        g.core.gtree.nodes.terminal_count += 1;
 
         // Break depth-gate relation.
-        g.gtree.live_depth_create = g.gtree.live_depth_evict;
+        g.core.gtree.live_depth_create = g.core.gtree.live_depth_evict;
 
         // Break V-root parent consistency.
         let v_root = g.v_root().expect("v_root must exist");
-        g.vtree.nodes.get_mut(v_root.index()).set_parent(v_root);
+        g.core
+            .vtree
+            .nodes
+            .get_mut(v_root.index())
+            .set_parent(v_root);
 
         // Break clean accounting and G-I4/V-I6b-style consistency by mutating
         // one entry's intensity and flags away from its backing G-node state.
         let root_entry = g
+            .core
             .gtree
             .nodes
-            .get(g.gtree.nodes.root.index())
+            .get(g.core.gtree.nodes.root.index())
             .entry()
             .expect("root must have entry");
         {
-            let v = g.vtree.nodes.get_mut(root_entry.index());
+            let v = g.core.vtree.nodes.get_mut(root_entry.index());
             v.set_intensity(999u32);
             if let VKind::Entry {
                 is_exposed,
@@ -695,7 +702,7 @@ mod tests {
 
         // Break structural evictable aggregation flag on the V-root.
         if let VKind::Structural { has_evictable, .. } =
-            g.vtree.nodes.get_mut(v_root.index()).kind_mut()
+            g.core.vtree.nodes.get_mut(v_root.index()).kind_mut()
         {
             *has_evictable = false;
         }
@@ -720,8 +727,9 @@ mod tests {
     #[test]
     fn check_g_i4_entry_consistency_reports_unoccupied_entry_id() {
         let mut g: G = GvGraph::new(make_config(None));
-        let root = g.gtree.nodes.root;
-        g.gtree
+        let root = g.core.gtree.nodes.root;
+        g.core
+            .gtree
             .nodes
             .get_mut(root.index())
             .assign_entry(VNodeId::from_index(9_999));
@@ -739,8 +747,8 @@ mod tests {
     #[test]
     fn check_g_i1_summation_reports_mismatch() {
         let mut g: G = GvGraph::new(make_config(None));
-        let root = g.gtree.nodes.root;
-        g.gtree.nodes.get_mut(root.index()).set_sum(123u32);
+        let root = g.core.gtree.nodes.root;
+        g.core.gtree.nodes.get_mut(root.index()).set_sum(123u32);
 
         let mut errors = Vec::new();
         check_g_i1_summation(&g, &mut errors);
@@ -753,11 +761,12 @@ mod tests {
         let mut g: G = GvGraph::new(make_config(None));
         g.observe(64u8, 3u32);
 
-        let root_gid = g.gtree.nodes.root;
+        let root_gid = g.core.gtree.nodes.root;
         let (child_gid, child_entry) = {
-            let root = g.gtree.nodes.get(root_gid.index());
+            let root = g.core.gtree.nodes.get(root_gid.index());
             let child_gid = root.left().expect("left child should exist after split");
             let child_entry = g
+                .core
                 .gtree
                 .nodes
                 .get(child_gid.index())
@@ -766,12 +775,18 @@ mod tests {
             (child_gid, child_entry)
         };
 
-        if let VKind::Entry { gnode, .. } = g.vtree.nodes.get_mut(child_entry.index()).kind_mut() {
+        if let VKind::Entry { gnode, .. } =
+            g.core.vtree.nodes.get_mut(child_entry.index()).kind_mut()
+        {
             *gnode = GNodeId::from_index(root_gid.index());
         }
 
         let v_root = g.v_root().expect("v_root must exist");
-        g.gtree.nodes.get_mut(root_gid.index()).assign_entry(v_root);
+        g.core
+            .gtree
+            .nodes
+            .get_mut(root_gid.index())
+            .assign_entry(v_root);
 
         let mut errors = Vec::new();
         check_g_i4_entry_consistency(&g, &mut errors);
@@ -791,10 +806,10 @@ mod tests {
     #[test]
     fn check_g_i5_entry_bijection_reports_missing_entry_and_count_mismatch() {
         let mut g: G = GvGraph::new(make_config(None));
-        let root = g.gtree.nodes.root;
-        g.gtree.nodes.get_mut(root.index()).clear_entry();
+        let root = g.core.gtree.nodes.root;
+        g.core.gtree.nodes.get_mut(root.index()).clear_entry();
         let extra = VNode::new_entry(0u32, None, root, true, true);
-        let _ = g.vtree.nodes.alloc(extra);
+        let _ = g.core.vtree.nodes.alloc(extra);
 
         let mut errors = Vec::new();
         check_g_i5_entry_bijection(&g, &mut errors);
@@ -813,11 +828,11 @@ mod tests {
         g.observe(64u8, 3u32);
 
         let v_root = g.v_root().expect("v_root must exist after split");
-        let child = match g.vtree.nodes.get(v_root.index()).kind() {
+        let child = match g.core.vtree.nodes.get(v_root.index()).kind() {
             VKind::Structural { children, .. } => children.get(0).0,
             VKind::Entry { .. } => panic!("expected structural v_root"),
         };
-        g.vtree.nodes.dealloc(child.index());
+        g.core.vtree.nodes.dealloc(child.index());
 
         let mut errors = Vec::new();
         check_v_i1_structural_sum(&g, &mut errors);
@@ -839,7 +854,7 @@ mod tests {
     fn check_v_i6_reports_unoccupied_backing_gnode() {
         let mut g: G = GvGraph::new(make_config(None));
         let root = g.v_root().expect("fresh graph must have v_root");
-        if let VKind::Entry { gnode, .. } = g.vtree.nodes.get_mut(root.index()).kind_mut() {
+        if let VKind::Entry { gnode, .. } = g.core.vtree.nodes.get_mut(root.index()).kind_mut() {
             *gnode = GNodeId::from_index(999);
         }
 
@@ -859,9 +874,10 @@ mod tests {
         g.observe(64u8, 3u32); // ensure multiple occupied vnodes
 
         let root_entry = g
+            .core
             .gtree
             .nodes
-            .get(g.gtree.nodes.root.index())
+            .get(g.core.gtree.nodes.root.index())
             .entry()
             .expect("root must have entry");
         let other_entry = g
@@ -871,7 +887,8 @@ mod tests {
             .find(|id| *id != root_entry)
             .expect("expected a second vnode after split");
 
-        g.vtree
+        g.core
+            .vtree
             .nodes
             .get_mut(other_entry.index())
             .set_parent(root_entry);
@@ -894,7 +911,7 @@ mod tests {
             is_evictable,
             is_exposed,
             ..
-        } = g.vtree.nodes.get_mut(root.index()).kind_mut()
+        } = g.core.vtree.nodes.get_mut(root.index()).kind_mut()
         {
             *is_evictable = true;
             *is_exposed = false;
@@ -916,7 +933,7 @@ mod tests {
         g.observe(64u8, 3u32); // produce structural v-root
         let v_root = g.v_root().expect("v_root must exist");
         if let VKind::Structural { has_evictable, .. } =
-            g.vtree.nodes.get_mut(v_root.index()).kind_mut()
+            g.core.vtree.nodes.get_mut(v_root.index()).kind_mut()
         {
             *has_evictable = false;
         }
@@ -930,9 +947,9 @@ mod tests {
     #[test]
     fn check_depth_gate_invariants_reports_floor_and_buffer_errors() {
         let mut g: G = GvGraph::new(make_config(None));
-        let buffer = g.gtree.depth_buffer;
-        g.gtree.live_depth_evict = buffer;
-        g.gtree.live_depth_create = 1;
+        let buffer = g.core.gtree.depth_buffer;
+        g.core.gtree.live_depth_evict = buffer;
+        g.core.gtree.live_depth_create = 1;
 
         let mut errors = Vec::new();
         check_depth_gate_invariants(&g, &mut errors);

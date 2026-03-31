@@ -42,7 +42,7 @@ pub fn check_plateau_basis_consistency<
 
     for (&key, gnodes) in pb.iter() {
         for &gid in gnodes {
-            if !graph.gtree.nodes.is_occupied(gid.index()) {
+            if !graph.core.gtree.nodes.is_occupied(gid.index()) {
                 errors.push(format!(
                     "Plateau basis: basis element {gid:?} in plateau {key:?} is not a live arena slot"
                 ));
@@ -97,8 +97,16 @@ pub fn check_plateau_sum_consistency<C: Coordinate, V: Accumulator + Inspectable
         let expected: f64 = pb
             .basis_elements(&key)
             .iter()
-            .filter(|&&gid| graph.gtree.nodes.is_occupied(gid.index()))
-            .map(|&gid| graph.gtree.nodes.get(gid.index()).sum().to_f64_approx())
+            .filter(|&&gid| graph.core.gtree.nodes.is_occupied(gid.index()))
+            .map(|&gid| {
+                graph
+                    .core
+                    .gtree
+                    .nodes
+                    .get(gid.index())
+                    .sum()
+                    .to_f64_approx()
+            })
             .sum();
         let actual = plateau.sum.to_f64_approx();
         if expected != actual && (expected - actual).abs() > 1e-9 {
@@ -122,15 +130,15 @@ pub fn check_plateau_depth_consistency<
     let p = graph.plateaus();
     for (&key, plateau) in p.iter() {
         for &gid in pb.basis_elements(&key) {
-            if !graph.gtree.nodes.is_occupied(gid.index()) {
+            if !graph.core.gtree.nodes.is_occupied(gid.index()) {
                 continue;
             }
-            let g = graph.gtree.nodes.get(gid.index());
+            let g = graph.core.gtree.nodes.get(gid.index());
             let g_depth = GTree::<C, V, N>::depth_of_interval(g.lo(), g.hi());
             let expected_depth = match g.state() {
                 GState::Terminal | GState::SemiInternal => g_depth,
                 GState::Internal => {
-                    let Some(d) = graph.gtree.uniform_contour_depth(gid) else {
+                    let Some(d) = graph.core.gtree.uniform_contour_depth(gid) else {
                         errors.push(format!(
                             "Plateau depth: key {key:?}, basis element {gid:?} (Internal): \
                              uniform_contour_depth_of returned None — internal basis \
@@ -173,9 +181,9 @@ fn contour_steps<C: Coordinate, V: Accumulator + Inspectable, const N: u32>(
     graph: &GvGraph<C, V, N>,
 ) -> Vec<(C, u32)> {
     let mut cells: Vec<(C, u32)> = Vec::new();
-    let mut stack = vec![graph.gtree.nodes.root];
+    let mut stack = vec![graph.core.gtree.nodes.root];
     while let Some(gid) = stack.pop() {
-        let g = graph.gtree.nodes.get(gid.index());
+        let g = graph.core.gtree.nodes.get(gid.index());
         let d = GTree::<C, V, N>::depth_of_interval(g.lo(), g.hi());
 
         if is_contour_step_node(g.state()) {
@@ -299,10 +307,10 @@ pub fn check_p_i1_ii_tile_contiguity<C: Coordinate, V: Accumulator + Inspectable
 
         let mut tiles: Vec<(f64, f64)> = Vec::new();
         for &gid in elements {
-            if !graph.gtree.nodes.is_occupied(gid.index()) {
+            if !graph.core.gtree.nodes.is_occupied(gid.index()) {
                 continue;
             }
-            let g = graph.gtree.nodes.get(gid.index());
+            let g = graph.core.gtree.nodes.get(gid.index());
             let (tlo, thi) = tile_of(g);
             tiles.push((tlo.to_f64(), thi.to_f64()));
         }
@@ -371,10 +379,10 @@ pub fn check_p_i1_iii_run_contains_tile<
         let mut min_lo = f64::INFINITY;
         let mut max_hi = f64::NEG_INFINITY;
         for &gid in elements {
-            if !graph.gtree.nodes.is_occupied(gid.index()) {
+            if !graph.core.gtree.nodes.is_occupied(gid.index()) {
                 continue;
             }
-            let g = graph.gtree.nodes.get(gid.index());
+            let g = graph.core.gtree.nodes.get(gid.index());
             let lo = g.lo().to_f64();
             let hi = g.hi().to_f64();
             if lo < min_lo {
@@ -427,17 +435,17 @@ pub fn check_p_i2_basis_minimality<C: Coordinate, V: Accumulator + Inspectable, 
         let expected_depth = plateau.depth;
 
         for &gid in gnodes_list {
-            if !graph.gtree.nodes.is_occupied(gid.index()) {
+            if !graph.core.gtree.nodes.is_occupied(gid.index()) {
                 continue;
             }
-            let g = graph.gtree.nodes.get(gid.index());
+            let g = graph.core.gtree.nodes.get(gid.index());
 
             if g.state() == GState::SemiInternal {
                 continue;
             }
 
             if let Some(parent_id) = g.parent() {
-                if let Some(parent_depth) = graph.gtree.uniform_contour_depth(parent_id) {
+                if let Some(parent_depth) = graph.core.gtree.uniform_contour_depth(parent_id) {
                     if parent_depth == expected_depth {
                         errors.push(format!(
                             "P-I2 minimality: basis element G({}) in plateau {key:?} \
@@ -463,10 +471,10 @@ pub fn check_p_i3_basis_disjointness<C: Coordinate, V: Accumulator + Inspectable
     let mut tiles: Vec<(f64, f64, BasisEdge<C>)> = Vec::new();
     for (&key, gnodes) in pb.iter() {
         for &gid in gnodes {
-            if !graph.gtree.nodes.is_occupied(gid.index()) {
+            if !graph.core.gtree.nodes.is_occupied(gid.index()) {
                 continue;
             }
-            let g = graph.gtree.nodes.get(gid.index());
+            let g = graph.core.gtree.nodes.get(gid.index());
             let (tlo, thi) = tile_of(g);
             tiles.push((tlo.to_f64(), thi.to_f64(), key));
         }
@@ -493,10 +501,10 @@ pub fn check_p_i4_thatch_one_hop<C: Coordinate, V: Accumulator + Inspectable, co
     let pb = graph.plateau_basis();
     for (&key, gnodes) in pb.iter() {
         for &gid in gnodes {
-            if !graph.gtree.nodes.is_occupied(gid.index()) {
+            if !graph.core.gtree.nodes.is_occupied(gid.index()) {
                 continue;
             }
-            let g = graph.gtree.nodes.get(gid.index());
+            let g = graph.core.gtree.nodes.get(gid.index());
             if g.state() != GState::SemiInternal {
                 continue;
             }
@@ -509,7 +517,7 @@ pub fn check_p_i4_thatch_one_hop<C: Coordinate, V: Accumulator + Inspectable, co
                 continue;
             };
 
-            let child_g = graph.gtree.nodes.get(child_id.index());
+            let child_g = graph.core.gtree.nodes.get(child_id.index());
             let child_lo = child_g.lo();
 
             let p = graph.plateaus();
@@ -544,8 +552,8 @@ pub fn check_p_i5_thatch_depth<C: Coordinate, V: Accumulator + Inspectable, cons
     let mut samples: Vec<C> = Vec::new();
     for (_, gnodes) in pb.iter() {
         for &gid in gnodes {
-            if graph.gtree.nodes.is_occupied(gid.index()) {
-                samples.push(graph.gtree.nodes.get(gid.index()).lo());
+            if graph.core.gtree.nodes.is_occupied(gid.index()) {
+                samples.push(graph.core.gtree.nodes.get(gid.index()).lo());
             }
         }
     }
@@ -556,10 +564,10 @@ pub fn check_p_i5_thatch_depth<C: Coordinate, V: Accumulator + Inspectable, cons
         let mut thatch_count = 0u32;
         for (&_key, gnodes) in pb.iter() {
             let covers = gnodes.iter().any(|&gid| {
-                if !graph.gtree.nodes.is_occupied(gid.index()) {
+                if !graph.core.gtree.nodes.is_occupied(gid.index()) {
                     return false;
                 }
-                let g = graph.gtree.nodes.get(gid.index());
+                let g = graph.core.gtree.nodes.get(gid.index());
                 g.lo().total_cmp(x) != std::cmp::Ordering::Greater
                     && x.total_cmp(&g.hi()) == std::cmp::Ordering::Less
             });
@@ -583,9 +591,9 @@ fn route_to_depth<C: Coordinate, V: Accumulator + Inspectable, const N: u32>(
     graph: &GvGraph<C, V, N>,
     x: C,
 ) -> u32 {
-    let mut cur = graph.gtree.nodes.root;
+    let mut cur = graph.core.gtree.nodes.root;
     for _ in 0..=N + 1 {
-        let g = graph.gtree.nodes.get(cur.index());
+        let g = graph.core.gtree.nodes.get(cur.index());
         if g.is_terminal() {
             return GTree::<C, V, N>::depth_of_interval(g.lo(), g.hi());
         }
@@ -600,7 +608,7 @@ fn route_to_depth<C: Coordinate, V: Accumulator + Inspectable, const N: u32>(
             None => return GTree::<C, V, N>::depth_of_interval(g.lo(), g.hi()),
         }
     }
-    let g = graph.gtree.nodes.get(cur.index());
+    let g = graph.core.gtree.nodes.get(cur.index());
     GTree::<C, V, N>::depth_of_interval(g.lo(), g.hi())
 }
 

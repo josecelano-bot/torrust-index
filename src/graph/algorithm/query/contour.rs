@@ -50,7 +50,7 @@ impl<C: DiscreteCoordinate, V: Accumulator + Proratable, const N: u32> GvGraph<C
         range: CoordinateRange<C>,
         basis: &mut Vec<BasisElement<C, V>>,
     ) {
-        let g = self.gtree.nodes.get(gid.index());
+        let g = self.core.gtree.nodes.get(gid.index());
 
         // Case 1: Out-of-range — the query interval does not overlap this node.
         if !range.overlaps(g.lo(), g.hi()) {
@@ -122,7 +122,7 @@ impl<C: DiscreteCoordinate, V: Accumulator + Proratable + Inspectable, const N: 
 
         let mut basis = Vec::new();
         self.decompose_basis(
-            self.gtree.nodes.root,
+            self.core.gtree.nodes.root,
             CoordinateRange::new(start.0, end.0),
             &mut basis,
         );

@@ -15,8 +15,8 @@ impl<C: Coordinate, V: Accumulator, const N: u32> GvGraph<C, V, N> {
 
         let clamped = Self::clamp_to_domain(coord);
 
-        let g_id = self.gtree.nodes.route_to(clamped);
-        let g = self.gtree.nodes.get(g_id.index());
+        let g_id = self.core.gtree.nodes.route_to(clamped);
+        let g = self.core.gtree.nodes.get(g_id.index());
 
         let (start, end) = Self::trimmed_interval(g, clamped);
 

@@ -71,14 +71,16 @@ mod tests {
             let mut g = fresh_graph();
             g.observe(64u8, 3u32); // delta > split_threshold=2 → triggers split
 
-            let root = g.gtree.nodes.root;
+            let root = g.core.gtree.nodes.root;
             let left_child = g
+                .core
                 .gtree
                 .nodes
                 .get(root.index())
                 .left()
                 .expect("root must have left child after split");
             let left_entry = g
+                .core
                 .gtree
                 .nodes
                 .get(left_child.index())
@@ -100,14 +102,16 @@ mod tests {
             let mut g = fresh_graph();
             g.observe(64u8, 3u32);
 
-            let root = g.gtree.nodes.root;
+            let root = g.core.gtree.nodes.root;
             let right_child = g
+                .core
                 .gtree
                 .nodes
                 .get(root.index())
                 .right()
                 .expect("root must have right child after split");
             let right_entry = g
+                .core
                 .gtree
                 .nodes
                 .get(right_child.index())
@@ -431,7 +435,7 @@ mod tests {
             let mut basis = Vec::new();
             // Root interval is [0, 255), so [255, 255) has no overlap.
             g.decompose_basis(
-                g.gtree.nodes.root,
+                g.core.gtree.nodes.root,
                 CoordinateRange::new(255u8, 255u8),
                 &mut basis,
             );
@@ -447,7 +451,7 @@ mod tests {
             let g = fresh_graph();
             let mut basis = Vec::new();
             g.decompose_basis(
-                g.gtree.nodes.root,
+                g.core.gtree.nodes.root,
                 CoordinateRange::new(0u8, 100u8),
                 &mut basis,
             );
@@ -465,7 +469,7 @@ mod tests {
             let g = fresh_graph();
             let mut basis = Vec::new();
             g.decompose_basis(
-                g.gtree.nodes.root,
+                g.core.gtree.nodes.root,
                 CoordinateRange::new(128u8, 200u8),
                 &mut basis,
             );
@@ -481,14 +485,16 @@ mod tests {
             // Create two children under root.
             g.observe(64u8, 3u32);
 
-            let root = g.gtree.nodes.root;
+            let root = g.core.gtree.nodes.root;
             let evict_child = g
+                .core
                 .gtree
                 .nodes
                 .get(root.index())
                 .left()
                 .expect("root must have left child after split");
             let evict_entry = g
+                .core
                 .gtree
                 .nodes
                 .get(evict_child.index())

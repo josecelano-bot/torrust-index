@@ -1,5 +1,6 @@
 use crate::arena::Arena;
 use crate::graph::algorithm::plateau::noop_tracker::NoopPlateauTracker;
+use crate::graph::core::GvCore;
 use crate::handle::{GNodeId, VNodeId};
 use crate::nodes::gnode::{GNode, GNodeChildren};
 use crate::nodes::vnode::VNode;
@@ -54,9 +55,7 @@ pub struct GvGraph<
     const N: u32,
     T: PlateauTracking<C, V> = DefaultTracker<C, V>,
 > {
-    pub(crate) gtree: GTree<C, V, N>,
-
-    pub(crate) vtree: VTree<V>,
+    pub(crate) core: GvCore<C, V, N>,
 
     pub(crate) config: Config<V>,
 
@@ -73,8 +72,8 @@ impl<
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("GvGraph")
-            .field("gtree", &self.gtree)
-            .field("vtree", &self.vtree)
+            .field("gtree", &self.core.gtree)
+            .field("vtree", &self.core.vtree)
             .field("config", &self.config)
             .field("tracker", &self.tracker)
             .finish()
@@ -86,8 +85,7 @@ impl<C: Coordinate, V: Accumulator, const N: u32, T: PlateauTracking<C, V> + Clo
 {
     fn clone(&self) -> Self {
         Self {
-            gtree: self.gtree.clone(),
-            vtree: self.vtree.clone(),
+            core: self.core.clone(),
             config: self.config.clone(),
             tracker: self.tracker.clone(),
         }
@@ -96,10 +94,10 @@ impl<C: Coordinate, V: Accumulator, const N: u32, T: PlateauTracking<C, V> + Clo
 
 /// Shared constructor helper — builds all tree structures except the tracker.
 ///
-/// Returns `(gtree, vtree, config, g_root)`.
+/// Returns `(core, config, g_root)`.
 fn build_core<C: Coordinate, V: Accumulator, const N: u32>(
     config: Config<V>,
-) -> (GTree<C, V, N>, VTree<V>, Config<V>, GNodeId) {
+) -> (GvCore<C, V, N>, Config<V>, GNodeId) {
     const { assert!(N <= C::BITS, "N must be <= C::BITS") };
     config.validate();
 
@@ -145,7 +143,7 @@ fn build_core<C: Coordinate, V: Accumulator, const N: u32>(
         nodes: vnode_tree,
         violations: Vec::new(),
     };
-    (gtree, vtree, config, g_root)
+    (GvCore { gtree, vtree }, config, g_root)
 }
 
 // ── Constructor for NoopPlateauTracker ────────────────────────────────────────
@@ -158,10 +156,9 @@ impl<C: Coordinate, V: Accumulator, const N: u32> GvGraph<C, V, N, NoopPlateauTr
     #[cfg(not(feature = "dynamic-contour-tracking"))]
     #[must_use]
     pub fn new(config: Config<V>) -> Self {
-        let (gtree, vtree, config, _g_root) = build_core::<C, V, N>(config);
+        let (core, config, _g_root) = build_core::<C, V, N>(config);
         Self {
-            gtree,
-            vtree,
+            core,
             config,
             tracker: NoopPlateauTracker,
         }
@@ -185,7 +182,7 @@ impl<C: Coordinate, V: Accumulator, const N: u32>
         use crate::spatial::plateau::BasisEdge;
         use crate::tree::gtree::GTree;
 
-        let (gtree, vtree, config, g_root) = build_core::<C, V, N>(config);
+        let (core, config, g_root) = build_core::<C, V, N>(config);
 
         let root_key = BasisEdge(C::zero());
         let root_depth = GTree::<C, V, N>::depth_of_interval(C::zero(), C::domain_max(N));
@@ -199,8 +196,7 @@ impl<C: Coordinate, V: Accumulator, const N: u32>
         );
 
         Self {
-            gtree,
-            vtree,
+            core,
             config,
             tracker,
         }
@@ -214,13 +210,13 @@ impl<C: Coordinate, V: Accumulator, const N: u32, T: PlateauTracking<C, V>> GvGr
     #[must_use]
     #[inline]
     pub const fn node_count(&self) -> u32 {
-        self.gtree.nodes.node_count
+        self.core.gtree.nodes.node_count
     }
 
     #[must_use]
     #[inline]
     pub const fn terminal_count(&self) -> u32 {
-        self.gtree.nodes.terminal_count
+        self.core.gtree.nodes.terminal_count
     }
 
     #[must_use]
@@ -238,80 +234,84 @@ impl<C: Coordinate, V: Accumulator, const N: u32, T: PlateauTracking<C, V>> GvGr
     #[must_use]
     #[inline]
     pub const fn g_root(&self) -> GNodeId {
-        self.gtree.nodes.root
+        self.core.gtree.nodes.root
     }
 
     #[must_use]
     #[inline]
     pub(crate) const fn v_root(&self) -> Option<VNodeId> {
-        self.vtree.nodes.root
+        self.core.vtree.nodes.root
     }
 
     #[must_use]
     #[inline]
     pub fn total_sum(&self) -> V {
-        self.gtree.nodes.get(self.gtree.nodes.root.index()).sum()
+        self.core
+            .gtree
+            .nodes
+            .get(self.core.gtree.nodes.root.index())
+            .sum()
     }
 
     #[must_use]
     #[inline]
     pub(crate) const fn vnodes(&self) -> &VNodeTree<V> {
-        &self.vtree.nodes
+        &self.core.vtree.nodes
     }
 
     #[cfg(test)]
     #[must_use]
     #[inline]
     pub(crate) fn has_pending_violations(&self) -> bool {
-        !self.vtree.violations.is_empty()
+        !self.core.vtree.violations.is_empty()
     }
 
     #[must_use]
     #[inline]
     pub const fn depth_evict(&self) -> u32 {
-        self.gtree.live_depth_evict
+        self.core.gtree.live_depth_evict
     }
 
     #[must_use]
     #[inline]
     pub const fn depth_create(&self) -> u32 {
-        self.gtree.live_depth_create
+        self.core.gtree.live_depth_create
     }
 
     #[must_use]
     #[inline]
     pub const fn depth_buffer(&self) -> u32 {
-        self.gtree.depth_buffer
+        self.core.gtree.depth_buffer
     }
 
     #[must_use]
     #[inline]
     pub const fn headroom(&self) -> usize {
-        self.gtree.headroom
+        self.core.gtree.headroom
     }
 
     #[allow(clippy::doc_markdown)]
     #[must_use]
     #[inline]
     pub const fn soft_limit(&self) -> Option<usize> {
-        self.gtree.soft_limit
+        self.core.gtree.soft_limit
     }
 
     #[must_use]
     #[inline]
     #[allow(dead_code)]
     pub(crate) fn gnode_depth(&self, gid: GNodeId) -> u32 {
-        let g = self.gtree.nodes.get(gid.index());
+        let g = self.core.gtree.nodes.get(gid.index());
         GTree::<C, V, N>::depth_of_interval(g.lo(), g.hi())
     }
 
     // ── Queries ────────────────────────────────────────────────────────
     #[must_use]
     pub fn gnode_info(&self, id: GNodeId) -> Option<Node<C, V>> {
-        if !self.gtree.nodes.is_occupied(id.index()) {
+        if !self.core.gtree.nodes.is_occupied(id.index()) {
             return None;
         }
-        let g = self.gtree.nodes.get(id.index());
+        let g = self.core.gtree.nodes.get(id.index());
         Some(Node {
             start: g.lo(),
             end: g.hi(),
@@ -327,10 +327,10 @@ impl<C: Coordinate, V: Accumulator, const N: u32, T: PlateauTracking<C, V>> GvGr
     #[doc(hidden)]
     #[must_use]
     pub fn gnode_children(&self, id: GNodeId) -> Option<GNodeChildren> {
-        if !self.gtree.nodes.is_occupied(id.index()) {
+        if !self.core.gtree.nodes.is_occupied(id.index()) {
             return None;
         }
-        let g = self.gtree.nodes.get(id.index());
+        let g = self.core.gtree.nodes.get(id.index());
         Some(GNodeChildren {
             left: g.left(),
             right: g.right(),
@@ -339,13 +339,13 @@ impl<C: Coordinate, V: Accumulator, const N: u32, T: PlateauTracking<C, V>> GvGr
 
     #[must_use]
     pub fn is_ancestor_of(&self, ancestor: GNodeId, descendant: GNodeId) -> bool {
-        if !self.gtree.nodes.is_occupied(ancestor.index())
-            || !self.gtree.nodes.is_occupied(descendant.index())
+        if !self.core.gtree.nodes.is_occupied(ancestor.index())
+            || !self.core.gtree.nodes.is_occupied(descendant.index())
         {
             return false;
         }
-        let a = self.gtree.nodes.get(ancestor.index());
-        let d = self.gtree.nodes.get(descendant.index());
+        let a = self.core.gtree.nodes.get(ancestor.index());
+        let d = self.core.gtree.nodes.get(descendant.index());
         a.lo() <= d.lo() && a.hi() >= d.hi() && (a.lo() != d.lo() || a.hi() != d.hi())
     }
 }
@@ -374,13 +374,13 @@ mod tests {
         #[test]
         fn starts_with_one_node() {
             let g = GvGraph::<u8, u32, 8>::new(make_config());
-            assert_eq!(g.gtree.nodes.node_count, 1);
+            assert_eq!(g.core.gtree.nodes.node_count, 1);
         }
 
         #[test]
         fn starts_with_one_terminal() {
             let g = GvGraph::<u8, u32, 8>::new(make_config());
-            assert_eq!(g.gtree.nodes.terminal_count, 1);
+            assert_eq!(g.core.gtree.nodes.terminal_count, 1);
         }
 
         #[test]
@@ -397,13 +397,13 @@ mod tests {
         #[test]
         fn returns_some_for_root() {
             let g = GvGraph::<u8, u32, 8>::new(make_config());
-            assert!(g.gnode_info(g.gtree.nodes.root).is_some());
+            assert!(g.gnode_info(g.core.gtree.nodes.root).is_some());
         }
 
         #[test]
         fn root_covers_full_domain() {
             let g = GvGraph::<u8, u32, 8>::new(make_config());
-            let info = g.gnode_info(g.gtree.nodes.root).unwrap();
+            let info = g.gnode_info(g.core.gtree.nodes.root).unwrap();
             use crate::traits::Coordinate;
             assert_eq!(info.start, u8::zero());
             assert_eq!(info.end, u8::domain_max(8));
@@ -413,14 +413,14 @@ mod tests {
         fn root_is_terminal_at_start() {
             use crate::nodes::gnode::GState;
             let g = GvGraph::<u8, u32, 8>::new(make_config());
-            let info = g.gnode_info(g.gtree.nodes.root).unwrap();
+            let info = g.gnode_info(g.core.gtree.nodes.root).unwrap();
             assert_eq!(info.state, GState::Terminal);
         }
 
         #[test]
         fn root_is_root_node() {
             let g = GvGraph::<u8, u32, 8>::new(make_config());
-            let info = g.gnode_info(g.gtree.nodes.root).unwrap();
+            let info = g.gnode_info(g.core.gtree.nodes.root).unwrap();
             assert!(info.is_root());
         }
 
@@ -441,7 +441,7 @@ mod tests {
         #[test]
         fn root_has_no_children_initially() {
             let g = GvGraph::<u8, u32, 8>::new(make_config());
-            let ch = g.gnode_children(g.gtree.nodes.root).unwrap();
+            let ch = g.gnode_children(g.core.gtree.nodes.root).unwrap();
             assert!(ch.left.is_none());
             assert!(ch.right.is_none());
         }
@@ -463,7 +463,7 @@ mod tests {
         #[test]
         fn node_is_not_ancestor_of_itself() {
             let g = GvGraph::<u8, u32, 8>::new(make_config());
-            assert!(!g.is_ancestor_of(g.gtree.nodes.root, g.gtree.nodes.root));
+            assert!(!g.is_ancestor_of(g.core.gtree.nodes.root, g.core.gtree.nodes.root));
         }
 
         #[test]
@@ -471,7 +471,7 @@ mod tests {
             let g = GvGraph::<u8, u32, 8>::new(make_config());
             use crate::handle::GNodeId;
             let unoccupied = GNodeId::from_index(999);
-            assert!(!g.is_ancestor_of(unoccupied, g.gtree.nodes.root));
+            assert!(!g.is_ancestor_of(unoccupied, g.core.gtree.nodes.root));
         }
     }
 
@@ -494,7 +494,7 @@ mod tests {
         #[test]
         fn depth_buffer_is_evict_minus_create() {
             let g = GvGraph::<u8, u32, 8>::new(make_config());
-            assert_eq!(g.gtree.depth_buffer, 2);
+            assert_eq!(g.core.gtree.depth_buffer, 2);
         }
 
         #[test]
@@ -502,7 +502,7 @@ mod tests {
             // depth_buffer = depth_evict(5) - depth_create(3) = 2
             // headroom = 3^(buffer+1) = 3^3 = 27
             let g = GvGraph::<u8, u32, 8>::new(make_config());
-            assert_eq!(g.gtree.headroom, 27);
+            assert_eq!(g.core.gtree.headroom, 27);
         }
 
         #[test]
@@ -514,7 +514,7 @@ mod tests {
         #[test]
         fn soft_limit_is_none_without_budget() {
             let g = GvGraph::<u8, u32, 8>::new(make_config());
-            assert!(g.gtree.soft_limit.is_none());
+            assert!(g.core.gtree.soft_limit.is_none());
         }
 
         #[test]
@@ -583,9 +583,10 @@ mod tests {
             let g = GvGraph::<u8, u32, 8>::new(make_config());
             // Fresh graph root is Terminal
             let result = g
+                .core
                 .gtree
                 .nodes
-                .uniform_contour_depth_of(g.gtree.nodes.root, 8);
+                .uniform_contour_depth_of(g.core.gtree.nodes.root, 8);
             assert!(result.is_some());
         }
 
@@ -594,12 +595,20 @@ mod tests {
             let mut g = GvGraph::<u8, u32, 8>::new(make_config());
             // Manually give the root a single (fake) left child → SemiInternal
             let fake_child = GNodeId::from_index(999);
-            let root = g.gtree.nodes.root;
-            g.gtree.nodes.get_mut(root.index()).link_left(fake_child);
-            let result = g.gtree.nodes.uniform_contour_depth_of(root, 8);
+            let root = g.core.gtree.nodes.root;
+            g.core
+                .gtree
+                .nodes
+                .get_mut(root.index())
+                .link_left(fake_child);
+            let result = g.core.gtree.nodes.uniform_contour_depth_of(root, 8);
             assert_eq!(result, None);
             // Restore so subsequent arena operations are not corrupted
-            g.gtree.nodes.get_mut(root.index()).clear_child(fake_child);
+            g.core
+                .gtree
+                .nodes
+                .get_mut(root.index())
+                .clear_child(fake_child);
         }
 
         #[test]
@@ -625,9 +634,10 @@ mod tests {
             // left=[0,127) width=127 depth=2, right=[127,255] width=128 depth=1 → mismatch → None
             g.observe(64u8, 3u32);
             let result = g
+                .core
                 .gtree
                 .nodes
-                .uniform_contour_depth_of(g.gtree.nodes.root, 8);
+                .uniform_contour_depth_of(g.core.gtree.nodes.root, 8);
             assert_eq!(result, None);
         }
     }

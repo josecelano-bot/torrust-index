@@ -12,18 +12,18 @@ impl<C: Coordinate, V: Accumulator + Weighable, const N: u32> GvGraph<C, V, N> {
     ) -> Option<crate::spatial::view::Cell<C, V>> {
         use crate::nodes::vnode::VKind;
 
-        let v_root = self.vtree.nodes.root?;
-        let root_node = self.vtree.nodes.get(v_root.index());
+        let v_root = self.core.vtree.nodes.root?;
+        let root_node = self.core.vtree.nodes.get(v_root.index());
         if root_node.intensity() == V::zero() {
             return None;
         }
 
         let mut current = v_root;
         loop {
-            let vnode = self.vtree.nodes.get(current.index());
+            let vnode = self.core.vtree.nodes.get(current.index());
             match &vnode.kind() {
                 VKind::Entry { gnode, .. } => {
-                    let g = self.gtree.nodes.get(gnode.index());
+                    let g = self.core.gtree.nodes.get(gnode.index());
                     let (start, end) = Self::uncovered_interval(g);
                     return Some(crate::spatial::view::Cell {
                         start,

@@ -31,9 +31,9 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32, T: PlateauTracki
         use crate::spatial::plateau::basis_edge_of;
 
         let mut basis: Vec<(BasisEdge<C>, u32, C, C, V)> = Vec::new();
-        let mut stack = vec![self.gtree.nodes.root];
+        let mut stack = vec![self.core.gtree.nodes.root];
         while let Some(gid) = stack.pop() {
-            let g = self.gtree.nodes.get(gid.index());
+            let g = self.core.gtree.nodes.get(gid.index());
             match g.state() {
                 GState::Terminal => {
                     let depth = GTree::<C, V, N>::depth_of_interval(g.lo(), g.hi());
@@ -51,7 +51,7 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32, T: PlateauTracki
                     }
                 }
                 GState::Internal => {
-                    if let Some(ud) = self.gtree.uniform_contour_depth(gid) {
+                    if let Some(ud) = self.core.gtree.uniform_contour_depth(gid) {
                         basis.push((basis_edge_of(g), ud, g.lo(), g.hi(), g.sum()));
                     } else {
                         if let Some(left) = g.left() {

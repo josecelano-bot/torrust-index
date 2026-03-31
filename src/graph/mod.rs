@@ -1,5 +1,6 @@
 pub mod algorithm;
 pub mod config;
+pub mod core;
 mod gv_graph;
 pub mod traits;
 

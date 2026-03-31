@@ -113,7 +113,7 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
         )
         .entered();
 
-        let gnode_id = match &self.vtree.nodes.get(v_id.index()).kind() {
+        let gnode_id = match &self.core.vtree.nodes.get(v_id.index()).kind() {
             VKind::Entry {
                 gnode,
                 is_evictable,
@@ -134,11 +134,12 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
         span.record("gnode", gnode_id.index());
 
         assert_ne!(
-            gnode_id, self.gtree.nodes.root,
+            gnode_id, self.core.gtree.nodes.root,
             "evict_tip: cannot evict the G-root"
         );
 
         let parent_id = self
+            .core
             .gtree
             .nodes
             .get(gnode_id.index())
@@ -149,10 +150,11 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
         // ── Phase 1: G-tree restructuring ───────────────────────────────────────
         // Absorb the evicted child's sum into the parent's own weight, detach
         // the child slot, and recompute the parent sum invariant.
-        let parent_sum_before = self.gtree.nodes.get(parent_id.index()).sum();
-        self.gtree.nodes.merge_into_parent(gnode_id);
+        let parent_sum_before = self.core.gtree.nodes.get(parent_id.index()).sum();
+        self.core.gtree.nodes.merge_into_parent(gnode_id);
         debug_assert!(
             (self
+                .core
                 .gtree
                 .nodes
                 .get(parent_id.index())
@@ -163,7 +165,8 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
                 < 1e-9,
             "evict_tip: G-sum invariant violation after absorption: \
          recomputed={}, expected={}",
-            self.gtree
+            self.core
+                .gtree
                 .nodes
                 .get(parent_id.index())
                 .sum()
@@ -174,7 +177,7 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
         // Capture the parent's post-eviction state here: G-tree structure will
         // not change further through the V-tree phases below.
         let parent_snapshot = {
-            let pg = self.gtree.nodes.get(parent_id.index());
+            let pg = self.core.gtree.nodes.get(parent_id.index());
             ParentSnapshot {
                 state: pg.state(),
                 lo: pg.lo(),
@@ -186,50 +189,53 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
         // The parent's `own` changed; push its new intensity up the V-tree and
         // requeue any nodes that are now violated.
         let p_entry_id = self
+            .core
             .gtree
             .nodes
             .get(parent_id.index())
             .entry()
             .expect("evict_tip: parent must have V-entry (has dependents)");
         {
-            let p_own = self.gtree.nodes.get(parent_id.index()).own();
-            self.vtree
+            let p_own = self.core.gtree.nodes.get(parent_id.index()).own();
+            self.core
+                .vtree
                 .nodes
                 .get_mut(p_entry_id.index())
                 .set_intensity(p_own);
-            self.vtree.sync_intensity(p_entry_id, p_own);
-            self.vtree.propagate_sums(p_entry_id);
+            self.core.vtree.sync_intensity(p_entry_id, p_own);
+            self.core.vtree.propagate_sums(p_entry_id);
 
             let mut check_id = Some(p_entry_id);
             while let Some(id) = check_id {
-                if rebalance::is_violated(&self.vtree.nodes, id) {
-                    self.vtree.push_violation(id);
+                if rebalance::is_violated(&self.core.vtree.nodes, id) {
+                    self.core.vtree.push_violation(id);
                 }
-                check_id = self.vtree.nodes.get(id.index()).parent();
+                check_id = self.core.vtree.nodes.get(id.index()).parent();
             }
         }
 
         // ── Phase 3: Evictable / exposed flag propagation ────────────────────────
         {
-            let p = self.gtree.nodes.get(parent_id.index());
+            let p = self.core.gtree.nodes.get(parent_id.index());
             let parent_is_exposed = p.uncovered_range().is_some();
             let parent_is_evictable = p.is_terminal();
             let p_entry_id = p
                 .entry()
                 .expect("evict_tip: parent must have V-entry (has dependents)");
-            self.vtree
+            self.core
+                .vtree
                 .set_entry_flags(p_entry_id, parent_is_exposed, parent_is_evictable);
-            self.vtree.propagate_evictable(p_entry_id);
+            self.core.vtree.propagate_evictable(p_entry_id);
         }
 
         // ── Phase 4–6: Capture V-topology, remove leaf, push violations ─────
         // Topology must be captured before removal; violations are pushed after.
-        let removal_ctx = classify_leaf_removal(&self.vtree.nodes, v_id);
+        let removal_ctx = classify_leaf_removal(&self.core.vtree.nodes, v_id);
 
-        self.vtree.remove_leaf(&mut self.gtree, v_id);
+        self.core.vtree.remove_leaf(&mut self.core.gtree, v_id);
 
-        let mut queue = ViolationQueue::new(&mut self.vtree.violations);
-        push_eviction_violations(&self.vtree.nodes, v_id, &removal_ctx, &mut queue);
+        let mut queue = ViolationQueue::new(&mut self.core.vtree.violations);
+        push_eviction_violations(&self.core.vtree.nodes, v_id, &removal_ctx, &mut queue);
 
         // ── Phase 7: Debug audit for missed violations ───────────────────────
         if tracing::enabled!(tracing::Level::ERROR) {
@@ -239,13 +245,13 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
                 collapse_sibling: removal_ctx.collapse_sibling,
             };
             let missed = crate::diagnostics::diagnostic::audit_violations(
-                &self.vtree.nodes,
-                &self.vtree.violations,
+                &self.core.vtree.nodes,
+                &self.core.vtree.violations,
                 "POST-EVICT",
             );
             for v in missed {
                 crate::diagnostics::diagnostic::diagnose_missed_violation_in_tree(
-                    &self.vtree,
+                    &self.core.vtree,
                     v,
                     &ctx,
                 );
@@ -253,11 +259,11 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
         }
 
         // ── Phase 8: Dealloc evicted node and update counts ──────────────────────
-        self.gtree.nodes.dealloc(gnode_id.index());
-        self.gtree.nodes.node_count -= 1;
-        self.gtree.nodes.terminal_count -= 1;
-        if self.gtree.nodes.get(parent_id.index()).is_terminal() {
-            self.gtree.nodes.terminal_count += 1;
+        self.core.gtree.nodes.dealloc(gnode_id.index());
+        self.core.gtree.nodes.node_count -= 1;
+        self.core.gtree.nodes.terminal_count -= 1;
+        if self.core.gtree.nodes.get(parent_id.index()).is_terminal() {
+            self.core.gtree.nodes.terminal_count += 1;
         }
 
         // ── Phase 9: Plateau mirror update ───────────────────────────────────────
@@ -326,8 +332,9 @@ mod tests {
             // v_root is None on a fresh graph — scan returns nothing
             let g: G = GvGraph::new(make_config());
             let candidates = g
+                .core
                 .vtree
-                .scan_for_candidates(g.gtree.live_depth_evict, g.gtree.nodes.root);
+                .scan_for_candidates(g.core.gtree.live_depth_evict, g.core.gtree.nodes.root);
             assert!(candidates.is_empty());
         }
 
@@ -338,8 +345,9 @@ mod tests {
             let mut g: G = GvGraph::new(make_config());
             g.observe(64u8, 3u32); // triggers bootstrap split
             let candidates = g
+                .core
                 .vtree
-                .scan_for_candidates(g.gtree.live_depth_evict, g.gtree.nodes.root);
+                .scan_for_candidates(g.core.gtree.live_depth_evict, g.core.gtree.nodes.root);
             assert!(candidates.is_empty());
         }
 
@@ -351,8 +359,9 @@ mod tests {
             g.observe(32u8, 3u32);
             g.observe(192u8, 3u32);
             let candidates = g
+                .core
                 .vtree
-                .scan_for_candidates(g.gtree.live_depth_evict, g.gtree.nodes.root);
+                .scan_for_candidates(g.core.gtree.live_depth_evict, g.core.gtree.nodes.root);
             // entries at depth 2 are not > live_depth_evict=2 → empty
             assert!(candidates.is_empty());
         }
@@ -370,7 +379,7 @@ mod tests {
                 g.observe(i.wrapping_mul(13), 3u32);
             }
             // The eviction mechanism must keep the graph alive (no panic).
-            assert!(g.gtree.nodes.node_count >= 1);
+            assert!(g.core.gtree.nodes.node_count >= 1);
         }
 
         #[test]

@@ -619,26 +619,26 @@ mod tests {
             let mut g = fresh();
             g.observe(64u8, 2u32); // no split: root entry has no parent
             let c = g.v_root().expect("v_root must exist");
-            g.vtree.violations.clear();
-            let depth_evict = g.gtree.live_depth_evict;
+            g.core.vtree.violations.clear();
+            let depth_evict = g.core.gtree.live_depth_evict;
             let mut tree = VTreeMutContext {
-                vtree: &mut g.vtree,
+                vtree: &mut g.core.vtree,
             };
-            let result = resolve(&mut tree, &mut g.gtree, c, depth_evict);
+            let result = resolve(&mut tree, &mut g.core.gtree, c, depth_evict);
             assert!(result.is_none());
-            assert!(g.vtree.violations.is_empty());
+            assert!(g.core.vtree.violations.is_empty());
         }
 
         #[test]
         fn rebalance_skips_destroyed_queue_nodes() {
             let mut g = fresh();
             g.observe(64u8, 3u32); // ensure non-empty tree
-            g.vtree.violations.push(VNodeId::from_index(9999));
-            let depth_evict = g.gtree.live_depth_evict;
+            g.core.vtree.violations.push(VNodeId::from_index(9999));
+            let depth_evict = g.core.gtree.live_depth_evict;
 
-            let new_nodes = rebalance(&mut g.vtree, &mut g.gtree, depth_evict);
+            let new_nodes = rebalance(&mut g.core.vtree, &mut g.core.gtree, depth_evict);
             assert!(new_nodes.is_empty());
-            assert!(g.vtree.violations.is_empty());
+            assert!(g.core.vtree.violations.is_empty());
         }
 
         #[test]
@@ -647,12 +647,12 @@ mod tests {
             g.observe(64u8, 3u32); // establish a structural root
             let v_root = g.v_root().expect("v_root must exist");
             // Root has no uncle relation and should not be violated.
-            g.vtree.violations.push(v_root);
-            let depth_evict = g.gtree.live_depth_evict;
+            g.core.vtree.violations.push(v_root);
+            let depth_evict = g.core.gtree.live_depth_evict;
 
-            let new_nodes = rebalance(&mut g.vtree, &mut g.gtree, depth_evict);
+            let new_nodes = rebalance(&mut g.core.vtree, &mut g.core.gtree, depth_evict);
             assert!(new_nodes.is_empty());
-            assert!(g.vtree.violations.is_empty());
+            assert!(g.core.vtree.violations.is_empty());
         }
 
         #[test]

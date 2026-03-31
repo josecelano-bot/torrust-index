@@ -26,7 +26,7 @@ fn assert_invariants_succeeds_for_fresh_graph() {
 fn check_v_root_consistency_reports_unoccupied_root() {
     let mut g: G = GvGraph::new(make_config());
     let root = g.v_root().expect("fresh graph must have v_root");
-    let _removed = g.vtree.nodes.dealloc(root.index());
+    let _removed = g.core.vtree.nodes.dealloc(root.index());
 
     let mut errors = Vec::new();
     check_v_root_consistency(&g, &mut errors);
@@ -37,8 +37,9 @@ fn check_v_root_consistency_reports_unoccupied_root() {
 #[test]
 fn parent_link_consistency_runs_with_stale_child_pointer() {
     let mut g: G = GvGraph::new(make_config());
-    let root = g.gtree.nodes.root;
-    g.gtree
+    let root = g.core.gtree.nodes.root;
+    g.core
+        .gtree
         .nodes
         .get_mut(root.index())
         .link_left(GNodeId::from_index(999));
