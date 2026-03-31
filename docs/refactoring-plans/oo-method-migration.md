@@ -198,3 +198,25 @@ field; it migrated to `VNodeTree` with no changes to its logic.
 `vnode_tree.rs` alongside their implementations. Tests that require `GvGraph` as
 a setup fixture can live there too; the module just imports `GvGraph` within the
 `#[cfg(test)]` block.
+
+### Step 2 — implementation notes
+
+**Methods added to `VTree`** (all `pub(crate)`):
+`contract`, `standard_promote`, `skip_promote`.
+
+**`promote.rs` deleted** — all three functions migrated out; the file became empty
+and was removed, and `pub mod promote` was deleted from `algorithm/mod.rs`.
+
+**Caller scope matched the plan** — unlike Step 1, the caller scope was narrow and
+well-predicted: all call sites were in `resolve.rs` and `split/helpers.rs`.
+
+**Circular import prevented tracing span field re-use** — `Nd` and `Ch` display
+wrappers live in `fmt.rs` which is not reachable from `vtree/mod.rs` without
+a circular module dependency.  The tracing spans inside `contract`,
+`standard_promote`, and `skip_promote` were simplified to emit raw `.index()`
+integers rather than the formatted wrappers.
+
+**Unused re-export clean-up** — `rebalance.rs` had `pub(super) use super::fmt::Ch`
+for use by the deleted `contract` body.  Once `contract` was removed the re-export
+became dead.  Clippy caught this and it was removed; the companion test
+`ch_display_fn` was updated to import `Ch` directly from `fmt`.
