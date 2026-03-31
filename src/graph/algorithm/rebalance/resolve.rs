@@ -27,10 +27,6 @@ fn any_child_violated<V: Accumulator>(vnodes: &VNodeTree<V>, node: VNodeId) -> b
     }
 }
 
-fn v_depth_local<V: Accumulator>(vnodes: &VNodeTree<V>, id: VNodeId) -> u32 {
-    vnodes.depth(id)
-}
-
 /// Contracts the 3-child parent `p` after a promote, propagates violations,
 /// and returns `Some(merged)` if the violation persists (Phase 3 needed),
 /// or `None` if the contraction resolved it.
@@ -230,7 +226,7 @@ fn resolve_path_b<C: Coordinate, V: Accumulator, const N: u32>(
             if core.gtree.nodes.get(gnode.index()).is_semi_internal()
     );
 
-    let result = if is_semi && v_depth_local(&core.vtree.nodes, c) <= depth_evict {
+    let result = if is_semi && core.vtree.nodes.depth(c) <= depth_evict {
         tracing::debug!("phase 2: legacy promote (semi-internal entry)");
         let new_g = core.legacy_promote(c);
         {

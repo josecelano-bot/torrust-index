@@ -72,8 +72,8 @@ pub fn contract<V: Accumulator>(vtree: &mut VTree<V>, p: VNodeId) -> VNodeId {
     let (a_id, a_int) = merge[0];
     let (b_id, b_int) = merge[1];
 
-    let a_terminal = node_has_evictable(&vtree.nodes, a_id);
-    let b_terminal = node_has_evictable(&vtree.nodes, b_id);
+    let a_terminal = vtree.nodes.node_has_evictable(a_id);
+    let b_terminal = vtree.nodes.node_has_evictable(b_id);
 
     let merged = VNode::new_structural(
         V::add(a_int, b_int),
@@ -87,7 +87,7 @@ pub fn contract<V: Accumulator>(vtree: &mut VTree<V>, p: VNodeId) -> VNodeId {
     vtree.nodes.get_mut(b_id.index()).set_parent(m_id);
 
     let merged_int = V::add(a_int, b_int);
-    let iso_terminal = node_has_evictable(&vtree.nodes, isolate.0);
+    let iso_terminal = vtree.nodes.node_has_evictable(isolate.0);
     let m_terminal = a_terminal || b_terminal;
 
     let p_node = vtree.nodes.get_mut(p.index());
@@ -108,10 +108,6 @@ pub fn contract<V: Accumulator>(vtree: &mut VTree<V>, p: VNodeId) -> VNodeId {
         "complete",
     );
     m_id
-}
-
-pub(super) fn node_has_evictable<V: Accumulator>(vnodes: &VNodeTree<V>, id: VNodeId) -> bool {
-    vnodes.node_has_evictable(id)
 }
 
 // rebalance and handle_iteration_limit have moved to `GvCore` in `graph/core.rs`.
