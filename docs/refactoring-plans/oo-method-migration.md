@@ -123,6 +123,7 @@ Work bottom-up. Each layer is prerequisite for the next.
 1. **`VNodeTree` pure queries** — functions that only read `&VNodeTree`, no config
    dependency. Safest first step; zero callers need changing at the `VTree` level.
    Examples: `structural_child_count`, `v_depth_local`, `any_child_violated`.
+   → Sub-plan: [step1-vnodetree-pure-queries.md](step1-vnodetree-pure-queries.md)
 
 2. **`VTree` single-tree mutations** — functions that need `&mut VTree` (nodes +
    violations queue) and nothing from the G-tree or config.
