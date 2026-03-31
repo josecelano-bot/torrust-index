@@ -152,7 +152,7 @@ Work bottom-up. Each layer is prerequisite for the next.
 
 ## Progress
 
-- [ ] Step 1 — `VNodeTree` pure query methods
+- [x] Step 1 — `VNodeTree` pure query methods
 - [ ] Step 2 — `VTree` operation methods
 - [ ] Step 3 — `GNodeTree` pure query methods
 - [ ] Step 4 — `GvCore` cross-tree operation methods
