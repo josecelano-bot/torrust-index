@@ -166,10 +166,10 @@ For every free function being migrated:
 
 ## Progress
 
-- [x] Step 1 — `VNodeTree` pure query methods
-- [x] Step 2 — `VTree` mutation methods (`contract`, `standard_promote`, `skip_promote`)
-- [x] Step 3 — `GNodeTree` pure query methods (`total_sum`, `gnode_children`, `is_ancestor_of`)
-- [x] Step 4 — `GvCore` cross-tree operation methods (`resolve_path_b`)
+- [x] Step 1 — `VNodeTree` pure query methods ([sub-plan](step1-vnodetree-pure-queries.md))
+- [x] Step 2 — `VTree` mutation methods (`contract`, `standard_promote`, `skip_promote`) ([sub-plan](step2-vtree-mutations.md))
+- [x] Step 3 — `GNodeTree` pure query methods (`total_sum`, `gnode_children`, `is_ancestor_of`) ([sub-plan](step3-gnodetree-queries.md))
+- [x] Step 4 — `GvCore` cross-tree operation methods (`resolve_path_b`) ([sub-plan](step4-gvcore-cross-tree.md))
 - [x] Step 5 — remaining deferred cleanups ([sub-plan](step5-remaining-cleanups.md))
 
 ### Step 1 — implementation notes
