@@ -71,9 +71,9 @@ refactor(vnodetree): move find_violated_nodes from violation_scan to VNodeTree
 
 ## Progress
 
-- [ ] Group A — delete `node_has_evictable` free fn, both `v_depth_local` free fns
-- [ ] `max_uncle_intensity` → `VNodeTree` method
-- [ ] `is_violated` → `VNodeTree` method
-- [ ] `structural_child_count` → `VNodeTree` method
-- [ ] `any_child_violated` → `VNodeTree` method
-- [ ] `find_violated_nodes` → `VNodeTree` method
+- [x] Group A — delete `node_has_evictable` free fn, both `v_depth_local` free fns
+- [x] `max_uncle_intensity` → `VNodeTree` method
+- [x] `is_violated` → `VNodeTree` method
+- [x] `structural_child_count` → `VNodeTree` method
+- [x] `any_child_violated` → `VNodeTree` method
+- [x] `find_violated_nodes` → `VNodeTree` method
