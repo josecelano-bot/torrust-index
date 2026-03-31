@@ -169,7 +169,7 @@ For every free function being migrated:
 - [x] Step 1 — `VNodeTree` pure query methods
 - [x] Step 2 — `VTree` mutation methods (`contract`, `standard_promote`, `skip_promote`)
 - [x] Step 3 — `GNodeTree` pure query methods (`total_sum`, `gnode_children`, `is_ancestor_of`)
-- [ ] Step 4 — `GvCore` cross-tree operation methods
+- [x] Step 4 — `GvCore` cross-tree operation methods (`resolve_path_b`)
 - [ ] Step 5 — `GvGraph`-level operations
 
 ### Step 1 — implementation notes
@@ -244,3 +244,24 @@ no call site outside `gv_graph.rs` needed updating.
 
 **No test migration** — existing `GvGraph` tests exercise the three methods through
 the public API and remain valid without modification.
+
+### Step 4 — implementation notes
+
+**One candidate** — `resolve_path_b` was the only free function that performed a
+cross-tree check (V-tree entry → G-tree `is_semi_internal` flag) and called the
+existing `GvCore::legacy_promote` method.  It became `pub(crate) fn resolve_path_b`
+on `GvCore`.
+
+**`resolve` deferred** — the public `resolve` free function also takes `&mut GvCore`
+but its body delegates all cross-tree work to `resolve_path_b` and the V-tree
+methods.  Moving it would first require migrating the `escalate_*` helper family
+(which only need `&mut VTree`) — that belongs to a future step.
+
+**One import added to `core.rs`** — `ViolationQueue` from
+`crate::graph::algorithm::violation_push`; `VKind` was already present.
+
+**One call site updated** — `resolve.rs` changed from
+`resolve_path_b(core, c, p, g, depth_evict)` to `core.resolve_path_b(c, p, g, depth_evict)`.
+
+**No files deleted** — `resolve.rs` still contains the public `resolve` free
+function and the escalate helpers; nothing became empty.
