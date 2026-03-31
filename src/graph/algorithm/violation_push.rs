@@ -22,8 +22,8 @@
 //! | 9      | `source_9_collapse_cousins`             | Collapse exposes cousins via grandparent path |
 //! | 10     | `source_10_g_contraction_promotion`     | G-contraction followed by promotion           |
 
-use crate::handle::VNodeId;
 use crate::traits::Accumulator;
+use crate::tree::handle::VNodeId;
 use crate::tree::vtree::VNodeTree;
 use crate::tree::vtree::vnode::VKind;
 
@@ -439,7 +439,7 @@ fn push_children_violations<V: Accumulator>(
 mod tests {
     use super::*;
     use crate::arena::Arena;
-    use crate::handle::GNodeId;
+    use crate::tree::handle::GNodeId;
     use crate::tree::vtree::vnode::{Children, VNode};
 
     fn make_vnodes() -> VNodeTree<u32> {

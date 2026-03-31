@@ -47,7 +47,7 @@ impl<C: DiscreteCoordinate, V: Accumulator + Proratable, const N: u32> GvGraph<C
         self.range_sum_inner(self.core.gtree.nodes.root, range)
     }
 
-    fn range_sum_inner(&self, gid: crate::handle::GNodeId, range: CoordinateRange<C>) -> V {
+    fn range_sum_inner(&self, gid: crate::tree::handle::GNodeId, range: CoordinateRange<C>) -> V {
         let g = self.core.gtree.nodes.get(gid.index());
         let node_lo = g.lo();
         let node_hi = g.hi();

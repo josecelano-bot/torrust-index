@@ -4,9 +4,9 @@ use std::fmt;
 
 #[cfg(feature = "dynamic-contour-tracking")]
 use crate::graph::GvGraph;
-use crate::handle::GNodeId;
 use crate::traits::{Accumulator, Coordinate, Inspectable};
 use crate::tree::gtree::GNodeTree;
+use crate::tree::handle::GNodeId;
 
 pub struct Gn<'a, C: Coordinate, V: Accumulator + Inspectable>(
     pub &'a GNodeTree<C, V>,
@@ -89,7 +89,7 @@ mod tests {
     mod gn_display_fn {
         use super::*;
         use crate::diagnostics::display::Gn;
-        use crate::handle::GNodeId;
+        use crate::tree::handle::GNodeId;
 
         #[test]
         fn dead_gnode_shows_dead_marker() {
@@ -120,7 +120,7 @@ mod tests {
     mod gn_display_fn_extra {
         use super::*;
         use crate::diagnostics::display::Gn;
-        use crate::handle::GNodeId;
+        use crate::tree::handle::GNodeId;
 
         #[test]
         fn terminal_gnode_shows_t_in_state() {
@@ -167,7 +167,7 @@ mod tests {
     mod pl_display_fn {
         use super::*;
         use crate::diagnostics::display::Pl;
-        use crate::handle::GNodeId;
+        use crate::tree::handle::GNodeId;
 
         #[test]
         fn internal_gnode_shows_not_basis() {

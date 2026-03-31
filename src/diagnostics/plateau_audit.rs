@@ -1,11 +1,11 @@
 #[cfg(feature = "dynamic-contour-tracking")]
 use crate::graph::GvGraph;
 #[cfg(feature = "dynamic-contour-tracking")]
-use crate::handle::GNodeId;
-#[cfg(feature = "dynamic-contour-tracking")]
 use crate::traits::{Accumulator, Coordinate, Inspectable};
 #[cfg(feature = "dynamic-contour-tracking")]
 use crate::tree::gtree::gnode::GState;
+#[cfg(feature = "dynamic-contour-tracking")]
+use crate::tree::handle::GNodeId;
 
 #[cfg(feature = "dynamic-contour-tracking")]
 pub struct PlateauAuditContext {
@@ -95,8 +95,8 @@ mod tests {
     mod audit_plateau_consistency_fn {
         use super::*;
         use crate::diagnostics::plateau_audit::{PlateauAuditContext, audit_plateau_consistency};
-        use crate::handle::GNodeId;
         use crate::tree::gtree::gnode::GState;
+        use crate::tree::handle::GNodeId;
 
         #[test]
         fn does_not_panic_for_fresh_graph_no_context() {

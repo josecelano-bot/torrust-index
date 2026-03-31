@@ -1,7 +1,7 @@
 use crate::graph::GvGraph;
-use crate::handle::VNodeId;
 use crate::traits::{Accumulator, Coordinate, Weighable};
 use crate::tree::gtree::GTree;
+use crate::tree::handle::VNodeId;
 
 impl<C: Coordinate, V: Accumulator + Weighable, const N: u32> GvGraph<C, V, N> {
     #[must_use]

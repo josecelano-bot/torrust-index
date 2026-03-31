@@ -2,11 +2,11 @@
 
 use std::collections::BTreeMap;
 
-use crate::handle::GNodeId;
 use crate::spatial::plateau::{BasisEdge, Plateau};
 use crate::traits::{Accumulator, Coordinate};
 #[cfg(debug_assertions)]
 use crate::traits::{Inspectable, Proratable};
+use crate::tree::handle::GNodeId;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -181,8 +181,8 @@ mod tests {
         BasisElement, ContourRange, compute_plateau_energy, debug_assert_contour_range_invariants,
         validate_endpoints,
     };
-    use crate::handle::GNodeId;
     use crate::spatial::plateau::{BasisEdge, Plateau};
+    use crate::tree::handle::GNodeId;
     use std::collections::BTreeMap;
 
     fn plateau(edge: u8, start: u8, end: u8, depth: u32, sum: u32) -> Plateau<u8, u32> {

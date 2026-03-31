@@ -6,11 +6,11 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::OnceLock;
 
 #[cfg(feature = "dynamic-contour-tracking")]
-use crate::handle::GNodeId;
-#[cfg(feature = "dynamic-contour-tracking")]
 use crate::spatial::plateau::BasisEdge;
 #[cfg(feature = "dynamic-contour-tracking")]
 use crate::traits::Coordinate;
+#[cfg(feature = "dynamic-contour-tracking")]
+use crate::tree::handle::GNodeId;
 
 #[cfg(feature = "dynamic-contour-tracking")]
 #[derive(Debug, Clone)]
@@ -110,8 +110,8 @@ impl<C: Coordinate> PlateauBasis<C> {
 #[cfg(feature = "dynamic-contour-tracking")]
 mod plateau_basis_tests {
     use super::PlateauBasis;
-    use crate::handle::GNodeId;
     use crate::spatial::plateau::BasisEdge;
+    use crate::tree::handle::GNodeId;
 
     fn make_basis() -> PlateauBasis<u8> {
         PlateauBasis::new()

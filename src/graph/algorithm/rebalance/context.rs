@@ -1,4 +1,4 @@
-use crate::handle::VNodeId;
+use crate::tree::handle::VNodeId;
 
 pub use super::super::fmt::{Ctx, Nd};
 

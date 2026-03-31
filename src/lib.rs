@@ -26,9 +26,6 @@
 /// This library provides an adaptive streaming spatial density estimator for 1D coordinate spaces.
 /// It maintains a histogram that automatically adjusts resolution based on activity levels,
 /// guided by the golden ratio φ, with temporal decay for sliding window tracking.
-/// Handle types for identifying nodes in the index.
-pub(crate) mod handle;
-
 /// Spatial data structures and algorithms.
 pub(crate) mod spatial;
 
@@ -50,7 +47,6 @@ pub use diagnostics::invariants;
 #[doc(hidden)]
 pub use graph::GNodeChildren;
 pub use graph::{Config, DefaultGraph, GvGraph, StructuralConfig};
-pub use handle::GNodeId;
 pub use spatial::contour_range::{BasisElement, ContourRange, ContourRangeEnergy};
 pub use spatial::node::Node;
 pub use spatial::pewei::{Layer, Pewei, Terminal, Transition};
@@ -65,6 +61,7 @@ pub use traits::{
     ScalableObservation, SpatialRead, SpatialWrite, TemporalDecay, Weighable, WeightedSampler,
 };
 pub use tree::gtree::gnode::GState;
+pub use tree::handle::GNodeId;
 
 #[cfg(test)]
 mod tests {

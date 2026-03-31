@@ -1,9 +1,9 @@
 use super::DynamicPlateauTracker;
 use crate::arena::Arena;
-use crate::handle::GNodeId;
 use crate::spatial::plateau::{BasisEdge, Plateau};
 use crate::traits::PlateauTracking;
 use crate::tree::gtree::gnode::GNode;
+use crate::tree::handle::GNodeId;
 
 fn add_leaf(
     gnodes: &mut Arena<GNode<u8, u32>>,

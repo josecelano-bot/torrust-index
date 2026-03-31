@@ -1,6 +1,6 @@
-use crate::handle::GNodeId;
 use crate::spatial::range::CoordinateRange;
 use crate::traits::{Accumulator, Coordinate};
+use crate::tree::handle::GNodeId;
 
 pub mod gnode;
 pub mod gnode_tree;

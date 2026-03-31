@@ -23,9 +23,9 @@ mod audit_violations_fn {
     use super::*;
     use crate::tree::vtree::vnode::VKind;
 
-    fn find_depth_two_entry(g: &G) -> Option<crate::handle::VNodeId> {
+    fn find_depth_two_entry(g: &G) -> Option<crate::tree::handle::VNodeId> {
         let v_root = g.v_root()?;
-        let mut stack: Vec<(crate::handle::VNodeId, usize)> = vec![(v_root, 0)];
+        let mut stack: Vec<(crate::tree::handle::VNodeId, usize)> = vec![(v_root, 0)];
         while let Some((id, depth)) = stack.pop() {
             let n = g.vnodes().get(id.index());
             match &n.kind() {
@@ -157,7 +157,7 @@ mod diagnose_missed_violation_fn {
         }
         let v_root = g.v_root().expect("v_root must exist");
         // BFS to find a depth-2+ Entry node.
-        let mut stack: Vec<(crate::handle::VNodeId, usize)> = vec![(v_root, 0)];
+        let mut stack: Vec<(crate::tree::handle::VNodeId, usize)> = vec![(v_root, 0)];
         let mut depth2_entry = None;
         while let Some((id, depth)) = stack.pop() {
             let n = g.vnodes().get(id.index());
@@ -194,8 +194,8 @@ mod diagnose_missed_violation_fn {
         }
         let v_root = g.v_root().expect("v_root must exist");
         // BFS to find depth-2 entry and its grandparent.
-        let mut stack: Vec<(crate::handle::VNodeId, usize)> = vec![(v_root, 0)];
-        let mut found: Option<(crate::handle::VNodeId, crate::handle::VNodeId)> = None;
+        let mut stack: Vec<(crate::tree::handle::VNodeId, usize)> = vec![(v_root, 0)];
+        let mut found: Option<(crate::tree::handle::VNodeId, crate::tree::handle::VNodeId)> = None;
         while let Some((id, depth)) = stack.pop() {
             let n = g.vnodes().get(id.index());
             match &n.kind() {
@@ -233,7 +233,7 @@ mod diagnose_missed_violation_fn {
         }
 
         let v_root = g.v_root().expect("v_root must exist");
-        let root_children: Vec<crate::handle::VNodeId> = match &g.vnodes().get(v_root.index()).kind() {
+        let root_children: Vec<crate::tree::handle::VNodeId> = match &g.vnodes().get(v_root.index()).kind() {
             VKind::Structural { children, .. } => children.iter().map(|(id, _)| id).collect(),
             _ => return,
         };
@@ -244,7 +244,7 @@ mod diagnose_missed_violation_fn {
         // Find a depth-2+ entry under the first root child.
         let subtree_root = root_children[0];
         let collapse_sibling = root_children[1];
-        let mut stack: Vec<(crate::handle::VNodeId, usize)> = vec![(subtree_root, 1)];
+        let mut stack: Vec<(crate::tree::handle::VNodeId, usize)> = vec![(subtree_root, 1)];
         let mut depth2_entry = None;
         while let Some((id, depth)) = stack.pop() {
             let n = g.vnodes().get(id.index());
@@ -304,8 +304,8 @@ mod diagnose_missed_violation_fn {
             g.observe(coord, 3u32);
         }
         let v_root = g.v_root().expect("v_root must exist");
-        let mut stack: Vec<(crate::handle::VNodeId, usize)> = vec![(v_root, 0)];
-        let mut found: Option<(crate::handle::VNodeId, crate::handle::VNodeId)> = None;
+        let mut stack: Vec<(crate::tree::handle::VNodeId, usize)> = vec![(v_root, 0)];
+        let mut found: Option<(crate::tree::handle::VNodeId, crate::tree::handle::VNodeId)> = None;
         while let Some((id, depth)) = stack.pop() {
             let n = g.vnodes().get(id.index());
             match &n.kind() {
@@ -381,7 +381,7 @@ mod diagnose_missed_violation_in_tree_fn {
             g.observe(coord, 3u32);
         }
         let v_root = g.v_root().expect("v_root must exist");
-        let mut stack: Vec<(crate::handle::VNodeId, usize)> = vec![(v_root, 0)];
+        let mut stack: Vec<(crate::tree::handle::VNodeId, usize)> = vec![(v_root, 0)];
         let mut depth2_entry = None;
         while let Some((id, depth)) = stack.pop() {
             let n = g.vnodes().get(id.index());

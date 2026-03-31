@@ -1,6 +1,6 @@
 use crate::graph::GvGraph;
-use crate::handle::{GNodeId, VNodeId};
 use crate::traits::{Accumulator, Coordinate, Inspectable};
+use crate::tree::handle::{GNodeId, VNodeId};
 use crate::tree::vtree::vnode::{Children, VNode};
 
 mod helpers;

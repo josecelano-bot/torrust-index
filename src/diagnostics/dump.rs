@@ -1,8 +1,8 @@
 use crate::graph::GvGraph;
-use crate::handle::GNodeId;
 use crate::traits::{Accumulator, Coordinate, Inspectable};
 use crate::tree::gtree::GTree;
 use crate::tree::gtree::gnode::GState;
+use crate::tree::handle::GNodeId;
 
 const fn state_label(s: GState) -> &'static str {
     match s {
@@ -271,7 +271,7 @@ mod tests {
     }
 
     mod fmt_optional_gnode_fn {
-        use crate::handle::GNodeId;
+        use crate::tree::handle::GNodeId;
         #[test]
         fn none_returns_fallback() {
             let s = super::super::fmt_optional_gnode(None, "None");

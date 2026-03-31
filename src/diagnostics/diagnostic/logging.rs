@@ -1,5 +1,5 @@
-use crate::handle::VNodeId;
 use crate::traits::{Accumulator, Inspectable};
+use crate::tree::handle::VNodeId;
 use crate::tree::vtree::vnode::VKind;
 use crate::tree::vtree::{VNodeTree, VTree};
 

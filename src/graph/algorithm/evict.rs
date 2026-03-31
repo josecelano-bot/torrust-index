@@ -1,8 +1,8 @@
 use crate::graph::GvGraph;
 use crate::graph::algorithm::violation_push::ViolationQueue;
-use crate::handle::VNodeId;
 use crate::traits::{Accumulator, Coordinate, Inspectable};
 use crate::tree::gtree::gnode::GState;
+use crate::tree::handle::VNodeId;
 use crate::tree::vtree::VNodeTree;
 use crate::tree::vtree::vnode::VKind;
 
@@ -284,7 +284,7 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
 #[cfg(test)]
 mod tests {
     use crate::graph::{Config, GvGraph, StructuralConfig};
-    use crate::handle::{GNodeId, VNodeId};
+    use crate::tree::handle::{GNodeId, VNodeId};
     use crate::tree::vtree::vnode::{Children, VNode};
 
     type G = GvGraph<u8, u32, 8>;

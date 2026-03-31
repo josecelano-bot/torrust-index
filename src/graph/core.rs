@@ -1,8 +1,8 @@
 use crate::graph::algorithm::rebalance;
 use crate::graph::algorithm::violation_push::ViolationQueue;
-use crate::handle::{GNodeId, VNodeId};
 use crate::traits::{Accumulator, Coordinate, Inspectable};
 use crate::tree::gtree::GTree;
+use crate::tree::handle::{GNodeId, VNodeId};
 use crate::tree::vtree::vnode::{Children, VKind, VNode};
 use crate::tree::vtree::{VNodeTree, VTree};
 
@@ -354,7 +354,7 @@ fn handle_iteration_limit<V: Accumulator>(
 #[cfg(test)]
 mod tests {
     use crate::graph::{Config, GvGraph, StructuralConfig};
-    use crate::handle::{GNodeId, VNodeId};
+    use crate::tree::handle::{GNodeId, VNodeId};
     use crate::tree::vtree::vnode::{Children, VKind, VNode};
 
     type G = GvGraph<u8, u32, 8>;
@@ -711,7 +711,7 @@ mod tests {
                         .alloc(VNode::new_entry(
                             1,
                             None,
-                            crate::handle::GNodeId::from_index(50),
+                            crate::tree::handle::GNodeId::from_index(50),
                             true,
                             true,
                         ))

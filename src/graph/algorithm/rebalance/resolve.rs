@@ -1,6 +1,6 @@
 use crate::graph::core::GvCore;
-use crate::handle::{GNodeId, VNodeId};
 use crate::traits::{Accumulator, Coordinate};
+use crate::tree::handle::{GNodeId, VNodeId};
 use crate::tree::vtree::VTree;
 use crate::tree::vtree::vnode::VKind;
 
@@ -233,7 +233,7 @@ pub fn resolve<C: Coordinate, V: Accumulator, const N: u32>(
 #[cfg(test)]
 mod tests {
     use crate::graph::{Config, GvGraph, StructuralConfig};
-    use crate::handle::{GNodeId, VNodeId};
+    use crate::tree::handle::{GNodeId, VNodeId};
     use crate::tree::vtree::vnode::{Children, VKind, VNode};
 
     type G = GvGraph<u8, u32, 8>;

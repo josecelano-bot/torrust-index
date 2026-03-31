@@ -1,6 +1,6 @@
 use crate::graph::{Config, GvGraph};
-use crate::handle::VNodeId;
 use crate::traits::{Accumulator, Coordinate, Inspectable};
+use crate::tree::handle::VNodeId;
 
 impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N> {
     #[must_use]

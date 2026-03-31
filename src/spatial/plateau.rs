@@ -80,8 +80,8 @@ where
 #[cfg(test)]
 mod tests {
     use super::{BasisEdge, Plateau, basis_edge_of};
-    use crate::handle::GNodeId;
     use crate::tree::gtree::gnode::GNode;
+    use crate::tree::handle::GNodeId;
     use rstest::rstest;
     use std::cmp::Ordering;
 

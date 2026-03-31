@@ -1,5 +1,5 @@
 use super::*;
-use crate::handle::{GNodeId, VNodeId};
+use crate::tree::handle::{GNodeId, VNodeId};
 use crate::tree::vtree::VNodeTree;
 use crate::tree::vtree::vnode::{Children, VNode};
 

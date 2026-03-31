@@ -51,7 +51,7 @@ mod tests {
     mod nd_display_fn {
         use super::*;
         use crate::graph::algorithm::rebalance::Nd;
-        use crate::handle::VNodeId;
+        use crate::tree::handle::VNodeId;
 
         #[test]
         fn dead_vnode_shows_dead_marker() {

@@ -1,7 +1,7 @@
 use super::vnode::{Children, VKind, VNode};
 use crate::arena::Arena;
-use crate::handle::{GNodeId, VNodeId};
 use crate::traits::Accumulator;
+use crate::tree::handle::{GNodeId, VNodeId};
 use std::cmp::Reverse;
 use std::ops::{Deref, DerefMut};
 

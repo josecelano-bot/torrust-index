@@ -4,8 +4,8 @@
 #[allow(unused_imports)]
 pub use crate::diagnostics::plateau_audit::{PlateauAuditContext, audit_plateau_consistency};
 use crate::graph::algorithm::rebalance::Ctx;
-use crate::handle::VNodeId;
 use crate::traits::{Accumulator, Inspectable};
+use crate::tree::handle::VNodeId;
 use crate::tree::vtree::{VNodeTree, VTree};
 
 mod logging;

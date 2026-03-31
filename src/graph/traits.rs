@@ -42,7 +42,7 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> crate::traits::S
 impl<C: Coordinate, V: Accumulator + crate::traits::Attenuatable + Inspectable, const N: u32>
     crate::traits::TemporalDecay for GvGraph<C, V, N>
 {
-    fn decay(&mut self, root: crate::handle::GNodeId, attenuation: f64, q: f64) {
+    fn decay(&mut self, root: crate::tree::handle::GNodeId, attenuation: f64, q: f64) {
         self.decay(root, attenuation, q);
     }
 }
@@ -137,7 +137,7 @@ mod tests {
 
         fn decay_via_trait<T: TemporalDecay<Coord = u8, Accum = u32>>(
             d: &mut T,
-            root: crate::handle::GNodeId,
+            root: crate::tree::handle::GNodeId,
         ) {
             d.decay(root, 0.5, 0.0);
         }

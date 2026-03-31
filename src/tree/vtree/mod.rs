@@ -41,9 +41,9 @@
 //! breaches the configured balance threshold.  See `rebalance.rs` for the
 //! `is_violated` predicate and the `resolve` function that repairs violations.
 
-use crate::handle::{GNodeId, VNodeId};
 use crate::traits::{Accumulator, Coordinate};
 use crate::tree::gtree::GTree;
+use crate::tree::handle::{GNodeId, VNodeId};
 
 pub mod vnode;
 pub mod vnode_tree;
@@ -477,8 +477,8 @@ impl<V: Accumulator> VTree<V> {
 mod tests {
     use super::{VNodeTree, VTree};
     use crate::arena::Arena;
-    use crate::handle::{GNodeId, VNodeId};
     use crate::tree::gtree::gnode::GNode;
+    use crate::tree::handle::{GNodeId, VNodeId};
     use crate::tree::vtree::vnode::{Children, VKind, VNode};
 
     fn entry_vnode(intensity: u32, parent: Option<VNodeId>) -> VNode<u32> {

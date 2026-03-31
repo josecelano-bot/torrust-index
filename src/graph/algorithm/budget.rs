@@ -1,6 +1,6 @@
 use crate::graph::GvGraph;
-use crate::handle::GNodeId;
 use crate::traits::{Accumulator, Coordinate, Inspectable, PlateauTracking};
+use crate::tree::handle::GNodeId;
 
 impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N> {
     pub(crate) fn handle_legacy_promotes(&mut self, new_gnodes: &[GNodeId]) {
@@ -80,7 +80,7 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
     /// Returns `true` when `v_id` is a live, evictable entry-node whose V-tree
     /// depth is above the current eviction gate.  Guards the inner loop in
     /// `evict_candidates` without nesting.
-    fn is_eviction_candidate(&self, v_id: crate::handle::VNodeId) -> bool {
+    fn is_eviction_candidate(&self, v_id: crate::tree::handle::VNodeId) -> bool {
         use crate::tree::vtree::vnode::VKind;
         if !self.core.vtree.nodes.is_occupied(v_id.index()) {
             return false;
@@ -164,7 +164,7 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
 #[cfg(test)]
 mod tests {
     use crate::graph::{Config, GvGraph, StructuralConfig};
-    use crate::handle::VNodeId;
+    use crate::tree::handle::VNodeId;
     use crate::tree::vtree::vnode::VKind;
 
     type G = GvGraph<u8, u32, 8>;

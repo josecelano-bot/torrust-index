@@ -1,6 +1,6 @@
 use crate::graph::GvGraph;
-use crate::handle::GNodeId;
 use crate::traits::{Accumulator, Attenuatable, Coordinate, Inspectable, PlateauTracking};
+use crate::tree::handle::GNodeId;
 
 #[allow(clippy::float_cmp)]
 /// Compute per-depth attenuation factors for a decay operation over a G-tree

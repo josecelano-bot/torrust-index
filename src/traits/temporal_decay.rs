@@ -8,5 +8,5 @@ pub trait TemporalDecay: SpatialRead {
     /// - `attenuation` is the multiplicative factor and `q` is an
     ///   implementation-defined shaping parameter.
     /// - Implementations preserve internal invariants after decay.
-    fn decay(&mut self, root: crate::handle::GNodeId, attenuation: f64, q: f64);
+    fn decay(&mut self, root: crate::tree::handle::GNodeId, attenuation: f64, q: f64);
 }

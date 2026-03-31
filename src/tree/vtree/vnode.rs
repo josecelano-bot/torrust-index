@@ -1,6 +1,6 @@
 //! Core V-tree node representation and 2-3 structural child container.
 
-use crate::handle::{GNodeId, VNodeId};
+use crate::tree::handle::{GNodeId, VNodeId};
 
 /// Node stored in the V-tree arena.
 #[derive(Debug, Clone, Copy)]
@@ -402,7 +402,7 @@ impl<V: Default> Default for VNode<V> {
 #[cfg(test)]
 mod tests {
     use super::{Children, VNode};
-    use crate::handle::{GNodeId, VNodeId};
+    use crate::tree::handle::{GNodeId, VNodeId};
     use rstest::rstest;
 
     fn id(i: usize) -> VNodeId {

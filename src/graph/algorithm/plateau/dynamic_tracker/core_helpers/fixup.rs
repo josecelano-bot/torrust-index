@@ -1,10 +1,10 @@
 use super::super::DynamicPlateauTracker;
-use crate::handle::GNodeId;
 use crate::spatial::plateau::BasisEdge;
 use crate::traits::{Accumulator, Coordinate};
 use crate::tree::gtree::GNodeTree;
 use crate::tree::gtree::gnode::GState;
 use crate::tree::gtree::gnode_depth_from_range;
+use crate::tree::handle::GNodeId;
 
 impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
     pub(in super::super) fn recompute_plateau(

@@ -1,7 +1,7 @@
 //! Core G-tree node representation and local structural helpers.
 
-use crate::handle::{GNodeId, VNodeId};
 use crate::spatial::range::CoordinateRange;
+use crate::tree::handle::{GNodeId, VNodeId};
 
 #[doc(hidden)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -318,7 +318,7 @@ impl<C: Default, V: Default> Default for GNode<C, V> {
 #[cfg(test)]
 mod tests {
     use super::{GNode, GState};
-    use crate::handle::GNodeId;
+    use crate::tree::handle::GNodeId;
 
     fn make_node(left: Option<GNodeId>, right: Option<GNodeId>) -> GNode<u8, u32> {
         GNode {

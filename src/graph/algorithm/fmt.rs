@@ -7,8 +7,8 @@
 
 use std::fmt;
 
-use crate::handle::VNodeId;
 use crate::traits::Accumulator;
+use crate::tree::handle::VNodeId;
 use crate::tree::vtree::VNodeTree;
 use crate::tree::vtree::vnode::VKind;
 

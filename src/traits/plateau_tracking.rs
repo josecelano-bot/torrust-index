@@ -2,10 +2,10 @@ use std::borrow::Cow;
 use std::collections::BTreeMap;
 
 use super::{Accumulator, Coordinate};
-use crate::handle::GNodeId;
 use crate::spatial::plateau::{BasisEdge, Plateau};
 use crate::tree::gtree::GNodeTree;
 use crate::tree::gtree::gnode::GState;
+use crate::tree::handle::GNodeId;
 
 /// Strategy trait that encapsulates all plateau-state updates.
 ///

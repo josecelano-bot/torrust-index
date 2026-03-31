@@ -1,5 +1,4 @@
 use crate::graph::GvGraph;
-use crate::handle::GNodeId;
 #[cfg(debug_assertions)]
 use crate::spatial::contour_range::debug_assert_contour_range_invariants;
 use crate::spatial::contour_range::{
@@ -10,6 +9,7 @@ use crate::spatial::range::CoordinateRange;
 use crate::traits::{Accumulator, DiscreteCoordinate, Inspectable, Proratable};
 use crate::tree::gtree::GTree;
 use crate::tree::gtree::gnode::GNode;
+use crate::tree::handle::GNodeId;
 
 impl<C: DiscreteCoordinate, V: Accumulator + Proratable, const N: u32> GvGraph<C, V, N> {
     /// Pushes a full-coverage (non-thatch) element for `gid` onto `basis`.

@@ -1,11 +1,11 @@
 use crate::arena::Arena;
 use crate::graph::algorithm::plateau::noop_tracker::NoopPlateauTracker;
 use crate::graph::core::GvCore;
-use crate::handle::{GNodeId, VNodeId};
 use crate::spatial::node::Node;
 use crate::traits::{Accumulator, Coordinate, PlateauTracking};
 use crate::tree::gtree::gnode::{GNode, GNodeChildren};
 use crate::tree::gtree::{GNodeTree, GTree};
+use crate::tree::handle::{GNodeId, VNodeId};
 use crate::tree::vtree::vnode::VNode;
 use crate::tree::vtree::{VNodeTree, VTree};
 
@@ -409,7 +409,7 @@ mod tests {
         #[test]
         fn returns_none_for_unoccupied_index() {
             let g = GvGraph::<u8, u32, 8>::new(make_config());
-            use crate::handle::GNodeId;
+            use crate::tree::handle::GNodeId;
             // index 999 is well beyond the one allocated gnode
             let unoccupied = GNodeId::from_index(999);
             assert!(g.gnode_info(unoccupied).is_none());
@@ -431,7 +431,7 @@ mod tests {
         #[test]
         fn returns_none_for_unoccupied_index() {
             let g = GvGraph::<u8, u32, 8>::new(make_config());
-            use crate::handle::GNodeId;
+            use crate::tree::handle::GNodeId;
             // index 999 is well beyond the one allocated gnode
             let unoccupied = GNodeId::from_index(999);
             assert!(g.gnode_children(unoccupied).is_none());
@@ -451,7 +451,7 @@ mod tests {
         #[test]
         fn returns_false_when_ancestor_gnode_is_unoccupied() {
             let g = GvGraph::<u8, u32, 8>::new(make_config());
-            use crate::handle::GNodeId;
+            use crate::tree::handle::GNodeId;
             let unoccupied = GNodeId::from_index(999);
             assert!(!g.is_ancestor_of(unoccupied, g.core.gtree.nodes.root));
         }
@@ -552,9 +552,9 @@ mod tests {
     mod uniform_contour_depth_of_fn {
         use super::*;
         use crate::arena::Arena;
-        use crate::handle::GNodeId;
         use crate::tree::gtree::gnode::GNode;
         use crate::tree::gtree::gnode_tree::uniform_contour_depth_of;
+        use crate::tree::handle::GNodeId;
 
         fn make_terminal(lo: u8, hi: u8) -> GNode<u8, u32> {
             GNode::new_leaf(lo, hi, 0u32, None)

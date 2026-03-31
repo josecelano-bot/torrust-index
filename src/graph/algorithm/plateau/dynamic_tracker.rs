@@ -12,12 +12,12 @@
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 
-use crate::handle::GNodeId;
 use crate::spatial::plateau::{BasisEdge, Plateau};
 use crate::spatial::plateau_basis::PlateauBasis;
 use crate::traits::{Accumulator, Coordinate, PlateauTracking};
 use crate::tree::gtree::GNodeTree;
 use crate::tree::gtree::gnode::GState;
+use crate::tree::handle::GNodeId;
 
 mod core_helpers;
 mod debug_diff;

@@ -17,10 +17,10 @@ pub use noop_tracker::NoopPlateauTracker;
 mod tests {
     use crate::arena::Arena;
     use crate::graph::{Config, GvGraph, StructuralConfig};
-    use crate::handle::GNodeId;
     use crate::spatial::plateau::BasisEdge;
     use crate::traits::PlateauTracking;
     use crate::tree::gtree::gnode::GNode;
+    use crate::tree::handle::GNodeId;
 
     type G = GvGraph<u8, u32, 8>;
 

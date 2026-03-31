@@ -3,11 +3,11 @@
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 
-use crate::handle::GNodeId;
 use crate::spatial::plateau::{BasisEdge, Plateau};
 use crate::traits::{Accumulator, Coordinate, PlateauTracking};
 use crate::tree::gtree::GNodeTree;
 use crate::tree::gtree::gnode::GState;
+use crate::tree::handle::GNodeId;
 
 /// Zero-cost placeholder that satisfies the [`PlateauTracking`] bound while
 /// performing no work.  Selected when `dynamic-contour-tracking` is disabled.
