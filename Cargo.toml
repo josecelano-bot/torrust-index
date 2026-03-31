@@ -48,6 +48,10 @@ suspicious = { level = "deny", priority = -1 }
 default = ["dynamic-contour-tracking", "rand"]
 dynamic-contour-tracking = []
 rand = ["dep:rand_core"]
+
+# Arena allocator features
+arena-unchecked = []  # Performance-critical path: skip safety assertions in hot code
+arena-validate = []   # Enable invariant validation (checked builds and tests)
 serde = ["dep:serde"]
 
 [dependencies]

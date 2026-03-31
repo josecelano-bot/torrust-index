@@ -18,7 +18,8 @@ pub struct Arena<T: Default> {
     occupied: Vec<u64>,
 
     /// Stack of free slot indices available for reuse.
-    free: Vec<u32>,
+    /// Uses `usize` to prevent truncation bugs on 64-bit systems.
+    free: Vec<usize>,
 
     /// The number of currently occupied slots.
     count: u32,
@@ -43,9 +44,15 @@ impl<T: Default> Arena<T> {
 
     pub fn alloc(&mut self, value: T) -> usize {
         let index = if let Some(idx) = self.free.pop() {
-            let i = idx as usize;
-            self.slots[i] = value;
-            i
+            // Bounds check: ensure freed index is valid before reusing
+            if idx >= self.slots.len() {
+                panic!(
+                    "Arena::alloc: free slot index {idx} out of bounds (slots len: {})",
+                    self.slots.len()
+                );
+            }
+            self.slots[idx] = value;
+            idx
         } else {
             let i = self.slots.len();
             self.slots.push(value);
@@ -67,8 +74,7 @@ impl<T: Default> Arena<T> {
             "Arena::dealloc: slot {index} is not occupied"
         );
         self.set_occupied(index, false);
-        #[allow(clippy::cast_possible_truncation)]
-        self.free.push(index as u32);
+        self.free.push(index);
         self.count -= 1;
         std::mem::take(&mut self.slots[index])
     }
@@ -109,6 +115,15 @@ impl<T: Default> Arena<T> {
     fn set_occupied(&mut self, index: usize, value: bool) {
         let word = index / 64;
         let bit = index % 64;
+        
+        // Bounds check: ensure word index is valid before accessing
+        if word >= self.occupied.len() {
+            panic!(
+                "Arena::set_occupied: word index {word} out of bounds (occupied len: {})",
+                self.occupied.len()
+            );
+        }
+        
         if value {
             self.occupied[word] |= 1u64 << bit;
         } else {
