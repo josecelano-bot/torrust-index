@@ -69,7 +69,7 @@ impl<T: Default> Arena<T> {
     }
 
     pub fn dealloc(&mut self, index: usize) -> T {
-        debug_assert!(
+        assert!(
             self.is_occupied(index),
             "Arena::dealloc: slot {index} is not occupied"
         );
@@ -82,7 +82,7 @@ impl<T: Default> Arena<T> {
     #[must_use]
     #[inline]
     pub fn get(&self, index: usize) -> &T {
-        debug_assert!(
+        assert!(
             self.is_occupied(index),
             "Arena::get: slot {index} is not occupied"
         );
@@ -91,7 +91,7 @@ impl<T: Default> Arena<T> {
 
     #[inline]
     pub fn get_mut(&mut self, index: usize) -> &mut T {
-        debug_assert!(
+        assert!(
             self.is_occupied(index),
             "Arena::get_mut: slot {index} is not occupied"
         );
@@ -130,6 +130,48 @@ impl<T: Default> Arena<T> {
             self.occupied[word] &= !(1u64 << bit);
         }
     }
+
+    /// Validates all internal invariants.
+    /// Returns `Err` with description of first violation found.
+    #[cfg(test)]
+    pub fn validate_invariants(&self) -> Result<(), String> {
+        // Invariant 1: count matches occupied slots
+        let occupied_count = (0..self.slots.len())
+            .filter(|&i| self.is_occupied(i))
+            .count();
+        if occupied_count != self.count as usize {
+            return Err(format!(
+                "count mismatch: {} reported, {} occupied slots",
+                self.count, occupied_count
+            ));
+        }
+
+        // Invariant 2: free list indices are valid and unoccupied
+        for &idx in &self.free {
+            if idx >= self.slots.len() {
+                return Err(format!(
+                    "free list contains out-of-bounds index: {}",
+                    idx
+                ));
+            }
+            if self.is_occupied(idx) {
+                return Err(format!(
+                    "free list contains occupied slot: {}",
+                    idx
+                ));
+            }
+        }
+
+        // Invariant 3: no duplicates in free list
+        let mut seen = std::collections::HashSet::new();
+        for &idx in &self.free {
+            if !seen.insert(idx) {
+                return Err(format!("free list contains duplicate index: {}", idx));
+            }
+        }
+
+        Ok(())
+    }
 }
 
 impl<T: Default> Default for Arena<T> {
@@ -150,6 +192,11 @@ impl<T: Default + fmt::Debug> fmt::Debug for Arena<T> {
 
 impl<T: Default + Clone> Clone for Arena<T> {
     fn clone(&self) -> Self {
+        #[cfg(test)]
+        if let Err(e) = self.validate_invariants() {
+            panic!("Arena::clone: source arena has invalid invariants: {}", e);
+        }
+
         Self {
             slots: self.slots.clone(),
             occupied: self.occupied.clone(),
