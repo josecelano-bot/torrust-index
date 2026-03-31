@@ -238,43 +238,68 @@ mod tests {
     fn standard_promote_replaces_child_pair_with_grandchildren() {
         let mut vtree: VTree<u64> = make_vtree();
 
-        let e1 = VNodeId::from_index(vtree.nodes.alloc(VNode::new_entry(
-            2,
-            None,
-            GNodeId::from_index(0),
-            false,
-            true,
-        )).0);
-        let e2 = VNodeId::from_index(vtree.nodes.alloc(VNode::new_entry(
-            3,
-            None,
-            GNodeId::from_index(1),
-            false,
-            false,
-        )).0);
-        let s = VNodeId::from_index(vtree.nodes.alloc(VNode::new_entry(
-            5,
-            None,
-            GNodeId::from_index(2),
-            false,
-            true,
-        )).0);
+        let e1 = VNodeId::from_index(
+            vtree
+                .nodes
+                .alloc(VNode::new_entry(
+                    2,
+                    None,
+                    GNodeId::from_index(0),
+                    false,
+                    true,
+                ))
+                .0,
+        );
+        let e2 = VNodeId::from_index(
+            vtree
+                .nodes
+                .alloc(VNode::new_entry(
+                    3,
+                    None,
+                    GNodeId::from_index(1),
+                    false,
+                    false,
+                ))
+                .0,
+        );
+        let s = VNodeId::from_index(
+            vtree
+                .nodes
+                .alloc(VNode::new_entry(
+                    5,
+                    None,
+                    GNodeId::from_index(2),
+                    false,
+                    true,
+                ))
+                .0,
+        );
 
-        let c = VNodeId::from_index(vtree.nodes.alloc(VNode::new_structural(
-            5,
-            None,
-            Children::new_2((e1, 2), (e2, 3)),
-            true,
-        )).0);
+        let c = VNodeId::from_index(
+            vtree
+                .nodes
+                .alloc(VNode::new_structural(
+                    5,
+                    None,
+                    Children::new_2((e1, 2), (e2, 3)),
+                    true,
+                ))
+                .0,
+        );
         vtree.nodes.get_mut(e1.index()).set_parent(c);
         vtree.nodes.get_mut(e2.index()).set_parent(c);
 
-        let p = VNodeId::from_index(vtree.nodes.alloc(VNode::new_structural(
-            10,
-            None,
-            Children::new_2((c, 5), (s, 5)),
-            true,
-        )).0);
+        let p = VNodeId::from_index(
+            vtree
+                .nodes
+                .alloc(VNode::new_structural(
+                    10,
+                    None,
+                    Children::new_2((c, 5), (s, 5)),
+                    true,
+                ))
+                .0,
+        );
         vtree.nodes.get_mut(c.index()).set_parent(p);
         vtree.nodes.get_mut(s.index()).set_parent(p);
 
@@ -299,43 +324,68 @@ mod tests {
     fn skip_promote_lifts_child_and_sibling_to_grandparent() {
         let mut vtree: VTree<u64> = make_vtree();
 
-        let c = VNodeId::from_index(vtree.nodes.alloc(VNode::new_entry(
-            4,
-            None,
-            GNodeId::from_index(10),
-            false,
-            true,
-        )).0);
-        let s = VNodeId::from_index(vtree.nodes.alloc(VNode::new_entry(
-            3,
-            None,
-            GNodeId::from_index(11),
-            false,
-            false,
-        )).0);
-        let u = VNodeId::from_index(vtree.nodes.alloc(VNode::new_entry(
-            8,
-            None,
-            GNodeId::from_index(12),
-            false,
-            true,
-        )).0);
+        let c = VNodeId::from_index(
+            vtree
+                .nodes
+                .alloc(VNode::new_entry(
+                    4,
+                    None,
+                    GNodeId::from_index(10),
+                    false,
+                    true,
+                ))
+                .0,
+        );
+        let s = VNodeId::from_index(
+            vtree
+                .nodes
+                .alloc(VNode::new_entry(
+                    3,
+                    None,
+                    GNodeId::from_index(11),
+                    false,
+                    false,
+                ))
+                .0,
+        );
+        let u = VNodeId::from_index(
+            vtree
+                .nodes
+                .alloc(VNode::new_entry(
+                    8,
+                    None,
+                    GNodeId::from_index(12),
+                    false,
+                    true,
+                ))
+                .0,
+        );
 
-        let p = VNodeId::from_index(vtree.nodes.alloc(VNode::new_structural(
-            7,
-            None,
-            Children::new_2((c, 4), (s, 3)),
-            true,
-        )).0);
+        let p = VNodeId::from_index(
+            vtree
+                .nodes
+                .alloc(VNode::new_structural(
+                    7,
+                    None,
+                    Children::new_2((c, 4), (s, 3)),
+                    true,
+                ))
+                .0,
+        );
         vtree.nodes.get_mut(c.index()).set_parent(p);
         vtree.nodes.get_mut(s.index()).set_parent(p);
 
-        let g = VNodeId::from_index(vtree.nodes.alloc(VNode::new_structural(
-            15,
-            None,
-            Children::new_2((p, 7), (u, 8)),
-            true,
-        )).0);
+        let g = VNodeId::from_index(
+            vtree
+                .nodes
+                .alloc(VNode::new_structural(
+                    15,
+                    None,
+                    Children::new_2((p, 7), (u, 8)),
+                    true,
+                ))
+                .0,
+        );
         vtree.nodes.get_mut(p.index()).set_parent(g);
         vtree.nodes.get_mut(u.index()).set_parent(g);
 
@@ -358,6 +408,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::too_many_lines)]
     fn legacy_promote_lifts_entry_and_creates_missing_gchild() {
         let mut graph = make_graph();
 
@@ -365,43 +416,67 @@ mod tests {
         let existing_child = graph.gtree.nodes.allocate_missing_child(semi_gid);
         assert!(graph.gtree.nodes.get(semi_gid.index()).is_semi_internal());
 
-        let c = VNodeId::from_index(graph.vtree.nodes.alloc(VNode::new_entry(
-            7,
-            None,
-            semi_gid,
-            true,
-            true,
-        )).0);
-        let s = VNodeId::from_index(graph.vtree.nodes.alloc(VNode::new_entry(
-            5,
-            None,
-            GNodeId::from_index(existing_child.index()),
-            true,
-            true,
-        )).0);
-        let u = VNodeId::from_index(graph.vtree.nodes.alloc(VNode::new_entry(
-            11,
-            None,
-            GNodeId::from_index(existing_child.index()),
-            true,
-            true,
-        )).0);
+        let c = VNodeId::from_index(
+            graph
+                .vtree
+                .nodes
+                .alloc(VNode::new_entry(7, None, semi_gid, true, true))
+                .0,
+        );
+        let s = VNodeId::from_index(
+            graph
+                .vtree
+                .nodes
+                .alloc(VNode::new_entry(
+                    5,
+                    None,
+                    GNodeId::from_index(existing_child.index()),
+                    true,
+                    true,
+                ))
+                .0,
+        );
+        let u = VNodeId::from_index(
+            graph
+                .vtree
+                .nodes
+                .alloc(VNode::new_entry(
+                    11,
+                    None,
+                    GNodeId::from_index(existing_child.index()),
+                    true,
+                    true,
+                ))
+                .0,
+        );
 
-        let p = VNodeId::from_index(graph.vtree.nodes.alloc(VNode::new_structural(
-            12,
-            None,
-            Children::new_2((c, 7), (s, 5)),
-            true,
-        )).0);
+        let p = VNodeId::from_index(
+            graph
+                .vtree
+                .nodes
+                .alloc(VNode::new_structural(
+                    12,
+                    None,
+                    Children::new_2((c, 7), (s, 5)),
+                    true,
+                ))
+                .0,
+        );
         graph.vtree.nodes.get_mut(c.index()).set_parent(p);
         graph.vtree.nodes.get_mut(s.index()).set_parent(p);
 
-        let g = VNodeId::from_index(graph.vtree.nodes.alloc(VNode::new_structural(
-            23,
-            None,
-            Children::new_2((p, 12), (u, 11)),
-            true,
-        )).0);
+        let g = VNodeId::from_index(
+            graph
+                .vtree
+                .nodes
+                .alloc(VNode::new_structural(
+                    23,
+                    None,
+                    Children::new_2((p, 12), (u, 11)),
+                    true,
+                ))
+                .0,
+        );
         graph.vtree.nodes.get_mut(p.index()).set_parent(g);
         graph.vtree.nodes.get_mut(u.index()).set_parent(g);
 
@@ -465,33 +540,51 @@ mod tests {
 
         assert_eq!(graph.vtree.nodes.get(c.index()).parent(), Some(g));
         assert_eq!(graph.vtree.nodes.get(new_entry.index()).parent(), Some(p));
-        assert_eq!(graph.gtree.nodes.get(new_gid.index()).parent(), Some(semi_gid));
+        assert_eq!(
+            graph.gtree.nodes.get(new_gid.index()).parent(),
+            Some(semi_gid)
+        );
     }
 
     #[test]
     #[should_panic(expected = "standard_promote: c must be structural")]
     fn standard_promote_panics_for_entry_node() {
         let mut vtree: VTree<u64> = make_vtree();
-        let c = VNodeId::from_index(vtree.nodes.alloc(VNode::new_entry(
-            4,
-            None,
-            GNodeId::from_index(1),
-            true,
-            true,
-        )).0);
-        let s = VNodeId::from_index(vtree.nodes.alloc(VNode::new_entry(
-            3,
-            None,
-            GNodeId::from_index(2),
-            true,
-            true,
-        )).0);
-        let p = VNodeId::from_index(vtree.nodes.alloc(VNode::new_structural(
-            7,
-            None,
-            Children::new_2((c, 4), (s, 3)),
-            true,
-        )).0);
+        let c = VNodeId::from_index(
+            vtree
+                .nodes
+                .alloc(VNode::new_entry(
+                    4,
+                    None,
+                    GNodeId::from_index(1),
+                    true,
+                    true,
+                ))
+                .0,
+        );
+        let s = VNodeId::from_index(
+            vtree
+                .nodes
+                .alloc(VNode::new_entry(
+                    3,
+                    None,
+                    GNodeId::from_index(2),
+                    true,
+                    true,
+                ))
+                .0,
+        );
+        let p = VNodeId::from_index(
+            vtree
+                .nodes
+                .alloc(VNode::new_structural(
+                    7,
+                    None,
+                    Children::new_2((c, 4), (s, 3)),
+                    true,
+                ))
+                .0,
+        );
         vtree.nodes.get_mut(c.index()).set_parent(p);
         vtree.nodes.get_mut(s.index()).set_parent(p);
 
@@ -506,51 +599,69 @@ mod tests {
         let semi_gid = graph.gtree.nodes.root;
         let _ = graph.gtree.nodes.allocate_missing_child(semi_gid);
 
-        let c1 = VNodeId::from_index(graph.vtree.nodes.alloc(VNode::new_entry(
-            1,
-            None,
-            semi_gid,
-            true,
-            true,
-        )).0);
-        let c2 = VNodeId::from_index(graph.vtree.nodes.alloc(VNode::new_entry(
-            2,
-            None,
-            semi_gid,
-            true,
-            true,
-        )).0);
-        let c = VNodeId::from_index(graph.vtree.nodes.alloc(VNode::new_structural(
-            3,
-            None,
-            Children::new_2((c1, 1), (c2, 2)),
-            true,
-        )).0);
+        let c1 = VNodeId::from_index(
+            graph
+                .vtree
+                .nodes
+                .alloc(VNode::new_entry(1, None, semi_gid, true, true))
+                .0,
+        );
+        let c2 = VNodeId::from_index(
+            graph
+                .vtree
+                .nodes
+                .alloc(VNode::new_entry(2, None, semi_gid, true, true))
+                .0,
+        );
+        let c = VNodeId::from_index(
+            graph
+                .vtree
+                .nodes
+                .alloc(VNode::new_structural(
+                    3,
+                    None,
+                    Children::new_2((c1, 1), (c2, 2)),
+                    true,
+                ))
+                .0,
+        );
         graph.vtree.nodes.get_mut(c1.index()).set_parent(c);
         graph.vtree.nodes.get_mut(c2.index()).set_parent(c);
 
-        let u = VNodeId::from_index(graph.vtree.nodes.alloc(VNode::new_entry(
-            9,
-            None,
-            semi_gid,
-            true,
-            true,
-        )).0);
-        let p = VNodeId::from_index(graph.vtree.nodes.alloc(VNode::new_structural(
-            3,
-            None,
-            Children::new_2((c, 3), (u, 9)),
-            true,
-        )).0);
+        let u = VNodeId::from_index(
+            graph
+                .vtree
+                .nodes
+                .alloc(VNode::new_entry(9, None, semi_gid, true, true))
+                .0,
+        );
+        let p = VNodeId::from_index(
+            graph
+                .vtree
+                .nodes
+                .alloc(VNode::new_structural(
+                    3,
+                    None,
+                    Children::new_2((c, 3), (u, 9)),
+                    true,
+                ))
+                .0,
+        );
         graph.vtree.nodes.get_mut(c.index()).set_parent(p);
         graph.vtree.nodes.get_mut(u.index()).set_parent(p);
 
-        let g = VNodeId::from_index(graph.vtree.nodes.alloc(VNode::new_structural(
-            12,
-            None,
-            Children::new_2((p, 12), (u, 9)),
-            true,
-        )).0);
+        let g = VNodeId::from_index(
+            graph
+                .vtree
+                .nodes
+                .alloc(VNode::new_structural(
+                    12,
+                    None,
+                    Children::new_2((p, 12), (u, 9)),
+                    true,
+                ))
+                .0,
+        );
         graph.vtree.nodes.get_mut(p.index()).set_parent(g);
 
         let _ = legacy_promote(&mut graph.vtree, &mut graph.gtree, c);

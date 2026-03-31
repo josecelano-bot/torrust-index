@@ -1,109 +1,116 @@
-# Project-specific dictionary for cspell
+
+# ----------------------------
 # Add words here that are valid in this codebase but not in standard dictionaries.
-
-# ----------------------------
-# Project / company names
-# ----------------------------
-Cyberneering
-cyberneering
-torrust
-Torrust
-
-# ----------------------------
-# Rust ecosystem / crate names
-# ----------------------------
-btreemap
-clippy
-crossterm
-dedup
-impls
-INSTA
-insta
-newtype
-ratatui
-rstest
-serde
-usize
-vecs
-
-# ----------------------------
+# Algorithms / complexity metrics
 # British English spellings
-# ----------------------------
+# Domain / project-specific terms
+# Graphviz / DOT attributes
+# Miscellaneous abbreviations / shortcuts
+# People / usernames
+# Project / company names
+# Project-specific dictionary for cspell
+# Rust ecosystem / crate names
+# Rust toolchain / environment variables
+# Tools / external programs
+Accum
+Attenuatable
+Cabe
+Colour
+Colours
+Cyberneering
+Deque
+Djava
+Evictable
+Fenwick
+Graphviz
+Gries
+Halstead
+Hotspots
+INSTA
+Inspectable
+MSRV
+Misra
+Normalise
+Pewei
+Proratable
+RUSTFLAGS
+SLOC
+Subtrait
+Torrust
+Tsvg
+UFCS
+Weighable
+Zsanitizer
 amortised
 artefacts
-uninitialised
-behaviour
-colour
-Colour
-colours
-Colours
-materialises
-normalisation
-normalise
-Normalise
-normalised
-penalised
-serialises
-stabilise
-visualiser
-
-# ----------------------------
-# Algorithms / complexity metrics
-# ----------------------------
-Cabe
-Fenwick
-Gries
-halstead
-Halstead
-ltrimstr
-Misra
-nargs
-nexits
-rtrimstr
-sloc
-SLOC
-
-# ----------------------------
-# Domain / project-specific terms
-# ----------------------------
 attenuatable
-Attenuatable
+behaviour
 browsable
+btreemap
+catchable
+clippy
+colour
+colours
+crossterm
+cyberneering
+dedup
 diagnoser
 disjointness
-elif
 elems
+elif
 evictable
-Evictable
 fanout
+fontname
+fontsize
 freelist
+gchild
 gnode
 gnodes
 gtree
-gchild
 gvgraph
-inspectable
-Inspectable
-keyspace
+halstead
 hotspot
 hotspots
-Hotspots
+impls
+inspectable
+insta
+josecelano
+keyspace
+ltrimstr
+materialises
 maximality
 modif
+nargs
+newtype
+nexits
+normalisation
+normalise
+normalised
+nullglob
 overindented
-proratable
-Proratable
+penalised
 pewei
-Pewei
 postorder
 preorder
+proratable
+rankdir
+ratatui
 reparent
 reqs
+rstest
+rtrimstr
 sampleable
 semiinternal
-Subtrait
-UFCS
+serde
+serialises
+sloc
+stabilise
+torrust
+tsvg
+undercount
+uninitialised
 unparented
+usize
 vecs
 ventry
 visualiser
@@ -111,39 +118,3 @@ vnode
 vnodes
 vtree
 weighable
-Weighable
-
-# ----------------------------
-# Graphviz / DOT attributes
-# ----------------------------
-fontname
-fontsize
-Graphviz
-rankdir
-tsvg
-Tsvg
-
-# ----------------------------
-# Tools / external programs
-# ----------------------------
-Accum
-Deque
-Djava
-
-# ----------------------------
-# Miscellaneous abbreviations / shortcuts
-# ----------------------------
-nullglob
-undercount
-
-# ----------------------------
-# People / usernames
-# ----------------------------
-josecelano
-
-# ----------------------------
-# Rust toolchain / environment variables
-# ----------------------------
-RUSTFLAGS
-Zsanitizer
-catchable
