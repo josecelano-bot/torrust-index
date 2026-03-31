@@ -123,4 +123,5 @@ evictability
 vnodetree
 callsites
 gnodetree
+gvcore
 parameterised

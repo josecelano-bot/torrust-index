@@ -130,9 +130,11 @@ Work bottom-up. Each layer is prerequisite for the next.
    → Sub-plan: [step2-vtree-mutations.md](step2-vtree-mutations.md)
 
 3. **`GNodeTree` pure queries** — functions that only read `&GNodeTree`.
+   → Sub-plan: [step3-gnodetree-queries.md](step3-gnodetree-queries.md)
 
 4. **`GvCore` cross-tree operations** — functions that need both `self.gtree` and
    `self.vtree`. Examples: `legacy_promote` (already done), `resolve_path_b`.
+   → Sub-plan: [step4-gvcore-cross-tree.md](step4-gvcore-cross-tree.md)
 
 5. **`GvGraph`-level operations** — functions that additionally need `Config` or the
    plateau tracker.
@@ -166,7 +168,7 @@ For every free function being migrated:
 
 - [x] Step 1 — `VNodeTree` pure query methods
 - [x] Step 2 — `VTree` mutation methods (`contract`, `standard_promote`, `skip_promote`)
-- [ ] Step 3 — `GNodeTree` pure query methods
+- [x] Step 3 — `GNodeTree` pure query methods (`total_sum`, `gnode_children`, `is_ancestor_of`)
 - [ ] Step 4 — `GvCore` cross-tree operation methods
 - [ ] Step 5 — `GvGraph`-level operations
 
@@ -220,3 +222,25 @@ integers rather than the formatted wrappers.
 for use by the deleted `contract` body.  Once `contract` was removed the re-export
 became dead.  Clippy caught this and it was removed; the companion test
 `ch_display_fn` was updated to import `Ch` directly from `fmt`.
+
+### Step 3 — implementation notes
+
+**Pattern differed from Steps 1 and 2** — no free functions existed to migrate;
+the candidates were `GvGraph` methods whose bodies only read `GNodeTree` fields.
+Step 3 is *method demotion*: push the implementation down to the lowest type that
+has sufficient data.
+
+**Methods added to `GNodeTree`** (all `pub(crate)`):
+`total_sum`, `gnode_children`, `is_ancestor_of`.
+
+**No files deleted** — unlike Steps 1 and 2, no source file became empty.
+`GvGraph` kept thin one-line delegates; its public API is unchanged.
+
+**`GNodeChildren` import added** — `gnode_tree.rs` did not previously import
+`GNodeChildren`; one `use` line was added to support the new `gnode_children` method.
+
+**Caller scope zero** — all callers continue going through the `GvGraph` delegates;
+no call site outside `gv_graph.rs` needed updating.
+
+**No test migration** — existing `GvGraph` tests exercise the three methods through
+the public API and remain valid without modification.
