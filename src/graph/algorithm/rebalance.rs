@@ -1,7 +1,6 @@
-use crate::graph::core::GvCore;
-use crate::handle::{GNodeId, VNodeId};
+use crate::handle::VNodeId;
 use crate::nodes::vnode::{Children, VKind, VNode};
-use crate::traits::{Accumulator, Coordinate, Inspectable};
+use crate::traits::Accumulator;
 use crate::tree::vtree::{VNodeTree, VTree};
 
 mod context;
@@ -115,154 +114,12 @@ pub(super) fn node_has_evictable<V: Accumulator>(vnodes: &VNodeTree<V>, id: VNod
     vnodes.node_has_evictable(id)
 }
 
-/// Log the violation-queue tail and either panic (debug) or signal a break
-/// (release) when the rebalance loop exceeds its iteration budget.
-///
-/// Returns `false` in debug builds (unreachable — `panic!` diverges) and `true`
-/// in release builds to tell the caller to break out of the loop.
-fn handle_iteration_limit<V: Accumulator>(
-    vnodes: &VNodeTree<V>,
-    violations: &[VNodeId],
-    iterations: u32,
-    max_iterations: u32,
-    resolved: u32,
-    current: VNodeId,
-) -> bool {
-    tracing::error!(
-        iterations,
-        max_iterations,
-        resolved,
-        queue = violations.len(),
-        current = current.index(),
-        "rebalance safety-net exceeded — dumping queue tail",
-    );
-    let tail = violations.len().saturating_sub(20);
-    for (i, v) in violations[tail..].iter().enumerate() {
-        if vnodes.is_occupied(v.index()) {
-            tracing::error!(idx = tail + i, entry = %Ctx(vnodes, *v));
-        } else {
-            tracing::error!(idx = tail + i, node = v.index(), "DEAD");
-        }
-    }
-
-    #[cfg(debug_assertions)]
-    panic!(
-        "rebalance: exceeded {max_iterations} iterations \
-         (queue={}, node=v{}, resolved={resolved})",
-        violations.len(),
-        current.index(),
-    );
-    #[cfg(not(debug_assertions))]
-    {
-        tracing::error!(
-            "breaking out of rebalance loop — \
-             possible bug in violation resolution",
-        );
-        true
-    }
-}
-
-pub fn rebalance<C: Coordinate, V: Accumulator + Inspectable, const N: u32>(
-    core: &mut GvCore<C, V, N>,
-) -> Vec<GNodeId> {
-    let depth_evict = core.gtree.live_depth_evict;
-    let mut new_gnodes = Vec::new();
-
-    let max_iterations: u32 = core.vtree.nodes.count().saturating_mul(20).max(10_000);
-    let mut iterations: u32 = 0;
-    let mut resolved: u32 = 0;
-
-    let _span = tracing::debug_span!("rebalance", queue = core.vtree.violations.len()).entered();
-
-    if tracing::enabled!(tracing::Level::DEBUG) {
-        crate::diagnostics::diagnostic::audit_violations(
-            &core.vtree.nodes,
-            &core.vtree.violations,
-            "PRE-REBALANCE",
-        );
-    }
-
-    // Invariant: each `resolve` call either resolves the head node (decreasing
-    // total violations by at least 1) or promotes the violation upward toward
-    // the root (bounded by tree depth × branching factor).  The safety-net
-    // `max_iterations` catches any cycle if that invariant is ever violated.
-    while let Some(c) = core.vtree.violations.pop() {
-        iterations += 1;
-        if iterations > max_iterations
-            && handle_iteration_limit(
-                &core.vtree.nodes,
-                &core.vtree.violations,
-                iterations,
-                max_iterations,
-                resolved,
-                c,
-            )
-        {
-            break;
-        }
-
-        if !core.vtree.nodes.is_occupied(c.index()) {
-            tracing::trace!(node = c.index(), "skip destroyed");
-            continue;
-        }
-
-        if !is_violated(&core.vtree.nodes, c) {
-            tracing::trace!(node = c.index(), "skip already resolved");
-            continue;
-        }
-
-        resolved += 1;
-        tracing::debug!(
-            iter = iterations,
-            resolved,
-            queue = core.vtree.violations.len(),
-            node = %Ctx(&core.vtree.nodes, c),
-            "resolving violation",
-        );
-        let gid = resolve(core, c, depth_evict);
-        if let Some(gid) = gid {
-            new_gnodes.push(gid);
-        }
-
-        if core.vtree.nodes.is_occupied(c.index()) && is_violated(&core.vtree.nodes, c) {
-            tracing::warn!(
-                iter = iterations,
-                node = %Ctx(&core.vtree.nodes, c),
-                "node STILL violated after resolve",
-            );
-        }
-
-        if tracing::enabled!(tracing::Level::DEBUG) {
-            crate::diagnostics::diagnostic::audit_violations(
-                &core.vtree.nodes,
-                &core.vtree.violations,
-                "POST-RESOLVE",
-            );
-        }
-    }
-
-    tracing::debug!(iterations, resolved, "rebalance complete");
-
-    if cfg!(debug_assertions) || tracing::enabled!(tracing::Level::DEBUG) {
-        let remaining = crate::diagnostics::diagnostic::audit_violations(
-            &core.vtree.nodes,
-            &core.vtree.violations,
-            "RESIDUAL",
-        );
-        assert!(
-            remaining.is_empty(),
-            "rebalance finished with residual violations: {remaining:?}"
-        );
-    }
-
-    new_gnodes
-}
+// rebalance and handle_iteration_limit have moved to `GvCore` in `graph/core.rs`.
 
 #[cfg(test)]
 mod tests {
     use crate::graph::algorithm::rebalance::max_uncle_intensity;
     use crate::graph::{Config, GvGraph, StructuralConfig};
-    use crate::handle::VNodeId;
     use crate::nodes::vnode::{Children, VNode};
 
     type G = GvGraph<u8, u32, 8>;
@@ -578,90 +435,6 @@ mod tests {
             let v_root_id = g.v_root().expect("fresh graph has v_root");
             let result = format!("{}", Ch(g.vnodes(), v_root_id));
             assert_eq!(result, "\u{2205}", "Ch on Entry vnode should display '∅'");
-        }
-    }
-
-    // ── rebalance (integration) ───────────────────────────────────────
-    mod rebalance_fn {
-        use super::*;
-        use crate::graph::algorithm::rebalance::{handle_iteration_limit, rebalance, resolve};
-        use crate::nodes::vnode::VNode;
-
-        #[test]
-        fn total_sum_invariant_is_maintained_after_many_observations() {
-            let mut g = fresh();
-            let mut expected_sum = 0u32;
-            for (i, coord) in [0u8, 64, 32, 96, 16, 80, 48, 112].iter().enumerate() {
-                let delta = (i as u32 + 1) * 3;
-                g.observe(*coord, delta);
-                expected_sum += delta;
-            }
-            assert_eq!(g.total_sum(), expected_sum);
-        }
-
-        #[test]
-        fn node_count_is_at_least_one_after_many_observations() {
-            let mut g = fresh();
-            for coord in 0u8..20 {
-                g.observe(coord.wrapping_mul(13), 3u32);
-            }
-            assert!(g.node_count() >= 1);
-        }
-
-        #[test]
-        fn resolve_returns_none_when_node_has_no_parent() {
-            let mut g = fresh();
-            g.observe(64u8, 2u32); // no split: root entry has no parent
-            let c = g.v_root().expect("v_root must exist");
-            g.core.vtree.violations.clear();
-            let depth_evict = g.core.gtree.live_depth_evict;
-            let result = resolve(&mut g.core, c, depth_evict);
-            assert!(result.is_none());
-            assert!(g.core.vtree.violations.is_empty());
-        }
-
-        #[test]
-        fn rebalance_skips_destroyed_queue_nodes() {
-            let mut g = fresh();
-            g.observe(64u8, 3u32); // ensure non-empty tree
-            g.core.vtree.violations.push(VNodeId::from_index(9999));
-
-            let new_nodes = rebalance(&mut g.core);
-            assert!(new_nodes.is_empty());
-            assert!(g.core.vtree.violations.is_empty());
-        }
-
-        #[test]
-        fn rebalance_skips_already_resolved_nodes() {
-            let mut g = fresh();
-            g.observe(64u8, 3u32); // establish a structural root
-            let v_root = g.v_root().expect("v_root must exist");
-            // Root has no uncle relation and should not be violated.
-            g.core.vtree.violations.push(v_root);
-
-            let new_nodes = rebalance(&mut g.core);
-            assert!(new_nodes.is_empty());
-            assert!(g.core.vtree.violations.is_empty());
-        }
-
-        #[test]
-        #[should_panic(expected = "rebalance: exceeded")]
-        fn handle_iteration_limit_panics_in_debug_mode() {
-            let mut vnodes = crate::tree::vtree::VNodeTree::<u32>::from(crate::arena::Arena::new());
-            let live = VNodeId::from_index(
-                vnodes
-                    .alloc(VNode::new_entry(
-                        1,
-                        None,
-                        crate::handle::GNodeId::from_index(50),
-                        true,
-                        true,
-                    ))
-                    .0,
-            );
-            let violations = vec![live, VNodeId::from_index(9999)];
-
-            let _ = handle_iteration_limit(&vnodes, &violations, 11, 10, 0, live);
         }
     }
 }
