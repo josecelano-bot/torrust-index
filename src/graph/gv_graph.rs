@@ -246,11 +246,7 @@ impl<C: Coordinate, V: Accumulator, const N: u32, T: PlateauTracking<C, V>> GvGr
     #[must_use]
     #[inline]
     pub fn total_sum(&self) -> V {
-        self.core
-            .gtree
-            .nodes
-            .get(self.core.gtree.nodes.root.index())
-            .sum()
+        self.core.gtree.nodes.total_sum()
     }
 
     #[must_use]
@@ -327,26 +323,12 @@ impl<C: Coordinate, V: Accumulator, const N: u32, T: PlateauTracking<C, V>> GvGr
     #[doc(hidden)]
     #[must_use]
     pub fn gnode_children(&self, id: GNodeId) -> Option<GNodeChildren> {
-        if !self.core.gtree.nodes.is_occupied(id.index()) {
-            return None;
-        }
-        let g = self.core.gtree.nodes.get(id.index());
-        Some(GNodeChildren {
-            left: g.left(),
-            right: g.right(),
-        })
+        self.core.gtree.nodes.gnode_children(id)
     }
 
     #[must_use]
     pub fn is_ancestor_of(&self, ancestor: GNodeId, descendant: GNodeId) -> bool {
-        if !self.core.gtree.nodes.is_occupied(ancestor.index())
-            || !self.core.gtree.nodes.is_occupied(descendant.index())
-        {
-            return false;
-        }
-        let a = self.core.gtree.nodes.get(ancestor.index());
-        let d = self.core.gtree.nodes.get(descendant.index());
-        a.lo() <= d.lo() && a.hi() >= d.hi() && (a.lo() != d.lo() || a.hi() != d.hi())
+        self.core.gtree.nodes.is_ancestor_of(ancestor, descendant)
     }
 }
 

@@ -1,4 +1,4 @@
-use super::gnode::GNode;
+use super::gnode::{GNode, GNodeChildren};
 use crate::arena::Arena;
 use crate::handle::{GNodeId, VNodeId};
 use crate::traits::{Accumulator, Coordinate};
@@ -132,6 +132,43 @@ impl<C: Coordinate, V: Accumulator> GNodeTree<C, V> {
     #[must_use]
     pub(crate) fn uniform_contour_depth_of(&self, gid: GNodeId, n: u32) -> Option<u32> {
         uniform_contour_depth_of(&self.nodes, gid, n)
+    }
+
+    // ── Pure queries ──────────────────────────────────────────────────────
+
+    /// Returns the accumulated sum over the entire G-tree (i.e. the value
+    /// stored at the root node).
+    #[must_use]
+    pub(crate) fn total_sum(&self) -> V {
+        self.nodes.get(self.root.index()).sum()
+    }
+
+    /// Returns the left and right child IDs of the G-node at `id`, or `None`
+    /// if the slot is unoccupied.
+    #[must_use]
+    pub(crate) fn gnode_children(&self, id: GNodeId) -> Option<GNodeChildren> {
+        if !self.nodes.is_occupied(id.index()) {
+            return None;
+        }
+        let g = self.nodes.get(id.index());
+        Some(GNodeChildren {
+            left: g.left(),
+            right: g.right(),
+        })
+    }
+
+    /// Returns `true` when `ancestor` geometrically contains `descendant` and
+    /// the two nodes are not the same node.  Returns `false` if either slot is
+    /// unoccupied.
+    #[must_use]
+    pub(crate) fn is_ancestor_of(&self, ancestor: GNodeId, descendant: GNodeId) -> bool {
+        if !self.nodes.is_occupied(ancestor.index()) || !self.nodes.is_occupied(descendant.index())
+        {
+            return false;
+        }
+        let a = self.nodes.get(ancestor.index());
+        let d = self.nodes.get(descendant.index());
+        a.lo() <= d.lo() && a.hi() >= d.hi() && (a.lo() != d.lo() || a.hi() != d.hi())
     }
 
     // ── G-node allocation / eviction helpers ─────────────────────────────
