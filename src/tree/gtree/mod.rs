@@ -3,8 +3,8 @@ use crate::spatial::range::CoordinateRange;
 use crate::traits::{Accumulator, Coordinate};
 
 pub mod gnode;
-pub(crate) mod gnode_tree;
-pub(crate) use gnode_tree::GNodeTree;
+pub mod gnode_tree;
+pub use gnode_tree::GNodeTree;
 
 // ── GTree ────────────────────────────────────────────────────────────────────
 

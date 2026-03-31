@@ -601,6 +601,32 @@ pub fn check_p_i5_thatch_depth<C: Coordinate, V: Accumulator + Inspectable, cons
     }
 }
 
+    #[cfg(feature = "dynamic-contour-tracking")]
+    fn route_to_depth<C: Coordinate, V: Accumulator + Inspectable, const N: u32>(
+        graph: &GvGraph<C, V, N>,
+        x: C,
+    ) -> u32 {
+        let mut cur = graph.gtree.nodes.root;
+        for _ in 0..=N + 1 {
+            let g = graph.gtree.nodes.get(cur.index());
+            if g.is_terminal() {
+                return GTree::<C, V, N>::depth_of_interval(g.lo(), g.hi());
+            }
+            let mid = C::midpoint(g.lo(), g.hi());
+            let next = if x.total_cmp(&mid) == std::cmp::Ordering::Less {
+                g.left()
+            } else {
+                g.right()
+            };
+            match next {
+                Some(child) => cur = child,
+                None => return GTree::<C, V, N>::depth_of_interval(g.lo(), g.hi()),
+            }
+        }
+        let g = graph.gtree.nodes.get(cur.index());
+        GTree::<C, V, N>::depth_of_interval(g.lo(), g.hi())
+    }
+
 #[cfg(test)]
 #[cfg(feature = "dynamic-contour-tracking")]
 mod tests {
@@ -651,28 +677,3 @@ mod tests {
     }
 }
 
-#[cfg(feature = "dynamic-contour-tracking")]
-fn route_to_depth<C: Coordinate, V: Accumulator + Inspectable, const N: u32>(
-    graph: &GvGraph<C, V, N>,
-    x: C,
-) -> u32 {
-    let mut cur = graph.gtree.nodes.root;
-    for _ in 0..=N + 1 {
-        let g = graph.gtree.nodes.get(cur.index());
-        if g.is_terminal() {
-            return GTree::<C, V, N>::depth_of_interval(g.lo(), g.hi());
-        }
-        let mid = C::midpoint(g.lo(), g.hi());
-        let next = if x.total_cmp(&mid) == std::cmp::Ordering::Less {
-            g.left()
-        } else {
-            g.right()
-        };
-        match next {
-            Some(child) => cur = child,
-            None => return GTree::<C, V, N>::depth_of_interval(g.lo(), g.hi()),
-        }
-    }
-    let g = graph.gtree.nodes.get(cur.index());
-    GTree::<C, V, N>::depth_of_interval(g.lo(), g.hi())
-}

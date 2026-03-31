@@ -18,95 +18,11 @@ pub struct VNodeTree<V: Accumulator> {
 
 impl<V: Accumulator> VNodeTree<V> {
     #[must_use]
-    pub(crate) fn new() -> Self {
+        pub(crate) const fn new() -> Self {
         Self {
             nodes: Arena::new(),
             root: None,
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn make_tree() -> VNodeTree<u32> {
-        VNodeTree::from(Arena::new())
-    }
-
-    #[test]
-    fn new_starts_with_empty_arena_and_no_root() {
-        let t = VNodeTree::<u32>::new();
-        assert_eq!(t.count(), 0);
-        assert!(t.root.is_none());
-    }
-
-    #[test]
-    fn default_starts_with_empty_arena_and_no_root() {
-        let t: VNodeTree<u32> = VNodeTree::default();
-        assert_eq!(t.count(), 0);
-        assert!(t.root.is_none());
-    }
-
-    #[test]
-    #[should_panic(expected = "sibling_of: parent must be structural")]
-    fn sibling_of_panics_when_parent_is_entry() {
-        let mut t = make_tree();
-        let parent = VNodeId::from_index(t.alloc(VNode::new_entry(
-            1,
-            None,
-            GNodeId::from_index(0),
-            true,
-            true,
-        )).0);
-        let child = VNodeId::from_index(t.alloc(VNode::new_entry(
-            2,
-            None,
-            GNodeId::from_index(1),
-            true,
-            true,
-        )).0);
-
-        let _ = t.sibling_of(parent, child);
-    }
-
-    #[test]
-    #[should_panic(expected = "sibling_of: child")]
-    fn sibling_of_panics_when_child_is_not_in_parent() {
-        let mut t = make_tree();
-
-        let c1 = VNodeId::from_index(t.alloc(VNode::new_entry(
-            3,
-            None,
-            GNodeId::from_index(2),
-            true,
-            true,
-        )).0);
-        let c2 = VNodeId::from_index(t.alloc(VNode::new_entry(
-            4,
-            None,
-            GNodeId::from_index(3),
-            true,
-            true,
-        )).0);
-        let outsider = VNodeId::from_index(t.alloc(VNode::new_entry(
-            5,
-            None,
-            GNodeId::from_index(4),
-            true,
-            true,
-        )).0);
-
-        let p = VNodeId::from_index(t.alloc(VNode::new_structural(
-            7,
-            None,
-            Children::new_2((c1, 3), (c2, 4)),
-            true,
-        )).0);
-        t.get_mut(c1.index()).set_parent(p);
-        t.get_mut(c2.index()).set_parent(p);
-
-        let _ = t.sibling_of(p, outsider);
     }
 }
 
@@ -438,3 +354,71 @@ impl<V: Accumulator> VNodeTree<V> {
         }
     }
 }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        fn make_tree() -> VNodeTree<u32> {
+            VNodeTree::from(Arena::new())
+        }
+
+        #[test]
+        fn new_starts_with_empty_arena_and_no_root() {
+            let t = VNodeTree::<u32>::new();
+            assert_eq!(t.count(), 0);
+            assert!(t.root.is_none());
+        }
+
+        #[test]
+        fn default_starts_with_empty_arena_and_no_root() {
+            let t: VNodeTree<u32> = VNodeTree::default();
+            assert_eq!(t.count(), 0);
+            assert!(t.root.is_none());
+        }
+
+        #[test]
+        #[should_panic(expected = "sibling_of: parent must be structural")]
+        fn sibling_of_panics_when_parent_is_entry() {
+            let mut t = make_tree();
+            let parent = VNodeId::from_index(
+                t.alloc(VNode::new_entry(1, None, GNodeId::from_index(0), true, true))
+                    .0,
+            );
+            let child = VNodeId::from_index(
+                t.alloc(VNode::new_entry(2, None, GNodeId::from_index(1), true, true))
+                    .0,
+            );
+            let _ = t.sibling_of(parent, child);
+        }
+
+        #[test]
+        #[should_panic(expected = "sibling_of: child")]
+        fn sibling_of_panics_when_child_is_not_in_parent() {
+            let mut t = make_tree();
+            let c1 = VNodeId::from_index(
+                t.alloc(VNode::new_entry(3, None, GNodeId::from_index(2), true, true))
+                    .0,
+            );
+            let c2 = VNodeId::from_index(
+                t.alloc(VNode::new_entry(4, None, GNodeId::from_index(3), true, true))
+                    .0,
+            );
+            let outsider = VNodeId::from_index(
+                t.alloc(VNode::new_entry(5, None, GNodeId::from_index(4), true, true))
+                    .0,
+            );
+            let p = VNodeId::from_index(
+                t.alloc(VNode::new_structural(
+                    7,
+                    None,
+                    Children::new_2((c1, 3), (c2, 4)),
+                    true,
+                ))
+                .0,
+            );
+            t.get_mut(c1.index()).set_parent(p);
+            t.get_mut(c2.index()).set_parent(p);
+            let _ = t.sibling_of(p, outsider);
+        }
+    }

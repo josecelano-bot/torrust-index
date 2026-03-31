@@ -182,7 +182,7 @@ impl<T: Default> Arena<T> {
     /// Compare this with the generation returned by [`alloc`](Arena::alloc) to
     /// determine if a handle is still valid:
     ///
-    /// ```rust,ignore
+    /// ```text
     /// let (idx, gen) = arena.alloc(value).0;
     /// // ... later ...
     /// if arena.generation(idx) == gen {

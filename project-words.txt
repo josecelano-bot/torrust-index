@@ -31,6 +31,7 @@ vecs
 # ----------------------------
 amortised
 artefacts
+uninitialised
 behaviour
 colour
 Colour
@@ -79,6 +80,8 @@ freelist
 gnode
 gnodes
 gtree
+gchild
+gvgraph
 inspectable
 Inspectable
 keyspace
@@ -132,3 +135,15 @@ Djava
 # ----------------------------
 nullglob
 undercount
+
+# ----------------------------
+# People / usernames
+# ----------------------------
+josecelano
+
+# ----------------------------
+# Rust toolchain / environment variables
+# ----------------------------
+RUSTFLAGS
+Zsanitizer
+catchable

@@ -49,7 +49,7 @@ impl<C: Coordinate, V: Accumulator> GNodeTree<C, V> {
     }
 
     /// Returns the number of currently occupied G-node slots.
-    pub(crate) fn count(&self) -> u32 {
+    pub(crate) const fn count(&self) -> u32 {
         self.nodes.count()
     }
 
@@ -249,7 +249,7 @@ impl<C: Coordinate, V: Accumulator> GNodeTree<C, V> {
 /// a full `GNodeTree` wrapper (root/counters are irrelevant for this query).
 #[cfg(feature = "dynamic-contour-tracking")]
 #[must_use]
-pub(crate) fn uniform_contour_depth_of<C: Coordinate, V: Accumulator>(
+pub fn uniform_contour_depth_of<C: Coordinate, V: Accumulator>(
     gnodes: &Arena<GNode<C, V>>,
     gid: GNodeId,
     n: u32,
