@@ -37,3 +37,26 @@ impl ViolationSources {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    mod violation_sources_fn {
+        use super::super::ViolationSources;
+
+        #[test]
+        fn default_enables_all_sources() {
+            let d = ViolationSources::default();
+            let a = ViolationSources::all_enabled();
+            assert_eq!(
+                d.source_3_contraction_grandchildren,
+                a.source_3_contraction_grandchildren
+            );
+            assert_eq!(d.source_4_promotion_children, a.source_4_promotion_children);
+            assert_eq!(
+                d.source_6_leaf_removal_ancestors,
+                a.source_6_leaf_removal_ancestors
+            );
+            assert_eq!(d.source_7_collapse_children, a.source_7_collapse_children);
+        }
+    }
+}
