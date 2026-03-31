@@ -1,14 +1,8 @@
 use crate::graph::GvGraph;
-use crate::graph::algorithm::rebalance;
 use crate::handle::GNodeId;
 use crate::traits::{Accumulator, Coordinate, Inspectable, PlateauTracking};
 
 impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N> {
-    pub(crate) fn rebalance_vtree(&mut self) -> Vec<GNodeId> {
-        let depth_evict = self.core.gtree.live_depth_evict;
-        rebalance::rebalance(&mut self.core.vtree, &mut self.core.gtree, depth_evict)
-    }
-
     pub(crate) fn handle_legacy_promotes(&mut self, new_gnodes: &[GNodeId]) {
         for &_new_gid in new_gnodes {
             self.core.gtree.nodes.node_count += 1;
@@ -146,7 +140,7 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
 
         // ── Phase 2: Post-batch rebalance, plateau repair, and normalisation ───
         if evicted > 0 {
-            let new_gnodes = self.rebalance_vtree();
+            let new_gnodes = self.core.rebalance();
             if !new_gnodes.is_empty() {
                 self.handle_legacy_promotes(&new_gnodes);
             }

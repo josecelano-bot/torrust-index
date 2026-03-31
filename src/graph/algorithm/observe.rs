@@ -62,7 +62,7 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
             self.debug_assert_plateau_mirror_consistency("POST-SPLIT");
         }
 
-        let new_gnodes = self.rebalance_vtree();
+        let new_gnodes = self.core.rebalance();
         if !new_gnodes.is_empty() {
             self.handle_legacy_promotes(&new_gnodes);
             self.repair_p_i4();

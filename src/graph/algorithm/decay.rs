@@ -239,7 +239,7 @@ impl<C: Coordinate, V: Accumulator + Attenuatable + Inspectable, const N: u32> G
 
     fn post_decay_repair(&mut self, label: &str) {
         self.core.vtree.violations = rebalance::find_violated_nodes(&self.core.vtree.nodes);
-        let new_gnodes = self.rebalance_vtree();
+        let new_gnodes = self.core.rebalance();
         if !new_gnodes.is_empty() {
             self.handle_legacy_promotes(&new_gnodes);
         }
