@@ -186,13 +186,12 @@ mod tests {
     // ── find_violated_nodes ──────────────────────────────────────────
     mod find_violated_nodes_fn {
         use super::*;
-        use crate::graph::algorithm::rebalance::find_violated_nodes;
 
         #[test]
         fn returns_empty_when_no_nodes_are_violated() {
             let mut g = fresh();
             g.observe(64u8, 2u32); // single root entry, no uncle relation
-            let violated = find_violated_nodes(g.vnodes());
+            let violated = g.vnodes().find_violated_nodes();
             assert!(violated.is_empty());
         }
     }

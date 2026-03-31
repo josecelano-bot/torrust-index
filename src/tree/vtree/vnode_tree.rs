@@ -2,6 +2,7 @@ use super::vnode::{Children, VKind, VNode};
 use crate::arena::Arena;
 use crate::handle::{GNodeId, VNodeId};
 use crate::traits::Accumulator;
+use std::cmp::Reverse;
 use std::ops::{Deref, DerefMut};
 
 /// Structural V-node owner: backing storage and root identity.
@@ -300,6 +301,19 @@ impl<V: Accumulator> VNodeTree<V> {
         self.get_mut(a.index()).set_parent(s_id);
         self.get_mut(b.index()).set_parent(s_id);
         s_id
+    }
+
+    #[must_use]
+    pub(crate) fn find_violated_nodes(&self) -> Vec<VNodeId> {
+        let mut violated: Vec<(VNodeId, u32)> = Vec::new();
+        for (idx, _) in self.iter_occupied() {
+            let id = VNodeId::from_index(idx);
+            if self.is_violated(id) {
+                violated.push((id, self.depth(id)));
+            }
+        }
+        violated.sort_by_key(|b| Reverse(b.1));
+        violated.into_iter().map(|(id, _)| id).collect()
     }
 
     #[must_use]
