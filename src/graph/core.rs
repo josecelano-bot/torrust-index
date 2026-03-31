@@ -27,6 +27,17 @@ impl<C: Coordinate, V: Accumulator, const N: u32> Clone for GvCore<C, V, N> {
 }
 
 impl<C: Coordinate, V: Accumulator, const N: u32> GvCore<C, V, N> {
+    /// Attempt to resolve a single violation at V-node `c`.
+    ///
+    /// Delegates to the `resolve` algorithm in the rebalance module, reading
+    /// `depth_evict` from `self.gtree.live_depth_evict` so callers do not need
+    /// to thread that value through.
+    ///
+    /// Returns `Some(new_g)` only when a legacy promote created a new G-node.
+    pub(crate) fn resolve_violation(&mut self, c: VNodeId) -> Option<GNodeId> {
+        rebalance::resolve(self, c, self.gtree.live_depth_evict)
+    }
+
     pub(crate) fn alloc_v_entry(&mut self, gnode: GNodeId) -> VNodeId {
         let e = VNode::new_entry(V::zero(), None, gnode, true, true);
         let e_id = VNodeId::from_index(self.vtree.nodes.alloc(e).0);
@@ -209,7 +220,6 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvCore<C, V, N> 
     pub(crate) fn rebalance(&mut self) -> Vec<GNodeId> {
         use crate::diagnostics::diagnostic::audit_violations;
 
-        let depth_evict = self.gtree.live_depth_evict;
         let mut new_gnodes = Vec::new();
 
         let max_iterations: u32 = self.vtree.nodes.count().saturating_mul(20).max(10_000);
@@ -262,7 +272,7 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvCore<C, V, N> 
                 node = %rebalance::Ctx(&self.vtree.nodes, c),
                 "resolving violation",
             );
-            let gid = rebalance::resolve(self, c, depth_evict);
+            let gid = self.resolve_violation(c);
             if let Some(gid) = gid {
                 new_gnodes.push(gid);
             }

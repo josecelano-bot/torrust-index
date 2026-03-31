@@ -232,7 +232,6 @@ pub fn resolve<C: Coordinate, V: Accumulator, const N: u32>(
 
 #[cfg(test)]
 mod tests {
-    use super::resolve;
     use crate::graph::{Config, GvGraph, StructuralConfig};
     use crate::handle::{GNodeId, VNodeId};
     use crate::nodes::vnode::{Children, VKind, VNode};
@@ -256,9 +255,8 @@ mod tests {
     fn resolve_returns_none_when_node_has_no_parent() {
         let mut g = make_graph();
         let c = g.v_root().expect("fresh graph must have v_root");
-        let depth_evict = g.core.gtree.live_depth_evict;
 
-        let out = resolve(&mut g.core, c, depth_evict);
+        let out = g.core.resolve_violation(c);
         assert!(out.is_none());
     }
 
@@ -273,8 +271,7 @@ mod tests {
             VKind::Entry { .. } => panic!("expected structural v_root after split"),
         };
 
-        let depth_evict = g.core.gtree.live_depth_evict;
-        let out = resolve(&mut g.core, c, depth_evict);
+        let out = g.core.resolve_violation(c);
         assert!(out.is_none());
     }
 
@@ -351,8 +348,7 @@ mod tests {
 
         g.core.gtree.nodes.assign_entry(semi_gid, c);
 
-        let depth_evict = g.core.gtree.live_depth_evict;
-        let out = resolve(&mut g.core, c, depth_evict);
+        let out = g.core.resolve_violation(c);
 
         let new_gid = out.expect("legacy promote path should return new gnode");
         assert_eq!(

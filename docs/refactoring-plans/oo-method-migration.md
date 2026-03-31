@@ -170,7 +170,7 @@ For every free function being migrated:
 - [x] Step 2 — `VTree` mutation methods (`contract`, `standard_promote`, `skip_promote`)
 - [x] Step 3 — `GNodeTree` pure query methods (`total_sum`, `gnode_children`, `is_ancestor_of`)
 - [x] Step 4 — `GvCore` cross-tree operation methods (`resolve_path_b`)
-- [ ] Step 5 — `GvGraph`-level operations
+- [x] Step 5 — remaining deferred cleanups ([sub-plan](step5-remaining-cleanups.md))
 
 ### Step 1 — implementation notes
 
@@ -265,3 +265,20 @@ methods.  Moving it would first require migrating the `escalate_*` helper family
 
 **No files deleted** — `resolve.rs` still contains the public `resolve` free
 function and the escalate helpers; nothing became empty.
+
+### Step 5 — implementation notes
+
+**One candidate implemented** — `resolve` free function became
+`pub(crate) fn resolve_violation` on `GvCore`.  It reads `depth_evict` from
+`self.gtree.live_depth_evict` so callers no longer thread that value through.
+`GvCore::rebalance` now calls `self.resolve_violation(c)`.
+
+**5-A and 5-C blocked by circular import** — the escalate helpers in `resolve.rs`
+and `push_eviction_violations` in `evict.rs` both use `ViolationQueue` from
+`violation_push.rs`, which imports `VNodeTree` from `vtree`.  Moving those
+helpers to `VTree` / `VNodeTree` would create a `vtree → violation_push → vtree`
+cycle.  See the sub-plan for details and a path forward.
+
+**Tests updated** — three tests in `resolve.rs` that called
+`resolve(&mut g.core, c, depth_evict)` now call `g.core.resolve_violation(c)`.
+The `depth_evict` extraction lines were removed.
