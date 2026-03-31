@@ -302,6 +302,35 @@ impl<V: Accumulator> VNodeTree<V> {
         s_id
     }
 
+    #[must_use]
+    pub(crate) fn max_uncle_intensity(&self, c: VNodeId) -> Option<V> {
+        let parent = self.get(c.index()).parent()?;
+        let grandparent = self.get(parent.index()).parent()?;
+
+        let g = self.get(grandparent.index());
+        if let VKind::Structural { children, .. } = &g.kind() {
+            let mut max_int = None;
+            for i in 0..children.len() {
+                let (id, intensity) = children.get(i);
+                if id != parent {
+                    max_int = Some(max_int.map_or(intensity, |cur| {
+                        if intensity > cur { intensity } else { cur }
+                    }));
+                }
+            }
+            max_int
+        } else {
+            None
+        }
+    }
+
+    #[must_use]
+    pub(crate) fn is_violated(&self, c: VNodeId) -> bool {
+        let c_int = self.get(c.index()).intensity();
+        self.max_uncle_intensity(c)
+            .is_some_and(|max_uncle| c_int > max_uncle)
+    }
+
     /// Returns all V-entry nodes eligible for eviction.
     ///
     /// A node is a candidate when it is deeper than `live_depth_evict`,
@@ -450,5 +479,74 @@ mod tests {
         t.get_mut(c1.index()).set_parent(p);
         t.get_mut(c2.index()).set_parent(p);
         let _ = t.sibling_of(p, outsider);
+    }
+
+    // ── max_uncle_intensity ───────────────────────────────────────────
+
+    #[test]
+    fn max_uncle_intensity_returns_max_across_multiple_uncles() {
+        let mut vnodes = VNodeTree::<u32>::from(Arena::new());
+
+        let c = VNodeId::from_index(
+            vnodes
+                .alloc(VNode::new_entry(
+                    5,
+                    None,
+                    GNodeId::from_index(1),
+                    true,
+                    true,
+                ))
+                .0,
+        );
+        let sibling = VNodeId::from_index(
+            vnodes
+                .alloc(VNode::new_entry(
+                    4,
+                    None,
+                    GNodeId::from_index(2),
+                    true,
+                    true,
+                ))
+                .0,
+        );
+        let u1 = VNodeId::from_index(
+            vnodes
+                .alloc(VNode::new_entry(
+                    9,
+                    None,
+                    GNodeId::from_index(3),
+                    true,
+                    true,
+                ))
+                .0,
+        );
+
+        let parent = VNodeId::from_index(
+            vnodes
+                .alloc(VNode::new_structural(
+                    9,
+                    None,
+                    Children::new_2((c, 5), (sibling, 4)),
+                    true,
+                ))
+                .0,
+        );
+        let gp = VNodeId::from_index(
+            vnodes
+                .alloc(VNode::new_structural(
+                    18,
+                    None,
+                    Children::new_2((parent, 9), (u1, 9)),
+                    true,
+                ))
+                .0,
+        );
+
+        vnodes.get_mut(c.index()).set_parent(parent);
+        vnodes.get_mut(sibling.index()).set_parent(parent);
+        vnodes.get_mut(parent.index()).set_parent(gp);
+        vnodes.get_mut(u1.index()).set_parent(gp);
+
+        assert_eq!(vnodes.max_uncle_intensity(c), Some(9));
     }
 }

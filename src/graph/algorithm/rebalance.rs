@@ -14,32 +14,12 @@ pub use violation_scan::find_violated_nodes;
 
 #[must_use]
 pub fn max_uncle_intensity<V: Accumulator>(vnodes: &VNodeTree<V>, c: VNodeId) -> Option<V> {
-    let parent = vnodes.get(c.index()).parent()?;
-    let grandparent = vnodes.get(parent.index()).parent()?;
-
-    let g = vnodes.get(grandparent.index());
-    if let VKind::Structural { children, .. } = &g.kind() {
-        let mut max_int = None;
-        for i in 0..children.len() {
-            let (id, intensity) = children.get(i);
-            if id != parent {
-                max_int =
-                    Some(max_int.map_or(
-                        intensity,
-                        |cur| if intensity > cur { intensity } else { cur },
-                    ));
-            }
-        }
-        max_int
-    } else {
-        None
-    }
+    vnodes.max_uncle_intensity(c)
 }
 
 #[must_use]
 pub fn is_violated<V: Accumulator>(vnodes: &VNodeTree<V>, c: VNodeId) -> bool {
-    let c_int = vnodes.get(c.index()).intensity();
-    max_uncle_intensity(vnodes, c).is_some_and(|max_uncle| c_int > max_uncle)
+    vnodes.is_violated(c)
 }
 
 pub fn contract<V: Accumulator>(vtree: &mut VTree<V>, p: VNodeId) -> VNodeId {
@@ -114,9 +94,7 @@ pub fn contract<V: Accumulator>(vtree: &mut VTree<V>, p: VNodeId) -> VNodeId {
 
 #[cfg(test)]
 mod tests {
-    use crate::graph::algorithm::rebalance::max_uncle_intensity;
     use crate::graph::{Config, GvGraph, StructuralConfig};
-    use crate::nodes::vnode::{Children, VNode};
 
     type G = GvGraph<u8, u32, 8>;
 
@@ -172,7 +150,6 @@ mod tests {
     // ── max_uncle_intensity ───────────────────────────────────────────
     mod max_uncle_intensity_fn {
         use super::*;
-        use crate::handle::{GNodeId, VNodeId};
 
         #[test]
         fn returns_none_for_node_with_no_grandparent() {
@@ -184,7 +161,7 @@ mod tests {
             // Its children: original entry + cs structural.
             // Walk to a depth-1 child.
             let v_root = g.v_root().expect("v_root must exist after bootstrap split");
-            let result = max_uncle_intensity(g.vnodes(), v_root);
+            let result = g.vnodes().max_uncle_intensity(v_root);
             // v_root has no parent → no grandparent → None
             assert!(result.is_none());
         }
@@ -200,76 +177,9 @@ mod tests {
             // The presence of a result is what we are testing — not the value.
             let v_root = g.v_root().unwrap();
             // The root itself has no grandparent → None
-            assert!(max_uncle_intensity(g.vnodes(), v_root).is_none());
+            assert!(g.vnodes().max_uncle_intensity(v_root).is_none());
             // But total_sum being correct proves rebalance ran successfully.
             assert_eq!(g.total_sum(), 6u32);
-        }
-
-        #[test]
-        fn returns_max_across_multiple_uncles() {
-            let mut vnodes = crate::tree::vtree::VNodeTree::<u32>::from(crate::arena::Arena::new());
-
-            let c = VNodeId::from_index(
-                vnodes
-                    .alloc(VNode::new_entry(
-                        5,
-                        None,
-                        GNodeId::from_index(1),
-                        true,
-                        true,
-                    ))
-                    .0,
-            );
-            let sibling = VNodeId::from_index(
-                vnodes
-                    .alloc(VNode::new_entry(
-                        4,
-                        None,
-                        GNodeId::from_index(2),
-                        true,
-                        true,
-                    ))
-                    .0,
-            );
-            let u1 = VNodeId::from_index(
-                vnodes
-                    .alloc(VNode::new_entry(
-                        9,
-                        None,
-                        GNodeId::from_index(3),
-                        true,
-                        true,
-                    ))
-                    .0,
-            );
-
-            let parent = VNodeId::from_index(
-                vnodes
-                    .alloc(VNode::new_structural(
-                        9,
-                        None,
-                        Children::new_2((c, 5), (sibling, 4)),
-                        true,
-                    ))
-                    .0,
-            );
-            let gp = VNodeId::from_index(
-                vnodes
-                    .alloc(VNode::new_structural(
-                        18,
-                        None,
-                        Children::new_2((parent, 9), (u1, 9)),
-                        true,
-                    ))
-                    .0,
-            );
-
-            vnodes.get_mut(c.index()).set_parent(parent);
-            vnodes.get_mut(sibling.index()).set_parent(parent);
-            vnodes.get_mut(parent.index()).set_parent(gp);
-            vnodes.get_mut(u1.index()).set_parent(gp);
-
-            assert_eq!(max_uncle_intensity(&vnodes, c), Some(9));
         }
     }
 
