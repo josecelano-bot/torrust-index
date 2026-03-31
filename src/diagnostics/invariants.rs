@@ -19,19 +19,18 @@ use vtree_consistency::check_v_tree_invariants;
 pub use crate::diagnostics::dot::{dump_gtree_dot, dump_vtree_dot};
 pub use crate::diagnostics::dump::{dump_gtree, dump_plateaus};
 
-
 #[allow(clippy::float_cmp)]
 fn check_g_i1_summation<C: Coordinate, V: Accumulator + Inspectable, const N: u32>(
     graph: &GvGraph<C, V, N>,
     errors: &mut Vec<String>,
 ) {
     for (idx, g) in graph.gtree.nodes.iter_occupied() {
-        let left_sum = g
-            .left()
-            .map_or(0.0, |l| graph.gtree.nodes.get(l.index()).sum().to_f64_approx());
-        let right_sum = g
-            .right()
-            .map_or(0.0, |r| graph.gtree.nodes.get(r.index()).sum().to_f64_approx());
+        let left_sum = g.left().map_or(0.0, |l| {
+            graph.gtree.nodes.get(l.index()).sum().to_f64_approx()
+        });
+        let right_sum = g.right().map_or(0.0, |r| {
+            graph.gtree.nodes.get(r.index()).sum().to_f64_approx()
+        });
         let expected = g.own().to_f64_approx() + left_sum + right_sum;
         let actual = g.sum().to_f64_approx();
         if expected != actual && (expected - actual).abs() > 1e-9 {
@@ -336,7 +335,8 @@ fn check_clean_accounting<C: Coordinate, V: Accumulator + Inspectable, const N: 
         }
     }
     let g_root_sum = graph
-        .gtree.nodes
+        .gtree
+        .nodes
         .get(graph.gtree.nodes.root.index())
         .sum()
         .to_f64_approx();
@@ -477,7 +477,8 @@ fn check_terminal_count_consistency<C: Coordinate, V: Accumulator + Inspectable,
 ) {
     #[allow(clippy::cast_possible_truncation)]
     let actual = graph
-        .gtree.nodes
+        .gtree
+        .nodes
         .iter_occupied()
         .filter(|(_, g)| g.is_terminal())
         .count() as u32;
@@ -497,8 +498,7 @@ fn check_hard_budget<C: Coordinate, V: Accumulator + Inspectable, const N: u32>(
         if graph.gtree.nodes.node_count as usize > budget {
             errors.push(format!(
                 "Hard budget violated (ADR-M-018): node_count ({}) > budget ({})",
-                graph.gtree.nodes.node_count,
-                budget
+                graph.gtree.nodes.node_count, budget
             ));
         }
     }
@@ -601,7 +601,9 @@ mod tests {
         check_v_root_consistency(&g, &mut errors);
 
         assert!(
-            errors.iter().any(|e| e.contains("v_root") && e.contains("expected None")),
+            errors
+                .iter()
+                .any(|e| e.contains("v_root") && e.contains("expected None")),
             "expected v_root parent consistency error, got: {errors:?}"
         );
     }
@@ -616,7 +618,9 @@ mod tests {
         check_clean_accounting(&g, &mut errors);
 
         assert!(
-            errors.iter().any(|e| e.contains("Clean accounting violated")),
+            errors
+                .iter()
+                .any(|e| e.contains("Clean accounting violated")),
             "expected clean-accounting error, got: {errors:?}"
         );
     }
@@ -690,7 +694,9 @@ mod tests {
         }
 
         // Break structural evictable aggregation flag on the V-root.
-        if let VKind::Structural { has_evictable, .. } = g.vtree.nodes.get_mut(v_root.index()).kind_mut() {
+        if let VKind::Structural { has_evictable, .. } =
+            g.vtree.nodes.get_mut(v_root.index()).kind_mut()
+        {
             *has_evictable = false;
         }
 
@@ -699,8 +705,16 @@ mod tests {
         assert!(errors.iter().any(|e| e.contains("Node count:")));
         assert!(errors.iter().any(|e| e.contains("Terminal count:")));
         assert!(errors.iter().any(|e| e.contains("D-I3:")));
-        assert!(errors.iter().any(|e| e.contains("v_root") || e.contains("V-root consistency")));
-        assert!(errors.iter().any(|e| e.contains("Clean accounting violated")));
+        assert!(
+            errors
+                .iter()
+                .any(|e| e.contains("v_root") || e.contains("V-root consistency"))
+        );
+        assert!(
+            errors
+                .iter()
+                .any(|e| e.contains("Clean accounting violated"))
+        );
     }
 
     #[test]
@@ -715,7 +729,11 @@ mod tests {
         let mut errors = Vec::new();
         check_g_i4_entry_consistency(&g, &mut errors);
 
-        assert!(errors.iter().any(|e| e.contains("entry V-node") && e.contains("not occupied")));
+        assert!(
+            errors
+                .iter()
+                .any(|e| e.contains("entry V-node") && e.contains("not occupied"))
+        );
     }
 
     #[test]
@@ -758,8 +776,16 @@ mod tests {
         let mut errors = Vec::new();
         check_g_i4_entry_consistency(&g, &mut errors);
 
-        assert!(errors.iter().any(|e| e.contains("entry's gnode") && e.contains(&child_gid.index().to_string())));
-        assert!(errors.iter().any(|e| e.contains("entry is a structural V-node")));
+        assert!(
+            errors
+                .iter()
+                .any(|e| e.contains("entry's gnode") && e.contains(&child_gid.index().to_string()))
+        );
+        assert!(
+            errors
+                .iter()
+                .any(|e| e.contains("entry is a structural V-node"))
+        );
     }
 
     #[test]
@@ -774,7 +800,11 @@ mod tests {
         check_g_i5_entry_bijection(&g, &mut errors);
 
         assert!(errors.iter().any(|e| e.contains("no V-Entry")));
-        assert!(errors.iter().any(|e| e.contains("occupied G-nodes") && e.contains("V-Entry nodes")));
+        assert!(
+            errors
+                .iter()
+                .any(|e| e.contains("occupied G-nodes") && e.contains("V-Entry nodes"))
+        );
     }
 
     #[test]
@@ -793,8 +823,16 @@ mod tests {
         check_v_i1_structural_sum(&g, &mut errors);
         check_v_i5_entry_leaf(&g, &mut errors);
 
-        assert!(errors.iter().any(|e| e.contains("V-I1 violated") && e.contains("not occupied")));
-        assert!(errors.iter().any(|e| e.contains("V-I5 violated") && e.contains("not occupied")));
+        assert!(
+            errors
+                .iter()
+                .any(|e| e.contains("V-I1 violated") && e.contains("not occupied"))
+        );
+        assert!(
+            errors
+                .iter()
+                .any(|e| e.contains("V-I5 violated") && e.contains("not occupied"))
+        );
     }
 
     #[test]
@@ -808,7 +846,11 @@ mod tests {
         let mut errors = Vec::new();
         check_v_i6_exposed_flag(&g, &mut errors);
 
-        assert!(errors.iter().any(|e| e.contains("backing G-node") && e.contains("not occupied")));
+        assert!(
+            errors
+                .iter()
+                .any(|e| e.contains("backing G-node") && e.contains("not occupied"))
+        );
     }
 
     #[test]
@@ -837,7 +879,11 @@ mod tests {
         let mut errors = Vec::new();
         check_v_parent_links(&g, &mut errors);
 
-        assert!(errors.iter().any(|e| e.contains("parent is not structural")));
+        assert!(
+            errors
+                .iter()
+                .any(|e| e.contains("parent is not structural"))
+        );
     }
 
     #[test]
@@ -869,7 +915,9 @@ mod tests {
         let mut g: G = GvGraph::new(make_config(None));
         g.observe(64u8, 3u32); // produce structural v-root
         let v_root = g.v_root().expect("v_root must exist");
-        if let VKind::Structural { has_evictable, .. } = g.vtree.nodes.get_mut(v_root.index()).kind_mut() {
+        if let VKind::Structural { has_evictable, .. } =
+            g.vtree.nodes.get_mut(v_root.index()).kind_mut()
+        {
             *has_evictable = false;
         }
 
@@ -902,7 +950,10 @@ mod tests {
         check_v_tree_invariants(&g, &mut errors);
         check_accounting_invariants(&g, &mut errors);
 
-        assert!(errors.is_empty(), "fresh graph should satisfy grouped invariants: {errors:?}");
+        assert!(
+            errors.is_empty(),
+            "fresh graph should satisfy grouped invariants: {errors:?}"
+        );
     }
 
     #[cfg(feature = "dynamic-contour-tracking")]
@@ -914,6 +965,9 @@ mod tests {
         check_plateau_only(&g, &mut errors);
         check_p_i3_only(&g, &mut errors);
 
-        assert!(errors.is_empty(), "fresh graph should satisfy plateau-only checks: {errors:?}");
+        assert!(
+            errors.is_empty(),
+            "fresh graph should satisfy plateau-only checks: {errors:?}"
+        );
     }
 }

@@ -19,12 +19,22 @@ fn add_leaf(
     id
 }
 
-fn add_node(gnodes: &mut Arena<GNode<u8, u32>>, lo: u8, hi: u8, parent: Option<GNodeId>) -> GNodeId {
+fn add_node(
+    gnodes: &mut Arena<GNode<u8, u32>>,
+    lo: u8,
+    hi: u8,
+    parent: Option<GNodeId>,
+) -> GNodeId {
     GNodeId::from_index(gnodes.alloc(GNode::new_leaf(lo, hi, 0u32, parent)).0)
 }
 
 fn as_gnodes(nodes: Arena<GNode<u8, u32>>) -> crate::tree::gtree::GNodeTree<u8, u32> {
-    crate::tree::gtree::GNodeTree { nodes, root: GNodeId::from_index(0), node_count: 0, terminal_count: 0 }
+    crate::tree::gtree::GNodeTree {
+        nodes,
+        root: GNodeId::from_index(0),
+        node_count: 0,
+        terminal_count: 0,
+    }
 }
 
 #[test]
@@ -61,9 +71,12 @@ fn on_legacy_promotes_batched_skips_internal_existing_child() {
     let ex_left = add_leaf(&mut gnodes, 0, 4, 1, Some(existing_internal));
     let ex_right = add_leaf(&mut gnodes, 4, 8, 1, Some(existing_internal));
     gnodes.get_mut(existing_internal.index()).link_left(ex_left);
-    gnodes.get_mut(existing_internal.index()).link_right(ex_right);
+    gnodes
+        .get_mut(existing_internal.index())
+        .link_right(ex_right);
 
-    let mut tracker = DynamicPlateauTracker::<u8, u32>::with_root(BasisEdge(0), 0, 0, 16, parent, 4);
+    let mut tracker =
+        DynamicPlateauTracker::<u8, u32>::with_root(BasisEdge(0), 0, 0, 16, parent, 4);
     let gnodes = as_gnodes(gnodes);
     PlateauTracking::on_legacy_promotes_batched(&mut tracker, &gnodes, &[new_child]);
 
@@ -168,8 +181,12 @@ fn legacy_promote_with_parent_in_basis_executes_fixup_branch() {
     gnodes.get_mut(parent.index()).link_left(existing);
     gnodes.get_mut(parent.index()).link_right(promoted);
 
-    let mut tracker = DynamicPlateauTracker::<u8, u32>::with_root(BasisEdge(0), 0, 0, 16, parent, 4);
-    assert_eq!(tracker.plateau_basis.plateau_key(parent), Some(BasisEdge(0)));
+    let mut tracker =
+        DynamicPlateauTracker::<u8, u32>::with_root(BasisEdge(0), 0, 0, 16, parent, 4);
+    assert_eq!(
+        tracker.plateau_basis.plateau_key(parent),
+        Some(BasisEdge(0))
+    );
 
     let gnodes = as_gnodes(gnodes);
     PlateauTracking::on_legacy_promotes_batched(&mut tracker, &gnodes, &[promoted]);

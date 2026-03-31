@@ -1,7 +1,7 @@
 use super::DynamicPlateauTracker;
-use crate::tree::gtree::GNodeTree;
 use crate::handle::GNodeId;
 use crate::traits::{Accumulator, Coordinate};
+use crate::tree::gtree::GNodeTree;
 
 impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
     pub(super) fn on_observe_impl(&mut self, gnodes: &GNodeTree<C, V>, g_id: GNodeId, value: V) {

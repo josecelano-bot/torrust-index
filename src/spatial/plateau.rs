@@ -87,8 +87,12 @@ mod tests {
 
     fn make_gnode(left: Option<GNodeId>, right: Option<GNodeId>) -> GNode<u8, u32> {
         let mut g = GNode::new_leaf(0u8, 16u8, 0u32, None);
-        if let Some(l) = left { g.link_left(l); }
-        if let Some(r) = right { g.link_right(r); }
+        if let Some(l) = left {
+            g.link_left(l);
+        }
+        if let Some(r) = right {
+            g.link_right(r);
+        }
         g
     }
 

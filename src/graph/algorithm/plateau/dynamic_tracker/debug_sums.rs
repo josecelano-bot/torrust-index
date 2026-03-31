@@ -1,6 +1,6 @@
 use super::DynamicPlateauTracker;
-use crate::tree::gtree::GNodeTree;
 use crate::traits::{Accumulator, Coordinate, Inspectable};
+use crate::tree::gtree::GNodeTree;
 
 // ── Inspectable-bounded debug helpers ────────────────────────────────────────
 

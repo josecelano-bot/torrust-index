@@ -1,7 +1,7 @@
 use super::DynamicPlateauTracker;
-use crate::tree::gtree::GNodeTree;
 use crate::handle::GNodeId;
 use crate::traits::{Accumulator, Coordinate};
+use crate::tree::gtree::GNodeTree;
 use crate::tree::gtree::gnode_depth_from_range;
 
 impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
@@ -22,7 +22,10 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
         (right_id, left_depth, right_depth)
     }
 
-    fn remove_co_members_from_key(&mut self, key: crate::spatial::plateau::BasisEdge<C>) -> Vec<GNodeId> {
+    fn remove_co_members_from_key(
+        &mut self,
+        key: crate::spatial::plateau::BasisEdge<C>,
+    ) -> Vec<GNodeId> {
         let co_members: Vec<GNodeId> = self
             .plateau_basis
             .basis_elements(&key)
@@ -124,7 +127,8 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
 
         self.plateaus_dirty = true;
 
-        let (right_id, left_depth, right_depth) = self.catalytic_split_depths(gnodes, g_id, left_id);
+        let (right_id, left_depth, right_depth) =
+            self.catalytic_split_depths(gnodes, g_id, left_id);
 
         // ── Phase 1: Locate the covering basis element for g_id ─────────────────
         let (old_key, displaced) = self.locate_covering_basis_for_catalytic_split(gnodes, g_id);

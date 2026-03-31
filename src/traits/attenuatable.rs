@@ -52,10 +52,10 @@ mod tests {
         use rstest::rstest;
 
         #[rstest]
-        #[case(100u32, 0.5_f64, 50u32)]    // factor 0.5 halves the value
-        #[case(200u32, 1.0_f64, 200u32)]   // factor 1.0 is identity
-        #[case(999u32, 0.0_f64, 0u32)]     // factor 0.0 drives to zero
-        #[case(3u32, 0.4_f64, 1u32)]       // 3 × 0.4 = 1.2, truncated to 1
+        #[case(100u32, 0.5_f64, 50u32)] // factor 0.5 halves the value
+        #[case(200u32, 1.0_f64, 200u32)] // factor 1.0 is identity
+        #[case(999u32, 0.0_f64, 0u32)] // factor 0.0 drives to zero
+        #[case(3u32, 0.4_f64, 1u32)] // 3 × 0.4 = 1.2, truncated to 1
         #[case(1000u32, 0.75_f64, 750u32)] // three-quarter scale
         fn u32_attenuation(#[case] value: u32, #[case] factor: f64, #[case] expected: u32) {
             assert_eq!(value.attenuate(factor), expected);

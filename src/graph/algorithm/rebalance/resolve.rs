@@ -5,10 +5,8 @@ use crate::tree::gtree::GTree;
 use crate::tree::vtree::VNodeTree;
 
 use super::super::promote::{legacy_promote, skip_promote, standard_promote};
-use super::super::violation_push::{
-    ViolationQueue,
-};
-use super::{contract, is_violated, Ctx, EscalationContext, Nd, VTreeMutContext};
+use super::super::violation_push::ViolationQueue;
+use super::{Ctx, EscalationContext, Nd, VTreeMutContext, contract, is_violated};
 
 fn structural_child_count<V: Accumulator>(vnodes: &VNodeTree<V>, id: VNodeId) -> usize {
     vnodes.get(id.index()).child_count()
@@ -117,10 +115,7 @@ fn escalate_skip_promote<V: Accumulator>(
     }
 }
 
-fn escalate_after_promote<V: Accumulator>(
-    tree: &mut VTreeMutContext<'_, V>,
-    p: VNodeId,
-) {
+fn escalate_after_promote<V: Accumulator>(tree: &mut VTreeMutContext<'_, V>, p: VNodeId) {
     // Phase 1: Identify heaviest child; early-return if no violation.
     // Scope the shared borrow so it is dropped before the mutable helper calls.
     let (heaviest, h_direct, g) = {
@@ -362,7 +357,9 @@ mod tests {
         let mut g = make_graph();
         let c = g.v_root().expect("fresh graph must have v_root");
         let depth_evict = g.gtree.live_depth_evict;
-        let mut tree = VTreeMutContext { vtree: &mut g.vtree };
+        let mut tree = VTreeMutContext {
+            vtree: &mut g.vtree,
+        };
 
         let out = resolve(&mut tree, &mut g.gtree, c, depth_evict);
         assert!(out.is_none());
@@ -380,7 +377,9 @@ mod tests {
         };
 
         let depth_evict = g.gtree.live_depth_evict;
-        let mut tree = VTreeMutContext { vtree: &mut g.vtree };
+        let mut tree = VTreeMutContext {
+            vtree: &mut g.vtree,
+        };
         let out = resolve(&mut tree, &mut g.gtree, c, depth_evict);
         assert!(out.is_none());
     }
@@ -392,50 +391,71 @@ mod tests {
         let semi_gid = g.gtree.nodes.root;
         let existing_child = g.gtree.nodes.allocate_missing_child(semi_gid);
 
-        let c = VNodeId::from_index(g.vtree.nodes.alloc(VNode::new_entry(
-            7,
-            None,
-            semi_gid,
-            true,
-            true,
-        )).0);
-        let s = VNodeId::from_index(g.vtree.nodes.alloc(VNode::new_entry(
-            5,
-            None,
-            GNodeId::from_index(existing_child.index()),
-            true,
-            true,
-        )).0);
-        let u = VNodeId::from_index(g.vtree.nodes.alloc(VNode::new_entry(
-            11,
-            None,
-            GNodeId::from_index(existing_child.index()),
-            true,
-            true,
-        )).0);
+        let c = VNodeId::from_index(
+            g.vtree
+                .nodes
+                .alloc(VNode::new_entry(7, None, semi_gid, true, true))
+                .0,
+        );
+        let s = VNodeId::from_index(
+            g.vtree
+                .nodes
+                .alloc(VNode::new_entry(
+                    5,
+                    None,
+                    GNodeId::from_index(existing_child.index()),
+                    true,
+                    true,
+                ))
+                .0,
+        );
+        let u = VNodeId::from_index(
+            g.vtree
+                .nodes
+                .alloc(VNode::new_entry(
+                    11,
+                    None,
+                    GNodeId::from_index(existing_child.index()),
+                    true,
+                    true,
+                ))
+                .0,
+        );
 
-        let p = VNodeId::from_index(g.vtree.nodes.alloc(VNode::new_structural(
-            12,
-            None,
-            Children::new_2((c, 7), (s, 5)),
-            true,
-        )).0);
+        let p = VNodeId::from_index(
+            g.vtree
+                .nodes
+                .alloc(VNode::new_structural(
+                    12,
+                    None,
+                    Children::new_2((c, 7), (s, 5)),
+                    true,
+                ))
+                .0,
+        );
         g.vtree.nodes.get_mut(c.index()).set_parent(p);
         g.vtree.nodes.get_mut(s.index()).set_parent(p);
 
-        let gp = VNodeId::from_index(g.vtree.nodes.alloc(VNode::new_structural(
-            23,
-            None,
-            Children::new_2((p, 12), (u, 11)),
-            true,
-        )).0);
+        let gp = VNodeId::from_index(
+            g.vtree
+                .nodes
+                .alloc(VNode::new_structural(
+                    23,
+                    None,
+                    Children::new_2((p, 12), (u, 11)),
+                    true,
+                ))
+                .0,
+        );
         g.vtree.nodes.get_mut(p.index()).set_parent(gp);
         g.vtree.nodes.get_mut(u.index()).set_parent(gp);
 
         g.gtree.nodes.assign_entry(semi_gid, c);
 
         let depth_evict = g.gtree.live_depth_evict;
-        let mut tree = VTreeMutContext { vtree: &mut g.vtree };
+        let mut tree = VTreeMutContext {
+            vtree: &mut g.vtree,
+        };
         let out = resolve(&mut tree, &mut g.gtree, c, depth_evict);
 
         let new_gid = out.expect("legacy promote path should return new gnode");

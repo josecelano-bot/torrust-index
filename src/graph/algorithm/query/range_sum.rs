@@ -66,12 +66,12 @@ impl<C: DiscreteCoordinate, V: Accumulator + Proratable, const N: u32> GvGraph<C
         let overlap_width = C::width(overlap.lo, overlap.hi).to_f64();
         let own_prorated = g.own().scale_by(overlap_width / node_width);
 
-        let left_sum = g.left().map_or_else(V::zero, |left_id| {
-            self.range_sum_inner(left_id, range)
-        });
-        let right_sum = g.right().map_or_else(V::zero, |right_id| {
-            self.range_sum_inner(right_id, range)
-        });
+        let left_sum = g
+            .left()
+            .map_or_else(V::zero, |left_id| self.range_sum_inner(left_id, range));
+        let right_sum = g
+            .right()
+            .map_or_else(V::zero, |right_id| self.range_sum_inner(right_id, range));
 
         V::add(own_prorated, V::add(left_sum, right_sum))
     }

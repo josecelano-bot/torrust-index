@@ -1,10 +1,8 @@
 use crate::graph::GvGraph;
 use crate::graph::algorithm::rebalance::{Nd, contract};
-use crate::graph::algorithm::violation_push::{
-    ViolationQueue,
-};
+use crate::graph::algorithm::violation_push::ViolationQueue;
 use crate::handle::{GNodeId, VNodeId};
-use crate::nodes::vnode::{VNode};
+use crate::nodes::vnode::VNode;
 use crate::traits::{Accumulator, Coordinate, Inspectable};
 use crate::tree::gtree::GTree;
 use crate::tree::vtree::VTree;
@@ -81,4 +79,3 @@ pub(super) fn alloc_v_entry<C: Coordinate, V: Accumulator, const N: u32>(
     gtree.nodes.assign_entry(gnode, e_id);
     e_id
 }
-

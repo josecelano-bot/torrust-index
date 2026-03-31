@@ -42,13 +42,13 @@
 //! `is_violated` predicate and the `resolve` function that repairs violations.
 
 use crate::handle::{GNodeId, VNodeId};
-use crate::tree::gtree::GTree;
 use crate::traits::{Accumulator, Coordinate};
+use crate::tree::gtree::GTree;
 
 pub mod vnode;
 pub mod vnode_tree;
-pub use vnode_tree::VNodeTree;
 use self::vnode::VKind;
+pub use vnode_tree::VNodeTree;
 
 // ── VTree ────────────────────────────────────────────────────────────────────
 
@@ -166,7 +166,9 @@ impl<V: Accumulator> VTree<V> {
         grandparent: Option<VNodeId>,
         v_id: VNodeId,
     ) {
-        self.nodes.get_mut(sole_id.index()).set_parent_opt(grandparent);
+        self.nodes
+            .get_mut(sole_id.index())
+            .set_parent_opt(grandparent);
 
         match grandparent {
             None => self.nodes.root = Some(sole_id),
@@ -480,12 +482,16 @@ mod tests {
             let child_b = VNodeId::from_index(vnodes.alloc(entry_vnode(5, None)).0);
             let child_c = VNodeId::from_index(vnodes.alloc(entry_vnode(5, None)).0);
 
-            let parent_id = VNodeId::from_index(vnodes.alloc(VNode::new_structural(
-                15,
-                None,
-                Children::new_3((child_a, 5u32), (child_b, 5u32), (child_c, 5u32)),
-                true,
-            )).0);
+            let parent_id = VNodeId::from_index(
+                vnodes
+                    .alloc(VNode::new_structural(
+                        15,
+                        None,
+                        Children::new_3((child_a, 5u32), (child_b, 5u32), (child_c, 5u32)),
+                        true,
+                    ))
+                    .0,
+            );
 
             vnodes.get_mut(child_a.index()).set_parent(parent_id);
             vnodes.get_mut(child_b.index()).set_parent(parent_id);
@@ -516,12 +522,16 @@ mod tests {
             let target = VNodeId::from_index(vnodes.alloc(entry_vnode(5, None)).0);
             let sibling = VNodeId::from_index(vnodes.alloc(entry_vnode(5, None)).0);
 
-            let parent_id = VNodeId::from_index(vnodes.alloc(VNode::new_structural(
-                10,
-                None,
-                Children::new_2((target, 5u32), (sibling, 5u32)),
-                true,
-            )).0);
+            let parent_id = VNodeId::from_index(
+                vnodes
+                    .alloc(VNode::new_structural(
+                        10,
+                        None,
+                        Children::new_2((target, 5u32), (sibling, 5u32)),
+                        true,
+                    ))
+                    .0,
+            );
 
             vnodes.get_mut(target.index()).set_parent(parent_id);
             vnodes.get_mut(sibling.index()).set_parent(parent_id);
@@ -550,19 +560,27 @@ mod tests {
             let sibling = VNodeId::from_index(vnodes.alloc(entry_vnode(5, None)).0);
             let uncle = VNodeId::from_index(vnodes.alloc(entry_vnode(4, None)).0);
 
-            let parent_id = VNodeId::from_index(vnodes.alloc(VNode::new_structural(
-                10,
-                None,
-                Children::new_2((target, 5u32), (sibling, 5u32)),
-                true,
-            )).0);
+            let parent_id = VNodeId::from_index(
+                vnodes
+                    .alloc(VNode::new_structural(
+                        10,
+                        None,
+                        Children::new_2((target, 5u32), (sibling, 5u32)),
+                        true,
+                    ))
+                    .0,
+            );
 
-            let grandparent_id = VNodeId::from_index(vnodes.alloc(VNode::new_structural(
-                14,
-                None,
-                Children::new_2((parent_id, 10u32), (uncle, 4u32)),
-                true,
-            )).0);
+            let grandparent_id = VNodeId::from_index(
+                vnodes
+                    .alloc(VNode::new_structural(
+                        14,
+                        None,
+                        Children::new_2((parent_id, 10u32), (uncle, 4u32)),
+                        true,
+                    ))
+                    .0,
+            );
 
             vnodes.get_mut(target.index()).set_parent(parent_id);
             vnodes.get_mut(sibling.index()).set_parent(parent_id);
@@ -581,7 +599,10 @@ mod tests {
             assert_eq!(vtree.nodes.root, Some(grandparent_id));
             assert!(!vtree.nodes.is_occupied(target.index()));
             assert!(!vtree.nodes.is_occupied(parent_id.index()));
-            assert_eq!(vtree.nodes.get(sibling.index()).parent(), Some(grandparent_id));
+            assert_eq!(
+                vtree.nodes.get(sibling.index()).parent(),
+                Some(grandparent_id)
+            );
 
             match vtree.nodes.get(grandparent_id.index()).kind() {
                 VKind::Structural { children, .. } => {

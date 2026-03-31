@@ -38,7 +38,10 @@ fn check_v_root_consistency_reports_unoccupied_root() {
 fn parent_link_consistency_runs_with_stale_child_pointer() {
     let mut g: G = GvGraph::new(make_config());
     let root = g.gtree.nodes.root;
-    g.gtree.nodes.get_mut(root.index()).link_left(GNodeId::from_index(999));
+    g.gtree
+        .nodes
+        .get_mut(root.index())
+        .link_left(GNodeId::from_index(999));
 
     let mut errors = Vec::new();
     check_parent_link_consistency(&g, &mut errors);

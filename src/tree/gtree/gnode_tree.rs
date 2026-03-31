@@ -1,7 +1,7 @@
+use super::gnode::GNode;
 use crate::arena::Arena;
 use crate::handle::{GNodeId, VNodeId};
 use crate::traits::{Accumulator, Coordinate};
-use super::gnode::GNode;
 
 /// Structural owner of the G-node set: backing storage, root identity, and
 /// intrinsic structural statistics.
@@ -57,7 +57,6 @@ impl<C: Coordinate, V: Accumulator> GNodeTree<C, V> {
     pub(crate) fn iter_occupied(&self) -> impl Iterator<Item = (usize, &GNode<C, V>)> + '_ {
         self.nodes.iter_occupied()
     }
-
 
     // ── Traversal ────────────────────────────────────────────────────────
 
@@ -175,18 +174,10 @@ impl<C: Coordinate, V: Accumulator> GNodeTree<C, V> {
             (g.lo(), g.hi())
         };
         let mid = C::midpoint(lo, hi);
-        let left_id = GNodeId::from_index(self.alloc(GNode::new_leaf(
-            lo,
-            mid,
-            V::zero(),
-            Some(parent_id),
-        )));
-        let right_id = GNodeId::from_index(self.alloc(GNode::new_leaf(
-            mid,
-            hi,
-            V::zero(),
-            Some(parent_id),
-        )));
+        let left_id =
+            GNodeId::from_index(self.alloc(GNode::new_leaf(lo, mid, V::zero(), Some(parent_id))));
+        let right_id =
+            GNodeId::from_index(self.alloc(GNode::new_leaf(mid, hi, V::zero(), Some(parent_id))));
         self.nodes.get_mut(parent_id.index()).link_left(left_id);
         self.nodes.get_mut(parent_id.index()).link_right(right_id);
         self.node_count += 2;

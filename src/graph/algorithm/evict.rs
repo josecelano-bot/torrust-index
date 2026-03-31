@@ -398,9 +398,9 @@ mod tests {
 
     // ── classify_leaf_removal ─────────────────────────────────────────
     mod classify_leaf_removal_fn {
-        use super::*;
         use super::super::classify_leaf_removal;
         use super::super::{LeafRemovalContext, push_eviction_violations};
+        use super::*;
         use crate::graph::algorithm::violation_push::ViolationQueue;
 
         fn id(i: usize) -> VNodeId {
@@ -411,40 +411,50 @@ mod tests {
         fn pair_parent_reports_grandparent_change_point_and_sibling() {
             let mut vnodes = crate::tree::vtree::VNodeTree::<u32>::from(crate::arena::Arena::new());
 
-            let target = id(vnodes.alloc(VNode::new_entry(
-                1,
-                None,
-                GNodeId::from_index(1),
-                true,
-                true,
-            )).0);
-            let sibling = id(vnodes.alloc(VNode::new_entry(
-                1,
-                None,
-                GNodeId::from_index(2),
-                true,
-                true,
-            )).0);
-            let uncle = id(vnodes.alloc(VNode::new_entry(
-                1,
-                None,
-                GNodeId::from_index(3),
-                true,
-                true,
-            )).0);
+            let target = id(vnodes
+                .alloc(VNode::new_entry(
+                    1,
+                    None,
+                    GNodeId::from_index(1),
+                    true,
+                    true,
+                ))
+                .0);
+            let sibling = id(vnodes
+                .alloc(VNode::new_entry(
+                    1,
+                    None,
+                    GNodeId::from_index(2),
+                    true,
+                    true,
+                ))
+                .0);
+            let uncle = id(vnodes
+                .alloc(VNode::new_entry(
+                    1,
+                    None,
+                    GNodeId::from_index(3),
+                    true,
+                    true,
+                ))
+                .0);
 
-            let parent = id(vnodes.alloc(VNode::new_structural(
-                2,
-                None,
-                Children::new_2((target, 1), (sibling, 1)),
-                true,
-            )).0);
-            let grandparent = id(vnodes.alloc(VNode::new_structural(
-                3,
-                None,
-                Children::new_2((parent, 2), (uncle, 1)),
-                true,
-            )).0);
+            let parent = id(vnodes
+                .alloc(VNode::new_structural(
+                    2,
+                    None,
+                    Children::new_2((target, 1), (sibling, 1)),
+                    true,
+                ))
+                .0);
+            let grandparent = id(vnodes
+                .alloc(VNode::new_structural(
+                    3,
+                    None,
+                    Children::new_2((parent, 2), (uncle, 1)),
+                    true,
+                ))
+                .0);
 
             vnodes.get_mut(target.index()).set_parent(parent);
             vnodes.get_mut(sibling.index()).set_parent(parent);
@@ -462,34 +472,42 @@ mod tests {
         fn triple_parent_reports_parent_as_change_point() {
             let mut vnodes = crate::tree::vtree::VNodeTree::<u32>::from(crate::arena::Arena::new());
 
-            let a = id(vnodes.alloc(VNode::new_entry(
-                1,
-                None,
-                GNodeId::from_index(10),
-                true,
-                true,
-            )).0);
-            let b = id(vnodes.alloc(VNode::new_entry(
-                1,
-                None,
-                GNodeId::from_index(11),
-                true,
-                true,
-            )).0);
-            let c = id(vnodes.alloc(VNode::new_entry(
-                1,
-                None,
-                GNodeId::from_index(12),
-                true,
-                true,
-            )).0);
+            let a = id(vnodes
+                .alloc(VNode::new_entry(
+                    1,
+                    None,
+                    GNodeId::from_index(10),
+                    true,
+                    true,
+                ))
+                .0);
+            let b = id(vnodes
+                .alloc(VNode::new_entry(
+                    1,
+                    None,
+                    GNodeId::from_index(11),
+                    true,
+                    true,
+                ))
+                .0);
+            let c = id(vnodes
+                .alloc(VNode::new_entry(
+                    1,
+                    None,
+                    GNodeId::from_index(12),
+                    true,
+                    true,
+                ))
+                .0);
 
-            let parent = id(vnodes.alloc(VNode::new_structural(
-                3,
-                None,
-                Children::new_3((a, 1), (b, 1), (c, 1)),
-                true,
-            )).0);
+            let parent = id(vnodes
+                .alloc(VNode::new_structural(
+                    3,
+                    None,
+                    Children::new_3((a, 1), (b, 1), (c, 1)),
+                    true,
+                ))
+                .0);
             vnodes.get_mut(a.index()).set_parent(parent);
             vnodes.get_mut(b.index()).set_parent(parent);
             vnodes.get_mut(c.index()).set_parent(parent);
@@ -504,13 +522,15 @@ mod tests {
         #[test]
         fn lone_entry_has_zero_child_context() {
             let mut vnodes = crate::tree::vtree::VNodeTree::<u32>::from(crate::arena::Arena::new());
-            let target = id(vnodes.alloc(VNode::new_entry(
-                1,
-                None,
-                GNodeId::from_index(20),
-                true,
-                true,
-            )).0);
+            let target = id(vnodes
+                .alloc(VNode::new_entry(
+                    1,
+                    None,
+                    GNodeId::from_index(20),
+                    true,
+                    true,
+                ))
+                .0);
 
             let ctx = classify_leaf_removal(&vnodes, target);
             assert_eq!(ctx.v_parent, None);
@@ -522,13 +542,15 @@ mod tests {
         #[test]
         fn push_eviction_violations_noops_for_zero_child_context() {
             let mut vnodes = crate::tree::vtree::VNodeTree::<u32>::from(crate::arena::Arena::new());
-            let target = id(vnodes.alloc(VNode::new_entry(
-                1,
-                None,
-                GNodeId::from_index(30),
-                true,
-                true,
-            )).0);
+            let target = id(vnodes
+                .alloc(VNode::new_entry(
+                    1,
+                    None,
+                    GNodeId::from_index(30),
+                    true,
+                    true,
+                ))
+                .0);
 
             let ctx = LeafRemovalContext {
                 v_parent: None,
@@ -546,39 +568,49 @@ mod tests {
         fn push_eviction_violations_executes_pair_path() {
             let mut vnodes = crate::tree::vtree::VNodeTree::<u32>::from(crate::arena::Arena::new());
 
-            let target = id(vnodes.alloc(VNode::new_entry(
-                5,
-                None,
-                GNodeId::from_index(40),
-                true,
-                true,
-            )).0);
-            let sibling = id(vnodes.alloc(VNode::new_entry(
-                4,
-                None,
-                GNodeId::from_index(41),
-                true,
-                true,
-            )).0);
-            let uncle = id(vnodes.alloc(VNode::new_entry(
-                3,
-                None,
-                GNodeId::from_index(42),
-                true,
-                true,
-            )).0);
-            let parent = id(vnodes.alloc(VNode::new_structural(
-                9,
-                None,
-                Children::new_2((target, 5), (sibling, 4)),
-                true,
-            )).0);
-            let grandparent = id(vnodes.alloc(VNode::new_structural(
-                12,
-                None,
-                Children::new_2((parent, 9), (uncle, 3)),
-                true,
-            )).0);
+            let target = id(vnodes
+                .alloc(VNode::new_entry(
+                    5,
+                    None,
+                    GNodeId::from_index(40),
+                    true,
+                    true,
+                ))
+                .0);
+            let sibling = id(vnodes
+                .alloc(VNode::new_entry(
+                    4,
+                    None,
+                    GNodeId::from_index(41),
+                    true,
+                    true,
+                ))
+                .0);
+            let uncle = id(vnodes
+                .alloc(VNode::new_entry(
+                    3,
+                    None,
+                    GNodeId::from_index(42),
+                    true,
+                    true,
+                ))
+                .0);
+            let parent = id(vnodes
+                .alloc(VNode::new_structural(
+                    9,
+                    None,
+                    Children::new_2((target, 5), (sibling, 4)),
+                    true,
+                ))
+                .0);
+            let grandparent = id(vnodes
+                .alloc(VNode::new_structural(
+                    12,
+                    None,
+                    Children::new_2((parent, 9), (uncle, 3)),
+                    true,
+                ))
+                .0);
 
             vnodes.get_mut(target.index()).set_parent(parent);
             vnodes.get_mut(sibling.index()).set_parent(parent);
@@ -602,33 +634,41 @@ mod tests {
         fn push_eviction_violations_executes_triple_path() {
             let mut vnodes = crate::tree::vtree::VNodeTree::<u32>::from(crate::arena::Arena::new());
 
-            let target = id(vnodes.alloc(VNode::new_entry(
-                5,
-                None,
-                GNodeId::from_index(60),
-                true,
-                true,
-            )).0);
-            let s1 = id(vnodes.alloc(VNode::new_entry(
-                4,
-                None,
-                GNodeId::from_index(61),
-                true,
-                true,
-            )).0);
-            let s2 = id(vnodes.alloc(VNode::new_entry(
-                3,
-                None,
-                GNodeId::from_index(62),
-                true,
-                true,
-            )).0);
-            let parent = id(vnodes.alloc(VNode::new_structural(
-                12,
-                None,
-                Children::new_3((target, 5), (s1, 4), (s2, 3)),
-                true,
-            )).0);
+            let target = id(vnodes
+                .alloc(VNode::new_entry(
+                    5,
+                    None,
+                    GNodeId::from_index(60),
+                    true,
+                    true,
+                ))
+                .0);
+            let s1 = id(vnodes
+                .alloc(VNode::new_entry(
+                    4,
+                    None,
+                    GNodeId::from_index(61),
+                    true,
+                    true,
+                ))
+                .0);
+            let s2 = id(vnodes
+                .alloc(VNode::new_entry(
+                    3,
+                    None,
+                    GNodeId::from_index(62),
+                    true,
+                    true,
+                ))
+                .0);
+            let parent = id(vnodes
+                .alloc(VNode::new_structural(
+                    12,
+                    None,
+                    Children::new_3((target, 5), (s1, 4), (s2, 3)),
+                    true,
+                ))
+                .0);
 
             vnodes.get_mut(target.index()).set_parent(parent);
             vnodes.get_mut(s1.index()).set_parent(parent);

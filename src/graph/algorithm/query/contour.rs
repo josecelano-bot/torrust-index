@@ -109,7 +109,11 @@ impl<C: DiscreteCoordinate, V: Accumulator + Proratable + Inspectable, const N: 
     GvGraph<C, V, N>
 {
     #[must_use]
-    pub fn contour_range(&self, start: BasisEdge<C>, end: BasisEdge<C>) -> Option<ContourRange<C, V>> {
+    pub fn contour_range(
+        &self,
+        start: BasisEdge<C>,
+        end: BasisEdge<C>,
+    ) -> Option<ContourRange<C, V>> {
         let plateaus = self.plateaus();
 
         validate_endpoints(&plateaus, start, end, C::domain_max(N))?;

@@ -1,9 +1,9 @@
 use super::super::DynamicPlateauTracker;
-use crate::tree::gtree::GNodeTree;
 use crate::handle::GNodeId;
 use crate::nodes::gnode::{GNode, GState};
 use crate::spatial::plateau::BasisEdge;
 use crate::traits::{Accumulator, Coordinate};
+use crate::tree::gtree::GNodeTree;
 use crate::tree::gtree::gnode_depth_from_range;
 
 impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
@@ -124,7 +124,11 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
     /// Walks upward from `gid`, merging sibling basis-element pairs into their
     /// parent whenever the subtree is uniform-depth.
     #[allow(clippy::too_many_lines)]
-    pub(in super::super) fn consolidate_basis_up(&mut self, gnodes: &GNodeTree<C, V>, mut gid: GNodeId) {
+    pub(in super::super) fn consolidate_basis_up(
+        &mut self,
+        gnodes: &GNodeTree<C, V>,
+        mut gid: GNodeId,
+    ) {
         loop {
             let Some(parent_id) = gnodes.get(gid.index()).parent() else {
                 tracing::trace!(from = gid.index(), "consolidate_basis_up: stop — no parent");

@@ -87,11 +87,7 @@ pub fn check_plateau_basis_consistency<
 
 #[cfg(feature = "dynamic-contour-tracking")]
 #[allow(clippy::float_cmp)]
-pub fn check_plateau_sum_consistency<
-    C: Coordinate,
-    V: Accumulator + Inspectable,
-    const N: u32,
->(
+pub fn check_plateau_sum_consistency<C: Coordinate, V: Accumulator + Inspectable, const N: u32>(
     graph: &GvGraph<C, V, N>,
     errors: &mut Vec<String>,
 ) {
@@ -279,11 +275,7 @@ pub fn check_p_i1_i_keys_are_contour_steps<
 }
 
 #[cfg(feature = "dynamic-contour-tracking")]
-pub fn check_p_i1_ii_tile_contiguity<
-    C: Coordinate,
-    V: Accumulator + Inspectable,
-    const N: u32,
->(
+pub fn check_p_i1_ii_tile_contiguity<C: Coordinate, V: Accumulator + Inspectable, const N: u32>(
     graph: &GvGraph<C, V, N>,
     errors: &mut Vec<String>,
 ) {
@@ -422,11 +414,7 @@ pub fn check_p_i1_iii_run_contains_tile<
 }
 
 #[cfg(feature = "dynamic-contour-tracking")]
-pub fn check_p_i2_basis_minimality<
-    C: Coordinate,
-    V: Accumulator + Inspectable,
-    const N: u32,
->(
+pub fn check_p_i2_basis_minimality<C: Coordinate, V: Accumulator + Inspectable, const N: u32>(
     graph: &GvGraph<C, V, N>,
     errors: &mut Vec<String>,
 ) {
@@ -467,11 +455,7 @@ pub fn check_p_i2_basis_minimality<
 }
 
 #[cfg(feature = "dynamic-contour-tracking")]
-pub fn check_p_i3_basis_disjointness<
-    C: Coordinate,
-    V: Accumulator + Inspectable,
-    const N: u32,
->(
+pub fn check_p_i3_basis_disjointness<C: Coordinate, V: Accumulator + Inspectable, const N: u32>(
     graph: &GvGraph<C, V, N>,
     errors: &mut Vec<String>,
 ) {
@@ -502,11 +486,7 @@ pub fn check_p_i3_basis_disjointness<
 }
 
 #[cfg(feature = "dynamic-contour-tracking")]
-pub fn check_p_i4_thatch_one_hop<
-    C: Coordinate,
-    V: Accumulator + Inspectable,
-    const N: u32,
->(
+pub fn check_p_i4_thatch_one_hop<C: Coordinate, V: Accumulator + Inspectable, const N: u32>(
     graph: &GvGraph<C, V, N>,
     errors: &mut Vec<String>,
 ) {
@@ -533,10 +513,7 @@ pub fn check_p_i4_thatch_one_hop<
             let child_lo = child_g.lo();
 
             let p = graph.plateaus();
-            let child_plateau_key = p
-                .range(..=BasisEdge(child_lo))
-                .next_back()
-                .map(|(&k, _)| k);
+            let child_plateau_key = p.range(..=BasisEdge(child_lo)).next_back().map(|(&k, _)| k);
 
             match child_plateau_key {
                 Some(ck) if ck == key => {
@@ -601,31 +578,31 @@ pub fn check_p_i5_thatch_depth<C: Coordinate, V: Accumulator + Inspectable, cons
     }
 }
 
-    #[cfg(feature = "dynamic-contour-tracking")]
-    fn route_to_depth<C: Coordinate, V: Accumulator + Inspectable, const N: u32>(
-        graph: &GvGraph<C, V, N>,
-        x: C,
-    ) -> u32 {
-        let mut cur = graph.gtree.nodes.root;
-        for _ in 0..=N + 1 {
-            let g = graph.gtree.nodes.get(cur.index());
-            if g.is_terminal() {
-                return GTree::<C, V, N>::depth_of_interval(g.lo(), g.hi());
-            }
-            let mid = C::midpoint(g.lo(), g.hi());
-            let next = if x.total_cmp(&mid) == std::cmp::Ordering::Less {
-                g.left()
-            } else {
-                g.right()
-            };
-            match next {
-                Some(child) => cur = child,
-                None => return GTree::<C, V, N>::depth_of_interval(g.lo(), g.hi()),
-            }
-        }
+#[cfg(feature = "dynamic-contour-tracking")]
+fn route_to_depth<C: Coordinate, V: Accumulator + Inspectable, const N: u32>(
+    graph: &GvGraph<C, V, N>,
+    x: C,
+) -> u32 {
+    let mut cur = graph.gtree.nodes.root;
+    for _ in 0..=N + 1 {
         let g = graph.gtree.nodes.get(cur.index());
-        GTree::<C, V, N>::depth_of_interval(g.lo(), g.hi())
+        if g.is_terminal() {
+            return GTree::<C, V, N>::depth_of_interval(g.lo(), g.hi());
+        }
+        let mid = C::midpoint(g.lo(), g.hi());
+        let next = if x.total_cmp(&mid) == std::cmp::Ordering::Less {
+            g.left()
+        } else {
+            g.right()
+        };
+        match next {
+            Some(child) => cur = child,
+            None => return GTree::<C, V, N>::depth_of_interval(g.lo(), g.hi()),
+        }
     }
+    let g = graph.gtree.nodes.get(cur.index());
+    GTree::<C, V, N>::depth_of_interval(g.lo(), g.hi())
+}
 
 #[cfg(test)]
 #[cfg(feature = "dynamic-contour-tracking")]
@@ -673,7 +650,9 @@ mod tests {
         check_p_i4_thatch_one_hop(&g, &mut errors);
         check_p_i5_thatch_depth(&g, &mut errors);
 
-        assert!(errors.is_empty(), "expected no plateau invariant violations: {errors:#?}");
+        assert!(
+            errors.is_empty(),
+            "expected no plateau invariant violations: {errors:#?}"
+        );
     }
 }
-

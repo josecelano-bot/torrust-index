@@ -266,8 +266,8 @@ pub fn rebalance<C: Coordinate, V: Accumulator + Inspectable, const N: u32>(
 mod tests {
     use crate::graph::algorithm::rebalance::max_uncle_intensity;
     use crate::graph::{Config, GvGraph, StructuralConfig};
-    use crate::nodes::vnode::{Children, VNode};
     use crate::handle::VNodeId;
+    use crate::nodes::vnode::{Children, VNode};
 
     type G = GvGraph<u8, u32, 8>;
 
@@ -360,40 +360,60 @@ mod tests {
         fn returns_max_across_multiple_uncles() {
             let mut vnodes = crate::tree::vtree::VNodeTree::<u32>::from(crate::arena::Arena::new());
 
-            let c = VNodeId::from_index(vnodes.alloc(VNode::new_entry(
-                5,
-                None,
-                GNodeId::from_index(1),
-                true,
-                true,
-            )).0);
-            let sibling = VNodeId::from_index(vnodes.alloc(VNode::new_entry(
-                4,
-                None,
-                GNodeId::from_index(2),
-                true,
-                true,
-            )).0);
-            let u1 = VNodeId::from_index(vnodes.alloc(VNode::new_entry(
-                9,
-                None,
-                GNodeId::from_index(3),
-                true,
-                true,
-            )).0);
+            let c = VNodeId::from_index(
+                vnodes
+                    .alloc(VNode::new_entry(
+                        5,
+                        None,
+                        GNodeId::from_index(1),
+                        true,
+                        true,
+                    ))
+                    .0,
+            );
+            let sibling = VNodeId::from_index(
+                vnodes
+                    .alloc(VNode::new_entry(
+                        4,
+                        None,
+                        GNodeId::from_index(2),
+                        true,
+                        true,
+                    ))
+                    .0,
+            );
+            let u1 = VNodeId::from_index(
+                vnodes
+                    .alloc(VNode::new_entry(
+                        9,
+                        None,
+                        GNodeId::from_index(3),
+                        true,
+                        true,
+                    ))
+                    .0,
+            );
 
-            let parent = VNodeId::from_index(vnodes.alloc(VNode::new_structural(
-                9,
-                None,
-                Children::new_2((c, 5), (sibling, 4)),
-                true,
-            )).0);
-            let gp = VNodeId::from_index(vnodes.alloc(VNode::new_structural(
-                18,
-                None,
-                Children::new_2((parent, 9), (u1, 9)),
-                true,
-            )).0);
+            let parent = VNodeId::from_index(
+                vnodes
+                    .alloc(VNode::new_structural(
+                        9,
+                        None,
+                        Children::new_2((c, 5), (sibling, 4)),
+                        true,
+                    ))
+                    .0,
+            );
+            let gp = VNodeId::from_index(
+                vnodes
+                    .alloc(VNode::new_structural(
+                        18,
+                        None,
+                        Children::new_2((parent, 9), (u1, 9)),
+                        true,
+                    ))
+                    .0,
+            );
 
             vnodes.get_mut(c.index()).set_parent(parent);
             vnodes.get_mut(sibling.index()).set_parent(parent);
@@ -601,13 +621,10 @@ mod tests {
             let c = g.v_root().expect("v_root must exist");
             g.vtree.violations.clear();
             let depth_evict = g.gtree.live_depth_evict;
-            let mut tree = VTreeMutContext { vtree: &mut g.vtree };
-            let result = resolve(
-                &mut tree,
-                &mut g.gtree,
-                c,
-                depth_evict,
-            );
+            let mut tree = VTreeMutContext {
+                vtree: &mut g.vtree,
+            };
+            let result = resolve(&mut tree, &mut g.gtree, c, depth_evict);
             assert!(result.is_none());
             assert!(g.vtree.violations.is_empty());
         }
@@ -619,11 +636,7 @@ mod tests {
             g.vtree.violations.push(VNodeId::from_index(9999));
             let depth_evict = g.gtree.live_depth_evict;
 
-            let new_nodes = rebalance(
-                &mut g.vtree,
-                &mut g.gtree,
-                depth_evict,
-            );
+            let new_nodes = rebalance(&mut g.vtree, &mut g.gtree, depth_evict);
             assert!(new_nodes.is_empty());
             assert!(g.vtree.violations.is_empty());
         }
@@ -637,11 +650,7 @@ mod tests {
             g.vtree.violations.push(v_root);
             let depth_evict = g.gtree.live_depth_evict;
 
-            let new_nodes = rebalance(
-                &mut g.vtree,
-                &mut g.gtree,
-                depth_evict,
-            );
+            let new_nodes = rebalance(&mut g.vtree, &mut g.gtree, depth_evict);
             assert!(new_nodes.is_empty());
             assert!(g.vtree.violations.is_empty());
         }
@@ -650,13 +659,17 @@ mod tests {
         #[should_panic(expected = "rebalance: exceeded")]
         fn handle_iteration_limit_panics_in_debug_mode() {
             let mut vnodes = crate::tree::vtree::VNodeTree::<u32>::from(crate::arena::Arena::new());
-            let live = VNodeId::from_index(vnodes.alloc(VNode::new_entry(
-                1,
-                None,
-                crate::handle::GNodeId::from_index(50),
-                true,
-                true,
-            )).0);
+            let live = VNodeId::from_index(
+                vnodes
+                    .alloc(VNode::new_entry(
+                        1,
+                        None,
+                        crate::handle::GNodeId::from_index(50),
+                        true,
+                        true,
+                    ))
+                    .0,
+            );
             let violations = vec![live, VNodeId::from_index(9999)];
 
             let _ = handle_iteration_limit(&vnodes, &violations, 11, 10, 0, live);

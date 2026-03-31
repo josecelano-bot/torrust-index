@@ -24,7 +24,9 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32>
     #[doc(hidden)]
     #[must_use]
     #[allow(clippy::type_complexity)]
-    pub fn debug_plateau_basis(&self) -> Vec<(BasisEdge<C>, Vec<(usize, C, C, &'static str, u32)>)> {
+    pub fn debug_plateau_basis(
+        &self,
+    ) -> Vec<(BasisEdge<C>, Vec<(usize, C, C, &'static str, u32)>)> {
         let mut result = Vec::new();
         for &key in self.tracker.plateaus.keys() {
             let elements = self.tracker.plateau_basis.basis_elements(&key);

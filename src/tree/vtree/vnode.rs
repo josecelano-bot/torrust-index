@@ -423,12 +423,8 @@ mod tests {
 
         #[test]
         fn structural_pair_predicate_matches_two_children() {
-            let n = VNode::new_structural(
-                30u32,
-                None,
-                Children::new_2((id(1), 10), (id(2), 20)),
-                true,
-            );
+            let n =
+                VNode::new_structural(30u32, None, Children::new_2((id(1), 10), (id(2), 20)), true);
             assert_eq!(n.child_count(), 2);
             assert!(n.is_structural_pair());
             assert!(!n.is_structural_triple());
@@ -689,7 +685,12 @@ mod tests {
 
         #[test]
         fn structural_node_is_invalid_when_intensity_mismatches_children_sum() {
-            let n = VNode::new_structural(10u32, None, Children::new_2((id(0), 4u32), (id(1), 3u32)), true);
+            let n = VNode::new_structural(
+                10u32,
+                None,
+                Children::new_2((id(0), 4u32), (id(1), 3u32)),
+                true,
+            );
             assert!(n.validate().is_err());
         }
     }

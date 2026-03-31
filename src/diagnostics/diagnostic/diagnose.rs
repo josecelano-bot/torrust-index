@@ -100,11 +100,17 @@ pub(super) fn diagnose_missed_violation_impl<V: Accumulator + Inspectable>(
     violated: VNodeId,
     context: &MissedViolationContext,
 ) {
-    diagnose_missed_violation_core(vnodes, violated, context, |v, sole| {
-        diagnose_collapse_sibling(vnodes, v, sole);
-    }, |v| {
-        log_vtree_ancestry(vnodes, v);
-    });
+    diagnose_missed_violation_core(
+        vnodes,
+        violated,
+        context,
+        |v, sole| {
+            diagnose_collapse_sibling(vnodes, v, sole);
+        },
+        |v| {
+            log_vtree_ancestry(vnodes, v);
+        },
+    );
 }
 
 pub(super) fn diagnose_missed_violation_in_tree_impl<V: Accumulator + Inspectable>(
@@ -113,9 +119,15 @@ pub(super) fn diagnose_missed_violation_in_tree_impl<V: Accumulator + Inspectabl
     context: &MissedViolationContext,
 ) {
     let vnodes = &vtree.nodes;
-    diagnose_missed_violation_core(vnodes, violated, context, |v, sole| {
-        diagnose_collapse_sibling_in_tree(vtree, v, sole);
-    }, |v| {
-        log_vtree_ancestry_in_tree(vtree, v);
-    });
+    diagnose_missed_violation_core(
+        vnodes,
+        violated,
+        context,
+        |v, sole| {
+            diagnose_collapse_sibling_in_tree(vtree, v, sole);
+        },
+        |v| {
+            log_vtree_ancestry_in_tree(vtree, v);
+        },
+    );
 }

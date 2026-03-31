@@ -27,8 +27,7 @@ use super::config::Config;
 /// When `dynamic-contour-tracking` is enabled this resolves to
 /// [`DynamicPlateauTracker`]; otherwise it resolves to [`NoopPlateauTracker`].
 #[cfg(feature = "dynamic-contour-tracking")]
-pub type DefaultTracker<C, V> =
-    crate::graph::algorithm::plateau::DynamicPlateauTracker<C, V>;
+pub type DefaultTracker<C, V> = crate::graph::algorithm::plateau::DynamicPlateauTracker<C, V>;
 #[cfg(not(feature = "dynamic-contour-tracking"))]
 pub(crate) type DefaultTracker<C, V> = crate::graph::algorithm::plateau::NoopPlateauTracker;
 
@@ -139,7 +138,6 @@ fn build_core<C: Coordinate, V: Accumulator, const N: u32>(
         headroom,
         soft_limit,
     };
-
 
     let mut vnode_tree = VNodeTree::from(vnodes);
     vnode_tree.root = Some(v_root_id);
@@ -552,7 +550,10 @@ mod tests {
         fn debug_format_contains_gvgraph() {
             let g = GvGraph::<u8, u32, 8>::new(make_config());
             let s = format!("{g:?}");
-            assert!(s.contains("GvGraph"), "expected GvGraph in debug output: {s}");
+            assert!(
+                s.contains("GvGraph"),
+                "expected GvGraph in debug output: {s}"
+            );
         }
 
         #[test]
@@ -563,7 +564,6 @@ mod tests {
             assert_eq!(g.total_sum(), g2.total_sum());
         }
     }
-
 
     // ── uniform_contour_depth_of ─────────────────────────────────────────
     #[cfg(feature = "dynamic-contour-tracking")]
@@ -582,7 +582,10 @@ mod tests {
         fn terminal_root_returns_some_depth() {
             let g = GvGraph::<u8, u32, 8>::new(make_config());
             // Fresh graph root is Terminal
-            let result = g.gtree.nodes.uniform_contour_depth_of(g.gtree.nodes.root, 8);
+            let result = g
+                .gtree
+                .nodes
+                .uniform_contour_depth_of(g.gtree.nodes.root, 8);
             assert!(result.is_some());
         }
 
@@ -592,17 +595,11 @@ mod tests {
             // Manually give the root a single (fake) left child → SemiInternal
             let fake_child = GNodeId::from_index(999);
             let root = g.gtree.nodes.root;
-            g.gtree
-                .nodes
-                .get_mut(root.index())
-                .link_left(fake_child);
+            g.gtree.nodes.get_mut(root.index()).link_left(fake_child);
             let result = g.gtree.nodes.uniform_contour_depth_of(root, 8);
             assert_eq!(result, None);
             // Restore so subsequent arena operations are not corrupted
-            g.gtree
-                .nodes
-                .get_mut(root.index())
-                .clear_child(fake_child);
+            g.gtree.nodes.get_mut(root.index()).clear_child(fake_child);
         }
 
         #[test]
@@ -627,7 +624,10 @@ mod tests {
             // First obs: bootstrap split with odd domain (u8/N=8) → unequal-width children
             // left=[0,127) width=127 depth=2, right=[127,255] width=128 depth=1 → mismatch → None
             g.observe(64u8, 3u32);
-            let result = g.gtree.nodes.uniform_contour_depth_of(g.gtree.nodes.root, 8);
+            let result = g
+                .gtree
+                .nodes
+                .uniform_contour_depth_of(g.gtree.nodes.root, 8);
             assert_eq!(result, None);
         }
     }

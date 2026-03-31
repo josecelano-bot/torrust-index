@@ -181,7 +181,6 @@ impl<C: Copy, V: Copy> GNode<C, V> {
     }
 }
 
-
 impl<C, V> GNode<C, V> {
     #[inline]
     #[must_use]
@@ -300,7 +299,6 @@ impl<C, V> GNode<C, V> {
         }
     }
 }
-
 
 impl<C: Default, V: Default> Default for GNode<C, V> {
     fn default() -> Self {

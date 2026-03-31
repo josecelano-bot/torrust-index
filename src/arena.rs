@@ -213,14 +213,14 @@ impl<T: Default> Arena<T> {
     fn set_occupied(&mut self, index: usize, value: bool) {
         let word = index / 64;
         let bit = index % 64;
-        
+
         // Bounds check: ensure word index is valid before accessing
         assert!(
             word < self.occupied.len(),
             "Arena::set_occupied: word index {word} out of bounds (occupied len: {})",
             self.occupied.len()
         );
-        
+
         if value {
             self.occupied[word] |= 1u64 << bit;
         } else {
@@ -624,7 +624,11 @@ mod tests {
             // Force the counter to the maximum value.
             a.set_generation_for_test(idx, u32::MAX);
             a.dealloc(idx);
-            assert_eq!(a.generation(idx), 0, "generation must wrap to 0 via wrapping_add");
+            assert_eq!(
+                a.generation(idx),
+                0,
+                "generation must wrap to 0 via wrapping_add"
+            );
         }
 
         #[test]

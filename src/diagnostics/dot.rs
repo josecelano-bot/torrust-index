@@ -67,7 +67,10 @@ pub fn dump_gtree_dot<C: Coordinate, V: Accumulator + Inspectable, const N: u32>
         };
 
         let entry_note = if has_entry {
-            format!("VEntry({})", g.entry().expect("writing DOT output failed").index())
+            format!(
+                "VEntry({})",
+                g.entry().expect("writing DOT output failed").index()
+            )
         } else {
             "no VEntry".to_string()
         };
@@ -100,11 +103,13 @@ pub fn dump_gtree_dot<C: Coordinate, V: Accumulator + Inspectable, const N: u32>
         let g = graph.gtree.nodes.get(gid.index());
         let idx = gid.index();
         if let Some(left) = g.left() {
-            writeln!(out, "  G{idx} -> G{} [label=\"L\"];", left.index()).expect("writing DOT output failed");
+            writeln!(out, "  G{idx} -> G{} [label=\"L\"];", left.index())
+                .expect("writing DOT output failed");
             queue.push_back(left);
         }
         if let Some(right) = g.right() {
-            writeln!(out, "  G{idx} -> G{} [label=\"R\"];", right.index()).expect("writing DOT output failed");
+            writeln!(out, "  G{idx} -> G{} [label=\"R\"];", right.index())
+                .expect("writing DOT output failed");
             queue.push_back(right);
         }
     }
@@ -145,7 +150,8 @@ pub fn dump_vtree_dot<C: Coordinate, V: Accumulator + Inspectable, const N: u32>
     writeln!(out, "digraph vtree {{").expect("writing DOT output failed");
     writeln!(out, "  label={label:?};").expect("writing DOT output failed");
     writeln!(out, "  rankdir=TB;").expect("writing DOT output failed");
-    writeln!(out, "  node [fontname=\"Courier New\", fontsize=11];").expect("writing DOT output failed");
+    writeln!(out, "  node [fontname=\"Courier New\", fontsize=11];")
+        .expect("writing DOT output failed");
     writeln!(out).expect("writing DOT output failed");
 
     // Declare nodes (BFS).
@@ -251,7 +257,10 @@ mod tests {
         assert!(dot.contains("digraph gtree"), "missing header: {dot}");
         assert!(dot.contains("label=\"fresh\""), "missing label: {dot}");
         // Fresh graph has a single Terminal node with a VEntry → green fill.
-        assert!(dot.contains("#c8e6c9"), "expected green for terminal-with-entry: {dot}");
+        assert!(
+            dot.contains("#c8e6c9"),
+            "expected green for terminal-with-entry: {dot}"
+        );
     }
 
     #[test]
@@ -260,7 +269,10 @@ mod tests {
         g.observe(64u8, 5u32);
         let dot = super::dump_gtree_dot(&g, "obs1");
         // After one observation the root Terminal has a VEntry → green fill.
-        assert!(dot.contains("#c8e6c9"), "expected green for terminal-with-entry: {dot}");
+        assert!(
+            dot.contains("#c8e6c9"),
+            "expected green for terminal-with-entry: {dot}"
+        );
     }
 
     #[test]
@@ -273,7 +285,10 @@ mod tests {
         let dot = super::dump_gtree_dot(&g, "after_split");
         // After splits there should be Internal nodes (yellow) or SemiInternal (orange).
         let has_internal = dot.contains("#fff9c4") || dot.contains("#ffe0b2");
-        assert!(has_internal, "expected yellow or orange fill after splits: {dot}");
+        assert!(
+            has_internal,
+            "expected yellow or orange fill after splits: {dot}"
+        );
     }
 
     #[test]
@@ -303,7 +318,10 @@ mod tests {
         }
         let dot = super::dump_vtree_dot(&g, "after_split");
         // Structural nodes are rendered as purple ellipses.
-        assert!(dot.contains("#e1bee7"), "expected purple structural node: {dot}");
+        assert!(
+            dot.contains("#e1bee7"),
+            "expected purple structural node: {dot}"
+        );
         // Edges between structural and entry nodes should exist.
         assert!(dot.contains("->"), "expected edge arrows: {dot}");
     }

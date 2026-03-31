@@ -14,7 +14,7 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
         let domain_start = C::zero();
         let domain_end = C::domain_max(N);
 
-    let Some(v_root) = self.vtree.nodes.root else {
+        let Some(v_root) = self.vtree.nodes.root else {
             return Pewei {
                 domain_start,
                 domain_end,

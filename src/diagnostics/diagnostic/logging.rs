@@ -24,8 +24,7 @@ pub(super) fn log_vtree_ancestry<V: Accumulator + Inspectable>(
     vnodes: &VNodeTree<V>,
     violated: VNodeId,
 ) {
-    let _span =
-        tracing::error_span!("vtree_path_to_violated", node = violated.index()).entered();
+    let _span = tracing::error_span!("vtree_path_to_violated", node = violated.index()).entered();
     let mut current = violated;
     let mut depth = 0_usize;
     loop {

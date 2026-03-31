@@ -12,23 +12,23 @@
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 
-use crate::tree::gtree::GNodeTree;
 use crate::handle::GNodeId;
 use crate::nodes::gnode::GState;
 use crate::spatial::plateau::{BasisEdge, Plateau};
 use crate::spatial::plateau_basis::PlateauBasis;
 use crate::traits::{Accumulator, Coordinate, PlateauTracking};
+use crate::tree::gtree::GNodeTree;
 
+mod core_helpers;
 mod debug_diff;
 mod debug_sums;
-mod core_helpers;
 mod evict;
 mod legacy_promotes;
 mod normalize;
 mod observe;
+mod repair;
 mod split_bootstrap;
 mod split_catalytic;
-mod repair;
 
 /// Incrementally maintains a mirror of the plateau structure as observations,
 /// splits, and evictions mutate the G-tree.
@@ -90,7 +90,6 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
             n_bits,
         }
     }
-
 }
 
 // ── PlateauTracking impl ─────────────────────────────────────────────────────
@@ -100,12 +99,7 @@ impl<C: Coordinate, V: Accumulator> PlateauTracking<C, V> for DynamicPlateauTrac
         self.on_observe_impl(gnodes, g_id, value);
     }
 
-    fn on_bootstrap_split(
-        &mut self,
-        gnodes: &GNodeTree<C, V>,
-        g_id: GNodeId,
-        _left_id: GNodeId,
-    ) {
+    fn on_bootstrap_split(&mut self, gnodes: &GNodeTree<C, V>, g_id: GNodeId, _left_id: GNodeId) {
         self.on_bootstrap_split_impl(gnodes, g_id);
     }
 

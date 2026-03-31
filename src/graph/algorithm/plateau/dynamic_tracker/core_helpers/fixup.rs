@@ -1,13 +1,17 @@
 use super::super::DynamicPlateauTracker;
-use crate::tree::gtree::GNodeTree;
 use crate::handle::GNodeId;
 use crate::nodes::gnode::GState;
 use crate::spatial::plateau::BasisEdge;
 use crate::traits::{Accumulator, Coordinate};
+use crate::tree::gtree::GNodeTree;
 use crate::tree::gtree::gnode_depth_from_range;
 
 impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
-    pub(in super::super) fn recompute_plateau(&mut self, gnodes: &GNodeTree<C, V>, key: &BasisEdge<C>) {
+    pub(in super::super) fn recompute_plateau(
+        &mut self,
+        gnodes: &GNodeTree<C, V>,
+        key: &BasisEdge<C>,
+    ) {
         let elements = self.plateau_basis.basis_elements(key);
         if elements.is_empty() {
             return;
@@ -48,7 +52,11 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
         }
     }
 
-    pub(in super::super) fn fixup_plateau(&mut self, gnodes: &GNodeTree<C, V>, old_key: BasisEdge<C>) {
+    pub(in super::super) fn fixup_plateau(
+        &mut self,
+        gnodes: &GNodeTree<C, V>,
+        old_key: BasisEdge<C>,
+    ) {
         use crate::spatial::plateau::{BasisEdge, Plateau, basis_edge_of};
 
         let element_ids: Vec<GNodeId> = self
@@ -93,9 +101,7 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
                         }
                         GState::Internal => gnodes
                             .uniform_contour_depth_of(gid, self.n_bits)
-                            .unwrap_or_else(|| {
-                                gnode_depth_from_range(g.range(), self.n_bits) + 1
-                            }),
+                            .unwrap_or_else(|| gnode_depth_from_range(g.range(), self.n_bits) + 1),
                     };
                     displaced.push((gid, d));
                 }
@@ -225,7 +231,12 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
         while let Some(anc) = cur {
             if let Some(anc_key) = self.covering_ancestor_key(anc, parent_key) {
                 self.plateau_basis.remove(anc);
-                self.displace_semi_internal_survivor(gnodes, parent_id, parent_state_after, displaced);
+                self.displace_semi_internal_survivor(
+                    gnodes,
+                    parent_id,
+                    parent_state_after,
+                    displaced,
+                );
                 self.displace_path_siblings(gnodes, &path, displaced);
                 return Some(anc_key);
             }
@@ -236,7 +247,11 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
         None
     }
 
-    fn covering_ancestor_key(&self, anc: GNodeId, parent_key: BasisEdge<C>) -> Option<BasisEdge<C>> {
+    fn covering_ancestor_key(
+        &self,
+        anc: GNodeId,
+        parent_key: BasisEdge<C>,
+    ) -> Option<BasisEdge<C>> {
         let anc_key = self.plateau_basis.plateau_key(anc)?;
         let next_key = self
             .plateaus

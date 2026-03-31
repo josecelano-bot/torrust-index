@@ -461,26 +461,38 @@ mod tests {
     #[test]
     fn config_disabled_paths_do_not_push() {
         let mut vnodes = make_vnodes();
-        let e1 = VNodeId::from_index(vnodes.alloc(VNode::new_entry(
-            1,
-            None,
-            GNodeId::from_index(1),
-            true,
-            true,
-        )).0);
-        let e2 = VNodeId::from_index(vnodes.alloc(VNode::new_entry(
-            2,
-            None,
-            GNodeId::from_index(2),
-            true,
-            true,
-        )).0);
-        let p = VNodeId::from_index(vnodes.alloc(VNode::new_structural(
-            3,
-            None,
-            Children::new_2((e1, 1), (e2, 2)),
-            true,
-        )).0);
+        let e1 = VNodeId::from_index(
+            vnodes
+                .alloc(VNode::new_entry(
+                    1,
+                    None,
+                    GNodeId::from_index(1),
+                    true,
+                    true,
+                ))
+                .0,
+        );
+        let e2 = VNodeId::from_index(
+            vnodes
+                .alloc(VNode::new_entry(
+                    2,
+                    None,
+                    GNodeId::from_index(2),
+                    true,
+                    true,
+                ))
+                .0,
+        );
+        let p = VNodeId::from_index(
+            vnodes
+                .alloc(VNode::new_structural(
+                    3,
+                    None,
+                    Children::new_2((e1, 1), (e2, 2)),
+                    true,
+                ))
+                .0,
+        );
         vnodes.get_mut(e1.index()).set_parent(p);
         vnodes.get_mut(e2.index()).set_parent(p);
 
@@ -501,20 +513,28 @@ mod tests {
     #[test]
     fn entry_node_paths_return_without_pushes() {
         let mut vnodes = make_vnodes();
-        let entry = VNodeId::from_index(vnodes.alloc(VNode::new_entry(
-            1,
-            None,
-            GNodeId::from_index(1),
-            true,
-            true,
-        )).0);
-        let other = VNodeId::from_index(vnodes.alloc(VNode::new_entry(
-            2,
-            None,
-            GNodeId::from_index(2),
-            true,
-            true,
-        )).0);
+        let entry = VNodeId::from_index(
+            vnodes
+                .alloc(VNode::new_entry(
+                    1,
+                    None,
+                    GNodeId::from_index(1),
+                    true,
+                    true,
+                ))
+                .0,
+        );
+        let other = VNodeId::from_index(
+            vnodes
+                .alloc(VNode::new_entry(
+                    2,
+                    None,
+                    GNodeId::from_index(2),
+                    true,
+                    true,
+                ))
+                .0,
+        );
         let mut violations = Vec::new();
 
         push_contraction_child_violations(&vnodes, entry, other, &mut violations);

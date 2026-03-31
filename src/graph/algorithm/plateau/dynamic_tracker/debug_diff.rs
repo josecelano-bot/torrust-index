@@ -1,9 +1,9 @@
 use std::collections::BTreeMap;
 
 use super::DynamicPlateauTracker;
-use crate::tree::gtree::GNodeTree;
 use crate::spatial::plateau::{BasisEdge, Plateau};
 use crate::traits::{Accumulator, Coordinate};
+use crate::tree::gtree::GNodeTree;
 
 impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
     pub(super) fn debug_assert_mirror_consistency_impl(

@@ -3,11 +3,11 @@
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 
-use crate::tree::gtree::GNodeTree;
 use crate::handle::GNodeId;
 use crate::nodes::gnode::GState;
 use crate::spatial::plateau::{BasisEdge, Plateau};
 use crate::traits::{Accumulator, Coordinate, PlateauTracking};
+use crate::tree::gtree::GNodeTree;
 
 /// Zero-cost placeholder that satisfies the [`PlateauTracking`] bound while
 /// performing no work.  Selected when `dynamic-contour-tracking` is disabled.
@@ -19,21 +19,11 @@ impl<C: Coordinate, V: Accumulator> PlateauTracking<C, V> for NoopPlateauTracker
     fn on_observe(&mut self, _gnodes: &GNodeTree<C, V>, _g_id: GNodeId, _value: V) {}
 
     #[inline(always)]
-    fn on_bootstrap_split(
-        &mut self,
-        _gnodes: &GNodeTree<C, V>,
-        _g_id: GNodeId,
-        _left_id: GNodeId,
-    ) {
+    fn on_bootstrap_split(&mut self, _gnodes: &GNodeTree<C, V>, _g_id: GNodeId, _left_id: GNodeId) {
     }
 
     #[inline(always)]
-    fn on_catalytic_split(
-        &mut self,
-        _gnodes: &GNodeTree<C, V>,
-        _g_id: GNodeId,
-        _left_id: GNodeId,
-    ) {
+    fn on_catalytic_split(&mut self, _gnodes: &GNodeTree<C, V>, _g_id: GNodeId, _left_id: GNodeId) {
     }
 
     #[inline(always)]
@@ -49,12 +39,7 @@ impl<C: Coordinate, V: Accumulator> PlateauTracking<C, V> for NoopPlateauTracker
     }
 
     #[inline(always)]
-    fn on_legacy_promotes_batched(
-        &mut self,
-        _gnodes: &GNodeTree<C, V>,
-        _new_gnodes: &[GNodeId],
-    ) {
-    }
+    fn on_legacy_promotes_batched(&mut self, _gnodes: &GNodeTree<C, V>, _new_gnodes: &[GNodeId]) {}
 
     #[inline(always)]
     fn normalize(&mut self, _gnodes: &GNodeTree<C, V>) {}
@@ -111,7 +96,10 @@ mod tests {
         tracker.recompute_sums(gnodes, "test");
         <NoopPlateauTracker as PlateauTracking<u8, u32>>::set_dirty(tracker);
         let p = <NoopPlateauTracker as PlateauTracking<u8, u32>>::plateaus(tracker);
-        assert!(p.is_empty(), "NoopPlateauTracker must return empty plateau map");
+        assert!(
+            p.is_empty(),
+            "NoopPlateauTracker must return empty plateau map"
+        );
     }
 
     #[test]

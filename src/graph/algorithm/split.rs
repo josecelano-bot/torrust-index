@@ -35,11 +35,14 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
                 g.entry().expect("bootstrap_split: g must have an entry"),
             )
         };
-        let _span = tracing::debug_span!("bootstrap_split", g_id = g_id.index(), ?lo, ?hi,).entered();
+        let _span =
+            tracing::debug_span!("bootstrap_split", g_id = g_id.index(), ?lo, ?hi,).entered();
 
         let children = self.allocate_split_children(g_id);
 
-        let cs_id = self.vtree.alloc_structural_2(children.left_entry_id, children.right_entry_id);
+        let cs_id = self
+            .vtree
+            .alloc_structural_2(children.left_entry_id, children.right_entry_id);
 
         let entry_int = self.vtree.nodes.get(entry_id.index()).intensity();
         let root_structural = VNode::new_structural(
@@ -49,13 +52,18 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
             true,
         );
         let root_s_id = VNodeId::from_index(self.vtree.nodes.alloc(root_structural).0);
-        self.vtree.nodes.get_mut(entry_id.index()).set_parent(root_s_id);
-        self.vtree.nodes.get_mut(cs_id.index()).set_parent(root_s_id);
+        self.vtree
+            .nodes
+            .get_mut(entry_id.index())
+            .set_parent(root_s_id);
+        self.vtree
+            .nodes
+            .get_mut(cs_id.index())
+            .set_parent(root_s_id);
 
         self.vtree.set_entry_flags(entry_id, false, false);
 
-
-    self.vtree.nodes.root = Some(root_s_id);
+        self.vtree.nodes.root = Some(root_s_id);
         self.plateau_after_bootstrap_split(g_id, children.left_id);
         self.debug_assert_split_mirror_consistency("POST-BOOTSTRAP-SPLIT");
     }
@@ -114,7 +122,6 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
         self.plateau_after_catalytic_split(g_id, children.left_id);
         self.debug_assert_split_mirror_consistency("POST-CATALYTIC-SPLIT");
     }
-
 }
 
 #[cfg(test)]

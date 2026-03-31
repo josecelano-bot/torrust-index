@@ -63,11 +63,7 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
         }
 
         let depth_evict = self.gtree.live_depth_evict;
-        let new_gnodes = rebalance::rebalance(
-            &mut self.vtree,
-            &mut self.gtree,
-            depth_evict,
-        );
+        let new_gnodes = rebalance::rebalance(&mut self.vtree, &mut self.gtree, depth_evict);
         if !new_gnodes.is_empty() {
             self.handle_legacy_promotes(&new_gnodes);
             self.repair_p_i4();

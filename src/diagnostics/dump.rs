@@ -314,7 +314,10 @@ mod tests {
             let mut g = GvGraph::<u8, u32, 8>::new(make_config());
             g.observe(64u8, 5u32);
             let out = super::super::dump_gtree(&g);
-            assert!(out.contains('T') || out.contains('I') || out.contains('S'), "expected state label: {out}");
+            assert!(
+                out.contains('T') || out.contains('I') || out.contains('S'),
+                "expected state label: {out}"
+            );
         }
 
         #[test]
@@ -325,8 +328,14 @@ mod tests {
             }
             let out = super::super::dump_gtree(&g);
             // At least two G-node entries in the output means multiple lines.
-            let node_count = out.lines().filter(|l| l.trim_start().starts_with("G(")).count();
-            assert!(node_count >= 2, "expected multiple G-nodes after splits: {out}");
+            let node_count = out
+                .lines()
+                .filter(|l| l.trim_start().starts_with("G("))
+                .count();
+            assert!(
+                node_count >= 2,
+                "expected multiple G-nodes after splits: {out}"
+            );
         }
     }
 
@@ -361,7 +370,10 @@ mod tests {
             let out = super::super::dump_plateaus(&g);
             assert!(out.contains("Plateau dump"), "missing header: {out}");
             // After at least one observation there should be at least one plateau.
-            assert!(out.contains("Plateau "), "expected at least one plateau entry: {out}");
+            assert!(
+                out.contains("Plateau "),
+                "expected at least one plateau entry: {out}"
+            );
         }
 
         #[test]
@@ -376,4 +388,3 @@ mod tests {
         }
     }
 }
-

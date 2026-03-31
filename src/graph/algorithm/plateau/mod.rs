@@ -55,12 +55,22 @@ mod tests {
         id
     }
 
-    fn add_node(gnodes: &mut Arena<GNode<u8, u32>>, lo: u8, hi: u8, parent: Option<GNodeId>) -> GNodeId {
+    fn add_node(
+        gnodes: &mut Arena<GNode<u8, u32>>,
+        lo: u8,
+        hi: u8,
+        parent: Option<GNodeId>,
+    ) -> GNodeId {
         GNodeId::from_index(gnodes.alloc(GNode::new_leaf(lo, hi, 0u32, parent)).0)
     }
 
     fn as_gnodes(nodes: Arena<GNode<u8, u32>>) -> crate::tree::gtree::GNodeTree<u8, u32> {
-        crate::tree::gtree::GNodeTree { nodes, root: GNodeId::from_index(0), node_count: 0, terminal_count: 0 }
+        crate::tree::gtree::GNodeTree {
+            nodes,
+            root: GNodeId::from_index(0),
+            node_count: 0,
+            terminal_count: 0,
+        }
     }
 
     // ── build_plateaus ────────────────────────────────────────────────
@@ -177,7 +187,8 @@ mod tests {
             gnodes.get_mut(root.index()).link_right(child);
             gnodes.get_mut(root.index()).set_sum(7);
 
-            let mut tracker = DynamicPlateauTracker::<u8, u32>::with_root(BasisEdge(0), 0, 0, 16, root, 4);
+            let mut tracker =
+                DynamicPlateauTracker::<u8, u32>::with_root(BasisEdge(0), 0, 0, 16, root, 4);
             tracker.plateau_basis.insert(BasisEdge(8), child);
             tracker.plateaus.insert(
                 BasisEdge(8),
@@ -206,7 +217,8 @@ mod tests {
             gnodes.get_mut(root.index()).link_left(left);
             gnodes.get_mut(root.index()).link_right(right);
 
-            let mut tracker = DynamicPlateauTracker::<u8, u32>::with_root(BasisEdge(0), 0, 0, 16, root, 4);
+            let mut tracker =
+                DynamicPlateauTracker::<u8, u32>::with_root(BasisEdge(0), 0, 0, 16, root, 4);
             let gnodes = as_gnodes(gnodes);
             PlateauTracking::on_bootstrap_split(&mut tracker, &gnodes, root, left);
 
@@ -229,12 +241,16 @@ mod tests {
             gnodes.get_mut(g_id.index()).link_left(left);
             gnodes.get_mut(g_id.index()).link_right(right);
 
-            let mut tracker = DynamicPlateauTracker::<u8, u32>::with_root(BasisEdge(0), 0, 0, 32, root, 5);
+            let mut tracker =
+                DynamicPlateauTracker::<u8, u32>::with_root(BasisEdge(0), 0, 0, 32, root, 5);
             let gnodes = as_gnodes(gnodes);
             PlateauTracking::on_catalytic_split(&mut tracker, &gnodes, g_id, left);
 
             assert_eq!(tracker.plateau_basis.plateau_key(root), None);
-            assert!(tracker.plateau_basis.plateau_key(left).is_some() || tracker.plateau_basis.plateau_key(g_id).is_some());
+            assert!(
+                tracker.plateau_basis.plateau_key(left).is_some()
+                    || tracker.plateau_basis.plateau_key(g_id).is_some()
+            );
         }
 
         #[test]
@@ -245,7 +261,8 @@ mod tests {
             let evicted = add_leaf(&mut gnodes, 0, 8, 1, Some(parent));
             gnodes.get_mut(parent.index()).link_right(survivor);
 
-            let mut tracker = DynamicPlateauTracker::<u8, u32>::with_root(BasisEdge(0), 0, 0, 16, parent, 4);
+            let mut tracker =
+                DynamicPlateauTracker::<u8, u32>::with_root(BasisEdge(0), 0, 0, 16, parent, 4);
             tracker.plateau_basis.insert(BasisEdge(0), evicted);
             let gnodes = as_gnodes(gnodes);
             PlateauTracking::on_evict(
@@ -271,13 +288,17 @@ mod tests {
             gnodes.get_mut(parent.index()).link_left(existing);
             gnodes.get_mut(parent.index()).link_right(new_child);
 
-            let mut tracker = DynamicPlateauTracker::<u8, u32>::with_root(BasisEdge(0), 0, 0, 16, parent, 4);
+            let mut tracker =
+                DynamicPlateauTracker::<u8, u32>::with_root(BasisEdge(0), 0, 0, 16, parent, 4);
             let gnodes = as_gnodes(gnodes);
             PlateauTracking::on_legacy_promotes_batched(&mut tracker, &gnodes, &[new_child]);
 
             assert!(tracker.plateaus_dirty);
             assert!(tracker.plateau_basis.basis_count() >= 1);
-            assert!(tracker.plateau_basis.plateau_key(parent).is_some() || tracker.plateau_basis.plateau_key(new_child).is_some());
+            assert!(
+                tracker.plateau_basis.plateau_key(parent).is_some()
+                    || tracker.plateau_basis.plateau_key(new_child).is_some()
+            );
             assert!(!tracker.plateaus.is_empty());
         }
 
@@ -286,7 +307,8 @@ mod tests {
             let mut gnodes = Arena::new();
             let lone = add_leaf(&mut gnodes, 0, 16, 3, None);
 
-            let mut tracker = DynamicPlateauTracker::<u8, u32>::with_root(BasisEdge(0), 0, 0, 16, lone, 4);
+            let mut tracker =
+                DynamicPlateauTracker::<u8, u32>::with_root(BasisEdge(0), 0, 0, 16, lone, 4);
             let gnodes = as_gnodes(gnodes);
             PlateauTracking::normalize(&mut tracker, &gnodes);
 
@@ -305,7 +327,8 @@ mod tests {
             gnodes.get_mut(root.index()).link_left(left);
             gnodes.get_mut(root.index()).link_right(right);
 
-            let mut tracker = DynamicPlateauTracker::<u8, u32>::with_root(BasisEdge(0), 0, 0, 16, root, 4);
+            let mut tracker =
+                DynamicPlateauTracker::<u8, u32>::with_root(BasisEdge(0), 0, 0, 16, root, 4);
             let gnodes = as_gnodes(gnodes);
             PlateauTracking::on_bootstrap_split(&mut tracker, &gnodes, root, left);
 
@@ -321,7 +344,8 @@ mod tests {
             gnodes.get_mut(root.index()).link_left(left);
             gnodes.get_mut(root.index()).link_right(right);
 
-            let mut tracker = DynamicPlateauTracker::<u8, u32>::with_root(BasisEdge(0), 0, 0, 16, root, 4);
+            let mut tracker =
+                DynamicPlateauTracker::<u8, u32>::with_root(BasisEdge(0), 0, 0, 16, root, 4);
             let gnodes = as_gnodes(gnodes);
             PlateauTracking::on_catalytic_split(&mut tracker, &gnodes, root, left);
 
@@ -332,7 +356,8 @@ mod tests {
         fn on_legacy_promotes_batched_empty_input_is_noop() {
             let mut gnodes = Arena::new();
             let root = add_leaf(&mut gnodes, 0, 16, 0, None);
-            let mut tracker = DynamicPlateauTracker::<u8, u32>::with_root(BasisEdge(0), 0, 0, 16, root, 4);
+            let mut tracker =
+                DynamicPlateauTracker::<u8, u32>::with_root(BasisEdge(0), 0, 0, 16, root, 4);
 
             let gnodes = as_gnodes(gnodes);
             PlateauTracking::on_legacy_promotes_batched(&mut tracker, &gnodes, &[]);
@@ -351,7 +376,8 @@ mod tests {
             gnodes.get_mut(parent.index()).link_left(left);
             gnodes.get_mut(parent.index()).link_right(right);
 
-            let mut tracker = DynamicPlateauTracker::<u8, u32>::with_root(BasisEdge(0), 0, 0, 16, parent, 4);
+            let mut tracker =
+                DynamicPlateauTracker::<u8, u32>::with_root(BasisEdge(0), 0, 0, 16, parent, 4);
             tracker.plateau_basis.insert(BasisEdge(0), left);
 
             let gnodes = as_gnodes(gnodes);

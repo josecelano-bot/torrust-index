@@ -27,7 +27,6 @@ pub struct GTree<C: Coordinate, V: Accumulator, const N: u32> {
     pub(crate) soft_limit: Option<usize>,
 }
 
-
 impl<C: Coordinate, V: Accumulator, const N: u32> GTree<C, V, N> {
     // ── Depth helpers (policy-bound) ─────────────────────────────────────
 
@@ -46,7 +45,6 @@ impl<C: Coordinate, V: Accumulator, const N: u32> GTree<C, V, N> {
     pub(crate) fn uniform_contour_depth(&self, gid: GNodeId) -> Option<u32> {
         self.nodes.uniform_contour_depth_of(gid, N)
     }
-
 }
 
 // ── Free functions ────────────────────────────────────────────────────────────
@@ -72,4 +70,3 @@ pub fn gnode_depth_from_range<C: Coordinate>(range: CoordinateRange<C>, n: u32) 
     let depth = (n as i32 - log2_width) as u32;
     depth
 }
-

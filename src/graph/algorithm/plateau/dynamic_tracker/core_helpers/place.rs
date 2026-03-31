@@ -1,9 +1,9 @@
 use super::super::DynamicPlateauTracker;
-use crate::tree::gtree::GNodeTree;
 use crate::handle::GNodeId;
 use crate::nodes::gnode::GState;
 use crate::spatial::plateau::{BasisEdge, Plateau};
 use crate::traits::{Accumulator, Coordinate};
+use crate::tree::gtree::GNodeTree;
 
 impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
     /// Inserts `gnode` at the given `depth` into the plateau basis, merging
@@ -99,14 +99,24 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
         gnode: GNodeId,
     ) {
         self.plateau_basis.insert(lk, gnode);
-        let rights: Vec<_> = self.plateau_basis.basis_elements(&rk).iter().copied().collect();
+        let rights: Vec<_> = self
+            .plateau_basis
+            .basis_elements(&rk)
+            .iter()
+            .copied()
+            .collect();
         for rid in rights {
             self.plateau_basis.remove(rid);
             self.plateau_basis.insert(lk, rid);
         }
         self.plateaus.remove(&rk);
         self.recompute_plateau(gnodes, &lk);
-        tracing::trace!(gnode = gnode.index(), ?lk, ?rk, "place_basis_element: merge-both");
+        tracing::trace!(
+            gnode = gnode.index(),
+            ?lk,
+            ?rk,
+            "place_basis_element: merge-both"
+        );
     }
 
     /// Extends the existing left plateau `lk` to include `gnode`.
@@ -118,7 +128,11 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
     ) {
         self.plateau_basis.insert(lk, gnode);
         self.recompute_plateau(gnodes, &lk);
-        tracing::trace!(gnode = gnode.index(), ?lk, "place_basis_element: insert-left");
+        tracing::trace!(
+            gnode = gnode.index(),
+            ?lk,
+            "place_basis_element: insert-left"
+        );
     }
 
     /// Re-keys the right plateau `rk` to `key` and inserts `gnode` into it.
@@ -133,7 +147,12 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
         let g = gnodes.get(gnode.index());
         let lo = g.lo();
         let sum = g.sum();
-        let rights: Vec<_> = self.plateau_basis.basis_elements(&rk).iter().copied().collect();
+        let rights: Vec<_> = self
+            .plateau_basis
+            .basis_elements(&rk)
+            .iter()
+            .copied()
+            .collect();
         for rid in rights {
             self.plateau_basis.remove(rid);
             self.plateau_basis.insert(key, rid);
@@ -151,7 +170,11 @@ impl<C: Coordinate, V: Accumulator> DynamicPlateauTracker<C, V> {
             },
         );
         self.recompute_plateau(gnodes, &key);
-        tracing::trace!(gnode = gnode.index(), ?rk, "place_basis_element: rekey-right");
+        tracing::trace!(
+            gnode = gnode.index(),
+            ?rk,
+            "place_basis_element: rekey-right"
+        );
     }
 
     /// Creates a new plateau at `key` for `gnode`, or recomputes it if

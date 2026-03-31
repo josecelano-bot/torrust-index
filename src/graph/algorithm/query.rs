@@ -285,8 +285,8 @@ mod tests {
     // ── contour_range ────────────────────────────────────────────────────
     #[cfg(feature = "dynamic-contour-tracking")]
     mod contour_range_tests {
-        use crate::spatial::range::CoordinateRange;
         use crate::spatial::plateau::BasisEdge;
+        use crate::spatial::range::CoordinateRange;
         use crate::traits::Coordinate;
 
         use super::*;
