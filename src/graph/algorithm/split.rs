@@ -48,7 +48,7 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
             Children::new_2((entry_id, entry_int), (cs_id, V::zero())),
             true,
         );
-        let root_s_id = VNodeId::from_index(self.vtree.nodes.alloc(root_structural));
+        let root_s_id = VNodeId::from_index(self.vtree.nodes.alloc(root_structural).0);
         self.vtree.nodes.get_mut(entry_id.index()).set_parent(root_s_id);
         self.vtree.nodes.get_mut(cs_id.index()).set_parent(root_s_id);
 
@@ -92,7 +92,7 @@ impl<C: Coordinate, V: Accumulator + Inspectable, const N: u32> GvGraph<C, V, N>
             ),
             true,
         );
-        let s_id = VNodeId::from_index(self.vtree.nodes.alloc(s));
+        let s_id = VNodeId::from_index(self.vtree.nodes.alloc(s).0);
         self.vtree
             .nodes
             .get_mut(children.left_entry_id.index())

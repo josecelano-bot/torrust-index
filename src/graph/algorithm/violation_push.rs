@@ -467,20 +467,20 @@ mod tests {
             GNodeId::from_index(1),
             true,
             true,
-        )));
+        )).0);
         let e2 = VNodeId::from_index(vnodes.alloc(VNode::new_entry(
             2,
             None,
             GNodeId::from_index(2),
             true,
             true,
-        )));
+        )).0);
         let p = VNodeId::from_index(vnodes.alloc(VNode::new_structural(
             3,
             None,
             Children::new_2((e1, 1), (e2, 2)),
             true,
-        )));
+        )).0);
         vnodes.get_mut(e1.index()).set_parent(p);
         vnodes.get_mut(e2.index()).set_parent(p);
 
@@ -507,14 +507,14 @@ mod tests {
             GNodeId::from_index(1),
             true,
             true,
-        )));
+        )).0);
         let other = VNodeId::from_index(vnodes.alloc(VNode::new_entry(
             2,
             None,
             GNodeId::from_index(2),
             true,
             true,
-        )));
+        )).0);
         let mut violations = Vec::new();
 
         push_contraction_child_violations(&vnodes, entry, other, &mut violations);

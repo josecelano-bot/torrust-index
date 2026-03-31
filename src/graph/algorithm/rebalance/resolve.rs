@@ -398,28 +398,28 @@ mod tests {
             semi_gid,
             true,
             true,
-        )));
+        )).0);
         let s = VNodeId::from_index(g.vtree.nodes.alloc(VNode::new_entry(
             5,
             None,
             GNodeId::from_index(existing_child.index()),
             true,
             true,
-        )));
+        )).0);
         let u = VNodeId::from_index(g.vtree.nodes.alloc(VNode::new_entry(
             11,
             None,
             GNodeId::from_index(existing_child.index()),
             true,
             true,
-        )));
+        )).0);
 
         let p = VNodeId::from_index(g.vtree.nodes.alloc(VNode::new_structural(
             12,
             None,
             Children::new_2((c, 7), (s, 5)),
             true,
-        )));
+        )).0);
         g.vtree.nodes.get_mut(c.index()).set_parent(p);
         g.vtree.nodes.get_mut(s.index()).set_parent(p);
 
@@ -428,7 +428,7 @@ mod tests {
             None,
             Children::new_2((p, 12), (u, 11)),
             true,
-        )));
+        )).0);
         g.vtree.nodes.get_mut(p.index()).set_parent(gp);
         g.vtree.nodes.get_mut(u.index()).set_parent(gp);
 

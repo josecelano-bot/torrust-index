@@ -83,7 +83,7 @@ mod tests {
 
     fn empty_gnodes() -> GNodeTree<u8, u32> {
         let mut nodes: Arena<GNode<u8, u32>> = Arena::new();
-        let root_idx = nodes.alloc(GNode::new_leaf(0u8, 255u8, 0u32, None));
+        let root_idx = nodes.alloc(GNode::new_leaf(0u8, 255u8, 0u32, None)).0;
         GNodeTree {
             nodes,
             root: GNodeId::from_index(root_idx),

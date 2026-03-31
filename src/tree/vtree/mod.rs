@@ -330,22 +330,22 @@ mod tests {
         #[test]
         fn root_node_has_depth_zero() {
             let mut vnodes = VNodeTree::from(Arena::new());
-            let id = VNodeId::from_index(vnodes.alloc(entry_vnode(0, None)));
+            let id = VNodeId::from_index(vnodes.alloc(entry_vnode(0, None)).0);
             assert_eq!(vnodes.depth(id), 0);
         }
 
         #[test]
         fn child_of_root_has_depth_one() {
             let mut vnodes = VNodeTree::from(Arena::new());
-            let root_id = VNodeId::from_index(vnodes.alloc(entry_vnode(0, None)));
-            let child_id = VNodeId::from_index(vnodes.alloc(entry_vnode(0, Some(root_id))));
+            let root_id = VNodeId::from_index(vnodes.alloc(entry_vnode(0, None)).0);
+            let child_id = VNodeId::from_index(vnodes.alloc(entry_vnode(0, Some(root_id))).0);
             assert_eq!(vnodes.depth(child_id), 1);
         }
 
         #[test]
         fn depth_is_consistent_across_calls() {
             let mut vnodes = VNodeTree::from(Arena::new());
-            let id = VNodeId::from_index(vnodes.alloc(entry_vnode(0, None)));
+            let id = VNodeId::from_index(vnodes.alloc(entry_vnode(0, None)).0);
             let d1 = vnodes.depth(id);
             let d2 = vnodes.depth(id);
             assert_eq!(d1, d2);
@@ -359,7 +359,7 @@ mod tests {
         #[test]
         fn propagating_from_root_entry_does_not_panic() {
             let mut vnodes: Arena<VNode<u32>> = Arena::new();
-            let root_id = VNodeId::from_index(vnodes.alloc(entry_vnode(10, None)));
+            let root_id = VNodeId::from_index(vnodes.alloc(entry_vnode(10, None)).0);
             let mut vnode_tree = VNodeTree::from(vnodes);
             vnode_tree.root = Some(root_id);
             let mut vtree = VTree {
@@ -375,8 +375,8 @@ mod tests {
             let mut vnodes: Arena<VNode<u32>> = Arena::new();
 
             // Allocate two placeholder slots to get stable IDs
-            let child_a_id = VNodeId::from_index(vnodes.alloc(entry_vnode(0, None)));
-            let child_b_id = VNodeId::from_index(vnodes.alloc(entry_vnode(0, None)));
+            let child_a_id = VNodeId::from_index(vnodes.alloc(entry_vnode(0, None)).0);
+            let child_b_id = VNodeId::from_index(vnodes.alloc(entry_vnode(0, None)).0);
 
             let parent_node: VNode<u32> = VNode::new_structural(
                 0,
@@ -384,7 +384,7 @@ mod tests {
                 Children::new_2((child_a_id, 5u32), (child_b_id, 7u32)),
                 false,
             );
-            let parent_id = VNodeId::from_index(vnodes.alloc(parent_node));
+            let parent_id = VNodeId::from_index(vnodes.alloc(parent_node).0);
 
             // Wire children back to parent
             vnodes.get_mut(child_a_id.index()).set_parent(parent_id);
@@ -416,7 +416,7 @@ mod tests {
         /// Minimal G-tree with one Terminal `GNode` at index 0.
         fn gtree_with_one_node() -> GTree<u8, u32, 8> {
             let mut gnodes: crate::arena::Arena<GNode<u8, u32>> = Arena::new();
-            let root = GNodeId::from_index(gnodes.alloc(GNode::new_leaf(0u8, 255u8, 0u32, None)));
+            let root = GNodeId::from_index(gnodes.alloc(GNode::new_leaf(0u8, 255u8, 0u32, None)).0);
             GTree {
                 nodes: GNodeTree {
                     nodes: gnodes,
@@ -437,7 +437,7 @@ mod tests {
         fn root_removal_returns_none() {
             let mut vnodes: Arena<VNode<u32>> = Arena::new();
             let mut gtree = gtree_with_one_node();
-            let v_root = VNodeId::from_index(vnodes.alloc(entry_vnode(10, None)));
+            let v_root = VNodeId::from_index(vnodes.alloc(entry_vnode(10, None)).0);
             let mut vnode_tree = VNodeTree::from(vnodes);
             vnode_tree.root = Some(v_root);
             let mut vtree = VTree {
@@ -454,7 +454,7 @@ mod tests {
             let mut vnodes: Arena<VNode<u32>> = Arena::new();
             let mut gtree = gtree_with_one_node();
             let g_root = gtree.nodes.root;
-            let v_root = VNodeId::from_index(vnodes.alloc(entry_vnode_for(g_root, 10, None)));
+            let v_root = VNodeId::from_index(vnodes.alloc(entry_vnode_for(g_root, 10, None)).0);
 
             gtree.nodes.assign_entry(g_root, v_root);
             assert_eq!(gtree.nodes.get(g_root.index()).entry(), Some(v_root));
@@ -476,16 +476,16 @@ mod tests {
             let mut vnodes: Arena<VNode<u32>> = Arena::new();
             let mut gtree = gtree_with_one_node();
 
-            let child_a = VNodeId::from_index(vnodes.alloc(entry_vnode(5, None)));
-            let child_b = VNodeId::from_index(vnodes.alloc(entry_vnode(5, None)));
-            let child_c = VNodeId::from_index(vnodes.alloc(entry_vnode(5, None)));
+            let child_a = VNodeId::from_index(vnodes.alloc(entry_vnode(5, None)).0);
+            let child_b = VNodeId::from_index(vnodes.alloc(entry_vnode(5, None)).0);
+            let child_c = VNodeId::from_index(vnodes.alloc(entry_vnode(5, None)).0);
 
             let parent_id = VNodeId::from_index(vnodes.alloc(VNode::new_structural(
                 15,
                 None,
                 Children::new_3((child_a, 5u32), (child_b, 5u32), (child_c, 5u32)),
                 true,
-            )));
+            )).0);
 
             vnodes.get_mut(child_a.index()).set_parent(parent_id);
             vnodes.get_mut(child_b.index()).set_parent(parent_id);
@@ -513,15 +513,15 @@ mod tests {
             let mut vnodes: Arena<VNode<u32>> = Arena::new();
             let mut gtree = gtree_with_one_node();
 
-            let target = VNodeId::from_index(vnodes.alloc(entry_vnode(5, None)));
-            let sibling = VNodeId::from_index(vnodes.alloc(entry_vnode(5, None)));
+            let target = VNodeId::from_index(vnodes.alloc(entry_vnode(5, None)).0);
+            let sibling = VNodeId::from_index(vnodes.alloc(entry_vnode(5, None)).0);
 
             let parent_id = VNodeId::from_index(vnodes.alloc(VNode::new_structural(
                 10,
                 None,
                 Children::new_2((target, 5u32), (sibling, 5u32)),
                 true,
-            )));
+            )).0);
 
             vnodes.get_mut(target.index()).set_parent(parent_id);
             vnodes.get_mut(sibling.index()).set_parent(parent_id);
@@ -546,23 +546,23 @@ mod tests {
             let mut vnodes: Arena<VNode<u32>> = Arena::new();
             let mut gtree = gtree_with_one_node();
 
-            let target = VNodeId::from_index(vnodes.alloc(entry_vnode(5, None)));
-            let sibling = VNodeId::from_index(vnodes.alloc(entry_vnode(5, None)));
-            let uncle = VNodeId::from_index(vnodes.alloc(entry_vnode(4, None)));
+            let target = VNodeId::from_index(vnodes.alloc(entry_vnode(5, None)).0);
+            let sibling = VNodeId::from_index(vnodes.alloc(entry_vnode(5, None)).0);
+            let uncle = VNodeId::from_index(vnodes.alloc(entry_vnode(4, None)).0);
 
             let parent_id = VNodeId::from_index(vnodes.alloc(VNode::new_structural(
                 10,
                 None,
                 Children::new_2((target, 5u32), (sibling, 5u32)),
                 true,
-            )));
+            )).0);
 
             let grandparent_id = VNodeId::from_index(vnodes.alloc(VNode::new_structural(
                 14,
                 None,
                 Children::new_2((parent_id, 10u32), (uncle, 4u32)),
                 true,
-            )));
+            )).0);
 
             vnodes.get_mut(target.index()).set_parent(parent_id);
             vnodes.get_mut(sibling.index()).set_parent(parent_id);

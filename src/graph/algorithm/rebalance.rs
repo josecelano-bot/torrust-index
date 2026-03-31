@@ -82,7 +82,7 @@ pub fn contract<V: Accumulator>(vtree: &mut VTree<V>, p: VNodeId) -> VNodeId {
         Children::new_2((a_id, a_int), (b_id, b_int)),
         a_terminal || b_terminal,
     );
-    let m_id = VNodeId::from_index(vtree.nodes.alloc(merged));
+    let m_id = VNodeId::from_index(vtree.nodes.alloc(merged).0);
 
     vtree.nodes.get_mut(a_id.index()).set_parent(m_id);
     vtree.nodes.get_mut(b_id.index()).set_parent(m_id);
@@ -366,34 +366,34 @@ mod tests {
                 GNodeId::from_index(1),
                 true,
                 true,
-            )));
+            )).0);
             let sibling = VNodeId::from_index(vnodes.alloc(VNode::new_entry(
                 4,
                 None,
                 GNodeId::from_index(2),
                 true,
                 true,
-            )));
+            )).0);
             let u1 = VNodeId::from_index(vnodes.alloc(VNode::new_entry(
                 9,
                 None,
                 GNodeId::from_index(3),
                 true,
                 true,
-            )));
+            )).0);
 
             let parent = VNodeId::from_index(vnodes.alloc(VNode::new_structural(
                 9,
                 None,
                 Children::new_2((c, 5), (sibling, 4)),
                 true,
-            )));
+            )).0);
             let gp = VNodeId::from_index(vnodes.alloc(VNode::new_structural(
                 18,
                 None,
                 Children::new_2((parent, 9), (u1, 9)),
                 true,
-            )));
+            )).0);
 
             vnodes.get_mut(c.index()).set_parent(parent);
             vnodes.get_mut(sibling.index()).set_parent(parent);
@@ -656,7 +656,7 @@ mod tests {
                 crate::handle::GNodeId::from_index(50),
                 true,
                 true,
-            )));
+            )).0);
             let violations = vec![live, VNodeId::from_index(9999)];
 
             let _ = handle_iteration_limit(&vnodes, &violations, 11, 10, 0, live);

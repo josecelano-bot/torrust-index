@@ -35,7 +35,7 @@ impl<C: Coordinate, V: Accumulator> GNodeTree<C, V> {
 
     /// Allocates a new G-node slot and returns its index.
     pub(crate) fn alloc(&mut self, node: GNode<C, V>) -> usize {
-        self.nodes.alloc(node)
+        self.nodes.alloc(node).0
     }
 
     /// Frees the G-node slot at `idx` and returns the evicted value.

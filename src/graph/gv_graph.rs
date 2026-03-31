@@ -119,11 +119,11 @@ fn build_core<C: Coordinate, V: Accumulator, const N: u32>(
 
     let mut gnodes = Arena::new();
     let root_gnode = GNode::new_leaf(C::zero(), C::domain_max(N), V::zero(), None);
-    let g_root = GNodeId::from_index(gnodes.alloc(root_gnode));
+    let g_root = GNodeId::from_index(gnodes.alloc(root_gnode).0);
 
     let mut vnodes = Arena::new();
     let root_entry = VNode::new_entry(V::zero(), None, g_root, true, true);
-    let v_root_id = VNodeId::from_index(vnodes.alloc(root_entry));
+    let v_root_id = VNodeId::from_index(vnodes.alloc(root_entry).0);
     gnodes.get_mut(g_root.index()).assign_entry(v_root_id);
 
     let gtree = GTree {
@@ -611,12 +611,12 @@ mod tests {
             // Construct explicitly: root=[0,128) Internal, left=[0,64) and right=[64,128)
             // both Terminal with equal width 64 → equal depth (8 - floor(log2(64)) = 2).
             let mut gnodes: Arena<GNode<u8, u32>> = Arena::new();
-            let left_id = GNodeId::from_index(gnodes.alloc(make_terminal(0, 64)));
-            let right_id = GNodeId::from_index(gnodes.alloc(make_terminal(64, 128)));
+            let left_id = GNodeId::from_index(gnodes.alloc(make_terminal(0, 64)).0);
+            let right_id = GNodeId::from_index(gnodes.alloc(make_terminal(64, 128)).0);
             let mut root = GNode::new_leaf(0u8, 128u8, 0u32, None);
             root.link_left(left_id);
             root.link_right(right_id);
-            let root_id = GNodeId::from_index(gnodes.alloc(root));
+            let root_id = GNodeId::from_index(gnodes.alloc(root).0);
             let result = uniform_contour_depth_of(&gnodes, root_id, 8);
             assert_eq!(result, Some(2));
         }

@@ -58,14 +58,14 @@ mod tests {
             GNodeId::from_index(0),
             true,
             true,
-        )));
+        )).0);
         let child = VNodeId::from_index(t.alloc(VNode::new_entry(
             2,
             None,
             GNodeId::from_index(1),
             true,
             true,
-        )));
+        )).0);
 
         let _ = t.sibling_of(parent, child);
     }
@@ -81,28 +81,28 @@ mod tests {
             GNodeId::from_index(2),
             true,
             true,
-        )));
+        )).0);
         let c2 = VNodeId::from_index(t.alloc(VNode::new_entry(
             4,
             None,
             GNodeId::from_index(3),
             true,
             true,
-        )));
+        )).0);
         let outsider = VNodeId::from_index(t.alloc(VNode::new_entry(
             5,
             None,
             GNodeId::from_index(4),
             true,
             true,
-        )));
+        )).0);
 
         let p = VNodeId::from_index(t.alloc(VNode::new_structural(
             7,
             None,
             Children::new_2((c1, 3), (c2, 4)),
             true,
-        )));
+        )).0);
         t.get_mut(c1.index()).set_parent(p);
         t.get_mut(c2.index()).set_parent(p);
 
@@ -380,7 +380,7 @@ impl<V: Accumulator> VNodeTree<V> {
             Children::new_2((a, a_int), (b, b_int)),
             true,
         );
-        let s_id = VNodeId::from_index(self.alloc(s));
+        let s_id = VNodeId::from_index(self.alloc(s).0);
         self.get_mut(a.index()).set_parent(s_id);
         self.get_mut(b.index()).set_parent(s_id);
         s_id

@@ -77,7 +77,7 @@ pub(super) fn alloc_v_entry<C: Coordinate, V: Accumulator, const N: u32>(
     gnode: GNodeId,
 ) -> VNodeId {
     let e = VNode::new_entry(V::zero(), None, gnode, true, true);
-    let e_id = VNodeId::from_index(vtree.nodes.alloc(e));
+    let e_id = VNodeId::from_index(vtree.nodes.alloc(e).0);
     gtree.nodes.assign_entry(gnode, e_id);
     e_id
 }

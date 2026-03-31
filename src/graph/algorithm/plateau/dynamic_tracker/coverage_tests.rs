@@ -12,7 +12,7 @@ fn add_leaf(
     sum: u32,
     parent: Option<GNodeId>,
 ) -> GNodeId {
-    let id = GNodeId::from_index(gnodes.alloc(GNode::new_leaf(lo, hi, 0u32, parent)));
+    let id = GNodeId::from_index(gnodes.alloc(GNode::new_leaf(lo, hi, 0u32, parent)).0);
     let g = gnodes.get_mut(id.index());
     g.set_own(sum);
     g.set_sum(sum);
@@ -20,7 +20,7 @@ fn add_leaf(
 }
 
 fn add_node(gnodes: &mut Arena<GNode<u8, u32>>, lo: u8, hi: u8, parent: Option<GNodeId>) -> GNodeId {
-    GNodeId::from_index(gnodes.alloc(GNode::new_leaf(lo, hi, 0u32, parent)))
+    GNodeId::from_index(gnodes.alloc(GNode::new_leaf(lo, hi, 0u32, parent)).0)
 }
 
 fn as_gnodes(nodes: Arena<GNode<u8, u32>>) -> crate::tree::gtree::GNodeTree<u8, u32> {
